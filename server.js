@@ -98,11 +98,14 @@ const ADMIN_PHONE = '+998774071234';
 const ADMIN_PASSWORD = '1992tillo';
 
 function ensureAdmin(db) {
-  const exists = db.users.find(u => u.phone === ADMIN_PHONE);
-  if (!exists) {
+  let admin = db.users.find(u => u.phone === ADMIN_PHONE);
+  if (!admin) {
     const { salt, hash } = hashPassword(ADMIN_PASSWORD);
-    const admin = { id: db.nextId.user++, name: 'Admin', phone: ADMIN_PHONE, role: 'admin', salt, hash, paidCommission: 0 };
+    admin = { id: db.nextId.user++, name: 'Admin', phone: ADMIN_PHONE, role: 'admin', salt, hash, paidCommission: 0 };
     db.users.push(admin);
+    saveDB(db);
+  } else if (admin.role !== 'admin') {
+    admin.role = 'admin';
     saveDB(db);
   }
 }
