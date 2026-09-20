@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SavdoUz</title>
+<style>
+:root{
+  --ink:#0E1F17; --blue:#1868E0; --blue-dk:#0B4AA8; --blue-lt:#E8F0FE;
+  --bg:#F7F8F7; --card:#FFFFFF; --muted:#6B7570; --line:#EAEFEA; --red:#E14848;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Tahoma,sans-serif;}
+.app{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);}
+svg{display:block;}
+input,select,textarea{font-family:inherit;font-size:14px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);width:100%;background:#fff;}
+button{font-family:inherit;cursor:pointer;}
+label{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;display:block;}
+.field{margin-bottom:12px;}
+
+/* auth screen */
+.authwrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:30px 26px;}
+.authlogo{width:60px;height:60px;border-radius:16px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px;margin:0 auto 16px;}
+.authtitle{text-align:center;font-size:22px;font-weight:800;margin-bottom:4px;}
+.authsub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:26px;}
+.roletabs{display:flex;background:var(--blue-lt);border-radius:10px;padding:3px;margin-bottom:16px;}
+.roletab{flex:1;text-align:center;padding:8px 0;font-size:13px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer;}
+.roletab.active{background:#fff;color:var(--blue-dk);}
+.primarybtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:13px;font-weight:700;font-size:14px;margin-top:6px;}
+.switchmode{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
+.switchmode b{color:var(--blue-dk);cursor:pointer;}
+.errmsg{background:#FDEDED;color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:12px;display:none;}
+
+/* header */
+header{background:#fff;padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);}
+.brandrow{display:flex;gap:10px;align-items:center;}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;}
+.brandtext .name{font-size:18px;font-weight:800;}
+.brandtext .tag{font-size:10.5px;color:var(--muted);}
+.logoutbtn{background:var(--bg);border:none;border-radius:8px;padding:7px 12px;font-size:11.5px;color:var(--muted);font-weight:600;}
+
+main{flex:1;padding:14px 18px 90px;}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.sectitle{font-size:16px;font-weight:800;}
+
+/* categories */
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:6px;}
+.cat{flex:0 0 auto;padding:7px 13px;border-radius:18px;background:var(--card);border:1px solid var(--line);font-size:12.5px;cursor:pointer;}
+.cat.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+/* product grid */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pcard{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line);}
+.pimg{height:90px;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;}
+.pimg svg{width:40px;height:40px;}
+.pbody{padding:10px 11px 12px;}
+.tag{display:inline-block;background:var(--blue-lt);color:var(--blue-dk);font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:6px;margin-bottom:5px;}
+.pname{font-size:13px;font-weight:700;line-height:1.25;margin-bottom:2px;}
+.pseller{font-size:10.5px;color:var(--muted);margin-bottom:5px;}
+.price{font-weight:800;color:var(--blue-dk);font-size:13.5px;margin-bottom:8px;}
+.addbtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:9px;padding:8px 0;font-size:11.5px;font-weight:700;}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:60px 20px;line-height:1.6;}
+
+/* cart / orders */
+.citem,.oitem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;}
+.citem{display:flex;justify-content:space-between;align-items:center;}
+.cname{font-size:13px;font-weight:700;}
+.cprice{font-size:12px;color:var(--blue-dk);font-weight:700;margin-top:2px;}
+.qty{display:flex;align-items:center;gap:8px;}
+.qty button{width:25px;height:25px;border-radius:7px;border:1px solid var(--line);background:var(--bg);font-size:14px;}
+.summary{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:6px;}
+.sumrow{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--muted);}
+.sumrow.total{font-weight:800;font-size:15px;margin-top:6px;color:var(--ink);}
+.checkout{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:11px;padding:13px;font-weight:700;font-size:14px;}
+.oitem .top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+.status{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;background:var(--blue-lt);color:var(--blue-dk);}
+.oline{font-size:12.5px;display:flex;justify-content:space-between;margin-top:4px;}
+.ototal{font-weight:800;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;}
+select.statusSel{margin-top:8px;font-size:12px;padding:7px 9px;}
+
+/* seller add form */
+.addform{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;}
+
+/* bottom nav */
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);max-width:420px;margin:0 auto;display:flex;}
+.navitem{flex:1;text-align:center;padding:10px 0 8px;font-size:10.5px;color:var(--muted);cursor:pointer;border-top:2px solid transparent;}
+.navitem.active{color:var(--blue-dk);font-weight:700;border-top-color:var(--blue);}
+.navicon{margin-bottom:3px;display:flex;justify-content:center;}
+.navicon svg{width:19px;height:19px;}
+.badge{position:relative;top:-14px;left:8px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700;}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = ''; // bo'sh — bir xil serverdan ishlaydi
+let state = { token: localStorage.getItem('savdouz_token') || null, user: null, tab: 'home', cat: 'Barchasi', cart: {} };
+const ICONS = {
+  phone:'<svg viewBox="0 0 24 24"><rect x="6" y="1.5" width="12" height="21" rx="2.3" fill="#2B3543"/><rect x="7.2" y="3.3" width="9.6" height="15.5" rx="0.6" fill="url(#g1)"/><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1868E0"/><stop offset="1" stop-color="#7BB3FF"/></linearGradient></defs></svg>',
+  shirt:'<svg viewBox="0 0 24 24"><path d="M16 4l4.2 2-2.3 4.3-1.9-.9V20a1 1 0 01-1 1H9a1 1 0 01-1-1V9.4l-1.9.9L3.8 6 8 4l2 2h4z" fill="#3B82F6"/></svg>',
+  car:'<svg viewBox="0 0 24 24"><rect x="2.5" y="13" width="19" height="6" rx="2" fill="#E14848"/><rect x="6" y="8.2" width="12" height="4.6" rx="1" fill="#8FC5FF"/><circle cx="7" cy="19" r="1.8" fill="#2B3543"/><circle cx="17" cy="19" r="1.8" fill="#2B3543"/></svg>',
+  sofa:'<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="7" rx="2" fill="#8FA6C2"/><rect x="2" y="14" width="3" height="6" rx="1.3" fill="#5B7396"/><rect x="19" y="14" width="3" height="6" rx="1.3" fill="#5B7396"/><rect x="5.5" y="12.5" width="5.2" height="4" rx="1" fill="#1868E0"/><rect x="13.3" y="12.5" width="5.2" height="4" rx="1" fill="#1868E0"/></svg>',
+  laptop:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>',
+};
+const CATS = ["Barchasi","Telefon","Kiyim","Uy-ro'zg'or","Avto","Boshqa"];
+const fmt = n => Number(n).toLocaleString('ru-RU') + " so'm";
+
+async function api(path, opts={}){
+  const headers = { 'Content-Type':'application/json' };
+  if(state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(API + path, { ...opts, headers });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || 'Xato yuz berdi');
+  return data;
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt = setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+// ---------- AUTH SCREEN ----------
+let authMode = 'login'; let authRole = 'buyer';
+function renderAuth(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="authwrap">
+      <div class="authlogo">S</div>
+      <div class="authtitle">SavdoUz</div>
+      <div class="authsub">${authMode==='login' ? "Hisobingizga kiring" : "Yangi hisob yarating"}</div>
+      <div class="errmsg" id="errmsg"></div>
+      ${authMode==='register' ? `
+      <div class="roletabs">
+        <div class="roletab ${authRole==='buyer'?'active':''}" data-role="buyer">Xaridor</div>
+        <div class="roletab ${authRole==='seller'?'active':''}" data-role="seller">Sotuvchi</div>
+      </div>` : ''}
+      ${authMode==='register' ? `<div class="field"><label>Ism</label><input id="fname" placeholder="Ismingiz"></div>` : ''}
+      <div class="field"><label>Telefon raqam</label><input id="fphone" placeholder="+998901234567"></div>
+      <div class="field"><label>Parol</label><input id="fpass" type="password" placeholder="••••••••"></div>
+      <button class="primarybtn" id="submitBtn">${authMode==='login' ? 'Kirish' : "Ro'yxatdan o'tish"}</button>
+      <div class="switchmode">
+        ${authMode==='login' ? `Hisobingiz yo'qmi? <b id="toRegister">Ro'yxatdan o'ting</b>`
+                              : `Hisobingiz bormi? <b id="toLogin">Kiring</b>`}
+      </div>
+    </div>`;
+  app.querySelectorAll('.roletab').forEach(r=>r.onclick=()=>{authRole=r.dataset.role;renderAuth();});
+  const toReg = document.getElementById('toRegister'); if(toReg) toReg.onclick=()=>{authMode='register';renderAuth();};
+  const toLog = document.getElementById('toLogin'); if(toLog) toLog.onclick=()=>{authMode='login';renderAuth();};
+  document.getElementById('submitBtn').onclick = submitAuth;
+}
+async function submitAuth(){
+  const errEl = document.getElementById('errmsg');
+  errEl.style.display='none';
+  const phone = document.getElementById('fphone').value.trim();
+  const password = document.getElementById('fpass').value;
+  try{
+    let data;
+    if(authMode==='login'){
+      data = await api('/api/login', { method:'POST', body: JSON.stringify({ phone, password }) });
+    } else {
+      const name = document.getElementById('fname').value.trim();
+      if(!name) throw new Error('Ismingizni kiriting');
+      data = await api('/api/register', { method:'POST', body: JSON.stringify({ name, phone, password, role: authRole }) });
+    }
+    state.token = data.token; state.user = data.user;
+    localStorage.setItem('savdouz_token', state.token);
+    state.tab = 'home';
+    renderApp();
+  } catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+
+// ---------- MAIN APP ----------
+async function renderApp(){
+  const app = document.getElementById('app');
+  const isSeller = state.user.role === 'seller';
+  app.innerHTML = `
+    <header>
+      <div class="brandrow">
+        <div class="logo">S</div>
+        <div class="brandtext"><div class="name">SavdoUz</div><div class="tag">${state.user.name} · ${isSeller?'Sotuvchi':'Xaridor'}</div></div>
+      </div>
+      <button class="logoutbtn" id="logoutBtn">Chiqish</button>
+    </header>
+    <main id="main"></main>
+    <nav id="nav"></nav>`;
+  document.getElementById('logoutBtn').onclick = ()=>{
+    localStorage.removeItem('savdouz_token'); state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{} }; renderAuth();
+  };
+  renderNav();
+  await renderTab();
+}
+
+function renderNav(){
+  const isSeller = state.user.role === 'seller';
+  const nav = document.getElementById('nav');
+  const cartCount = Object.values(state.cart).reduce((a,b)=>a+b,0);
+  const items = isSeller ? [
+    ['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar']
+  ] : [
+    ['home','🏠','Bosh sahifa'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']
+  ];
+  nav.innerHTML = items.map(([k,icon,label])=>`
+    <div class="navitem ${state.tab===k?'active':''}" data-tab="${k}">
+      <div class="navicon">${icon}</div>${label}${k==='cart'&&cartCount>0?`<span class="badge">${cartCount}</span>`:''}
+    </div>`).join('');
+  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; renderNav(); await renderTab(); });
+}
+
+async function renderTab(){
+  const main = document.getElementById('main');
+  const isSeller = state.user.role === 'seller';
+  main.innerHTML = `<div class="empty">Yuklanmoqda...</div>`;
+
+  if(state.tab==='home' && !isSeller){
+    const { products } = await api('/api/products');
+    const list = state.cat==='Barchasi' ? products : products.filter(p=>p.cat===state.cat);
+    main.innerHTML = `
+      <div class="cats">${CATS.map(c=>`<div class="cat ${c===state.cat?'active':''}" data-cat="${c}">${c}</div>`).join('')}</div>
+      <div class="sechead"><div class="sectitle">Mahsulotlar</div></div>
+      <div class="grid">${list.length ? list.map(p=>`
+        <div class="pcard">
+          <div class="pimg">${ICONS[p.icon]||ICONS.laptop}</div>
+          <div class="pbody">
+            <span class="tag">${p.cat}</span>
+            <div class="pname">${p.name}</div>
+            <div class="pseller">${p.sellerName}</div>
+            <div class="price">${fmt(p.price)}</div>
+            <div style="font-size:10.5px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:6px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
+            <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
+          </div>
+        </div>`).join('') : `<div class="empty" style="grid-column:1/-1">Hozircha bu kategoriyada mahsulot yo'q</div>`}
+      </div>`;
+    main.querySelectorAll('.cat').forEach(c=>c.onclick=async()=>{state.cat=c.dataset.cat; await renderTab();});
+    main.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
+      const id=b.dataset.add;
+      const p = products.find(pp=>pp.id==id);
+      const inCart = state.cart[id]||0;
+      if(inCart >= p.stock){ showToast("Omborda shuncha bor: "+p.stock+" dona"); return; }
+      state.cart[id]=inCart+1;
+      showToast(`"${p.name}" savatga qo'shildi`); renderNav();
+    });
+  }
+
+  else if(state.tab==='cart' && !isSeller){
+    const { products } = await api('/api/products');
+    const ids = Object.keys(state.cart).filter(id=>state.cart[id]>0);
+    if(!ids.length){ main.innerHTML = `<div class="empty">🛒<br><br>Savatingiz bo'sh</div>`; return; }
+    let total = 0;
+    const rows = ids.map(id=>{
+      const p = products.find(pp=>pp.id==id); if(!p) return '';
+      total += p.price*state.cart[id];
+      return `<div class="citem">
+        <div><div class="cname">${p.name}</div><div class="cprice">${fmt(p.price)}</div></div>
+        <div class="qty"><button data-dec="${id}">−</button><span>${state.cart[id]}</span><button data-inc="${id}">+</button></div>
+      </div>`;
+    }).join('');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Savat</div>${rows}
+      <div class="field" style="margin-top:14px"><label>Yetkazib berish manzili</label><input id="addr" placeholder="Shahar, ko'cha, uy"></div>
+      <div class="summary">
+        <div class="sumrow total"><span>Jami</span><span>${fmt(total)}</span></div>
+        <div class="sumrow" style="margin-top:4px">To'lov: naqd/yetkazishda</div>
+        <button class="checkout" id="checkoutBtn">Buyurtma berish</button>
+      </div>`;
+    main.querySelectorAll('[data-inc]').forEach(b=>b.onclick=async()=>{
+      const pid=b.dataset.inc; const p=products.find(pp=>pp.id==pid);
+      if(p && state.cart[pid]>=p.stock){ showToast("Omborda shuncha bor: "+p.stock+" dona"); return; }
+      state.cart[pid]++; await renderTab(); renderNav();
+    });
+    main.querySelectorAll('[data-dec]').forEach(b=>b.onclick=async()=>{state.cart[b.dataset.dec]=Math.max(0,state.cart[b.dataset.dec]-1);await renderTab();renderNav();});
+    document.getElementById('checkoutBtn').onclick = async ()=>{
+      const address = document.getElementById('addr').value.trim();
+      if(!address){ showToast("Manzilni kiriting"); return; }
+      const items = ids.map(id=>({ productId:Number(id), qty:state.cart[id] }));
+      try{
+        await api('/api/orders', { method:'POST', body: JSON.stringify({ items, address }) });
+        state.cart = {}; renderNav(); showToast("Buyurtma qabul qilindi! ✅"); state.tab='orders'; renderNav(); await renderTab();
+      } catch(e){ showToast(e.message); }
+    };
+  }
+
+  else if(state.tab==='orders' && !isSeller){
+    const { orders } = await api('/api/orders/mine');
+    if(!orders.length){ main.innerHTML = `<div class="empty">📦<br><br>Hali buyurtmalar yo'q</div>`; return; }
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Buyurtmalarim</div>` + orders.map(o=>`
+      <div class="oitem">
+        <div class="top"><span>№${o.id} · ${new Date(o.createdAt).toLocaleDateString('uz')}</span><span class="status">${o.status}</span></div>
+        ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
+        <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+      </div>`).join('');
+  }
+
+  else if(state.tab==='home' && isSeller){
+    const { products } = await api('/api/my-products');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Mening mahsulotlarim</div>` +
+      (products.length ? `<div class="grid">${products.map(p=>`
+        <div class="pcard">
+          <div class="pimg">${ICONS[p.icon]||ICONS.laptop}</div>
+          <div class="pbody">
+            <span class="tag">${p.cat}</span>
+            <div class="pname">${p.name}</div>
+            <div class="price">${fmt(p.price)}</div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Omborda: ${p.stock} dona</div>
+            <button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button>
+          </div>
+        </div>`).join('')}</div>` : `<div class="empty">Hali mahsulot qo'shmagansiz.<br>"Qo'shish" bo'limiga o'ting.</div>`);
+    main.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+      await api('/api/products/'+b.dataset.del, { method:'DELETE' });
+      showToast("Mahsulot o'chirildi"); await renderTab();
+    });
+  }
+
+  else if(state.tab==='add' && isSeller){
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Yangi mahsulot</div>
+      <div class="addform">
+        <div class="field"><label>Nomi</label><input id="pname" placeholder="Masalan: Samsung Galaxy"></div>
+        <div class="field"><label>Kategoriya</label>
+          <select id="pcat">${CATS.filter(c=>c!=='Barchasi').map(c=>`<option>${c}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" placeholder="150000"></div>
+        <div class="field"><label>Nechta bor (soni)</label><input id="pstock" type="number" placeholder="10"></div>
+        <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha"></textarea></div>
+        <button class="primarybtn" id="addProdBtn">Mahsulot qo'shish</button>
+      </div>`;
+    document.getElementById('addProdBtn').onclick = async ()=>{
+      const name = document.getElementById('pname').value.trim();
+      const cat = document.getElementById('pcat').value;
+      const price = document.getElementById('pprice').value;
+      const stock = document.getElementById('pstock').value;
+      const desc = document.getElementById('pdesc').value.trim();
+      if(!name || !price){ showToast("Nom va narxni kiriting"); return; }
+      if(!stock){ showToast("Nechta borligini kiriting"); return; }
+      try{
+        await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock }) });
+        showToast("Mahsulot qo'shildi! ✅"); state.tab='home'; renderNav(); await renderTab();
+      } catch(e){ showToast(e.message); }
+    };
+  }
+
+  else if(state.tab==='orders' && isSeller){
+    const { orders } = await api('/api/orders/incoming');
+    const earn = await api('/api/earnings');
+    const summary = `<div class="summary" style="margin-bottom:16px">
+      <div class="sumrow"><span>Jami savdo</span><span>${fmt(earn.totalSales)}</span></div>
+      <div class="sumrow"><span>Platforma komissiyasi (${(earn.commissionRate*100).toFixed(0)}%)</span><span>−${fmt(earn.totalCommission)}</span></div>
+      <div class="sumrow total"><span>Sizning sof daromadingiz</span><span>${fmt(earn.totalPayout)}</span></div>
+    </div>`;
+    if(!orders.length){ main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Kelgan buyurtmalar</div>${summary}<div class="empty">📦<br><br>Hali buyurtma tushmagan</div>`; return; }
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Kelgan buyurtmalar</div>${summary}` + orders.map(o=>{
+      const mySubtotal = o.items.reduce((s,it)=>s+(it.subtotal||it.price*it.qty),0);
+      const myCommission = o.items.reduce((s,it)=>s+(it.commission||0),0);
+      const myPayout = o.items.reduce((s,it)=>s+(it.payout||it.price*it.qty),0);
+      return `<div class="oitem">
+        <div class="top"><span>№${o.id} · ${o.buyerName} · ${o.phone}</span><span class="status">${o.status}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${o.address}</div>
+        ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
+        <div class="oline" style="color:var(--red)"><span>Komissiya (1%)</span><span>−${fmt(myCommission)}</span></div>
+        <div class="ototal"><span>Sizga tushum</span><span>${fmt(myPayout)}</span></div>
+        <select class="statusSel" data-order="${o.id}">
+          ${['yangi','tasdiqlandi','yetkazilmoqda','yetkazildi','bekor qilindi'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join('');
+    main.querySelectorAll('.statusSel').forEach(s=>s.onchange=async()=>{
+      await api('/api/orders/'+s.dataset.order+'/status', { method:'PATCH', body: JSON.stringify({ status:s.value }) });
+      showToast("Holat yangilandi");
+    });
+  }
+}
+
+// ---------- Ishga tushirish ----------
+(async function init(){
+  if(state.token){
+    try{
+      const { user } = await api('/api/me');
+      state.user = user; renderApp();
+      return;
+    } catch(e){ localStorage.removeItem('savdouz_token'); state.token=null; }
+  }
+  renderAuth();
+})();
+</script>
+</body>
+</html>

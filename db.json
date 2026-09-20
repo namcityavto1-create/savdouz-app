@@ -1,0 +1,62 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Izzatillo",
+      "phone": "+998943817675",
+      "role": "buyer",
+      "salt": "1905cc677bc79585fedce128e3a5ad2a",
+      "hash": "38c10b64296cbf39d5fb31a0eb84816b12ad65e594bad0e8c4991ae8be7887bd74b266f74d945178a1bfe785828caabfdcf66f0686d5e32230944dd224036402"
+    },
+    {
+      "id": 2,
+      "name": "Izzatillo",
+      "phone": "+998774071234",
+      "role": "seller",
+      "salt": "664c1bcc63b94fda40082df4d48dcb0d",
+      "hash": "c8b7b321b929e3e361876351d0b42c050c5e4c5d7694dffe8be0cebaa2d926fce4979cba4e838037a40f4142782a1f9b29e5a8e7880d8aeb34004cbe4a2ac251"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "sellerId": 2,
+      "name": "ARIEL",
+      "cat": "Uy-ro'zg'or",
+      "price": 50000,
+      "desc": "Chiroyli hidli sifayli ayna avtomat kir moshinalar uchun Qozog'iston maxsuloti",
+      "icon": "sofa",
+      "stock": 49
+    }
+  ],
+  "orders": [
+    {
+      "id": 1,
+      "buyerId": 1,
+      "buyerName": "Izzatillo",
+      "items": [
+        {
+          "productId": 1,
+          "name": "ARIEL",
+          "price": 50000,
+          "qty": 1,
+          "sellerId": 2,
+          "subtotal": 50000,
+          "commission": 500,
+          "payout": 49500
+        }
+      ],
+      "total": 50000,
+      "address": "Namangan shaxar",
+      "phone": "+998943817675",
+      "status": "yangi",
+      "paymentMethod": "naqd/yetkazishda",
+      "createdAt": "2026-09-20T07:19:17.918Z"
+    }
+  ],
+  "nextId": {
+    "user": 3,
+    "product": 2,
+    "order": 2
+  }
+}
