@@ -197,11 +197,12 @@ async function submitAuth(){
 async function renderApp(){
   const app = document.getElementById('app');
   const isSeller = state.user.role === 'seller';
+  const isAdmin = state.user.role === 'admin';
   app.innerHTML = `
     <header>
       <div class="brandrow">
         <div class="logo">S</div>
-        <div class="brandtext"><div class="name">SavdoUz</div><div class="tag">${state.user.name} · ${isSeller?'Sotuvchi':'Xaridor'}</div></div>
+        <div class="brandtext"><div class="name">SavdoUz</div><div class="tag">${state.user.name} · ${isAdmin?'Admin':(isSeller?'Sotuvchi':'Xaridor')}</div></div>
       </div>
       <button class="logoutbtn" id="logoutBtn">Chiqish</button>
     </header>
@@ -210,15 +211,19 @@ async function renderApp(){
   document.getElementById('logoutBtn').onclick = ()=>{
     localStorage.removeItem('savdouz_token'); state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{},pendingImage:null,editingProduct:null }; renderAuth();
   };
+  if(isAdmin) state.tab = ['sellers','products','buyers','orders','payments'].includes(state.tab) ? state.tab : 'sellers';
   renderNav();
   await renderTab();
 }
 
 function renderNav(){
   const isSeller = state.user.role === 'seller';
+  const isAdmin = state.user.role === 'admin';
   const nav = document.getElementById('nav');
   const cartCount = Object.values(state.cart).reduce((a,b)=>a+b,0);
-  const items = isSeller ? [
+  const items = isAdmin ? [
+    ['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]
+  ] : isSeller ? [
     ['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar']
   ] : [
     ['home','🏠','Bosh sahifa'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']
@@ -230,10 +235,20 @@ function renderNav(){
   nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; state.pendingImage=null; state.editingProduct=null; renderNav(); await renderTab(); });
 }
 
+function starsHtml(avg, count){
+  const full = Math.round(avg);
+  let s = '';
+  for(let i=1;i<=5;i++){ s += `<span style="color:${i<=full?'#F5A623':'#DADEDA'}">★</span>`; }
+  return `<div style="font-size:11px;margin-bottom:4px">${s} <span style="color:var(--muted)">(${count||0})</span></div>`;
+}
+
 async function renderTab(){
   const main = document.getElementById('main');
   const isSeller = state.user.role === 'seller';
+  const isAdmin = state.user.role === 'admin';
   main.innerHTML = `<div class="empty">Yuklanmoqda...</div>`;
+
+  if(isAdmin){ await renderAdminTab(main); return; }
 
   if(state.tab==='home' && !isSeller){
     const { products } = await api('/api/products');
@@ -248,6 +263,7 @@ async function renderTab(){
             <span class="tag">${p.cat}</span>
             <div class="pname">${p.name}</div>
             <div class="pseller">${p.sellerName}</div>
+            ${starsHtml(p.avgRating, p.reviewCount)}
             <div class="price">${fmt(p.price)}</div>
             <div style="font-size:10.5px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:6px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
             <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
@@ -308,14 +324,32 @@ async function renderTab(){
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Buyurtmalarim</div>` + orders.map(o=>`
       <div class="oitem">
         <div class="top"><span>№${o.id} · ${new Date(o.createdAt).toLocaleDateString('uz')}</span><span class="status">${o.status}</span></div>
-        ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
+        ${o.items.map(it=>`
+          <div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>
+          <div class="rate-row" data-pid="${it.productId}" data-pname="${it.name.replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:4px;margin:2px 0 6px">
+            ${[1,2,3,4,5].map(n=>`<span class="starbtn" data-star="${n}" style="cursor:pointer;color:#DADEDA;font-size:15px">★</span>`).join('')}
+            <span style="font-size:10.5px;color:var(--muted);margin-left:4px">Baho qo'ying</span>
+          </div>`).join('')}
         <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
       </div>`).join('');
+    main.querySelectorAll('.rate-row').forEach(row=>{
+      const stars = row.querySelectorAll('.starbtn');
+      stars.forEach(st=>st.onclick=async()=>{
+        const n = Number(st.dataset.star);
+        stars.forEach((s2,idx)=>{ s2.style.color = idx < n ? '#F5A623' : '#DADEDA'; });
+        try{
+          await api('/api/products/'+row.dataset.pid+'/reviews', { method:'POST', body: JSON.stringify({ rating: n, comment: '' }) });
+          showToast(`"${row.dataset.pname}" uchun ${n} yulduz qo'yildi ✅`);
+        } catch(e){ showToast(e.message); }
+      });
+    });
   }
 
   else if(state.tab==='home' && isSeller){
     const { products } = await api('/api/my-products');
+    const earn = await api('/api/earnings');
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Mening mahsulotlarim</div>` +
+      (earn.restricted ? `<div style="margin-bottom:12px;background:#FDEDED;color:var(--red);font-size:12px;padding:10px 12px;border-radius:10px;font-weight:600">⚠️ Qarzingiz limitdan (${fmt(earn.debtLimit)}) oshgan! Mahsulotlaringiz xaridorlarga ko'rinmayapti. "Buyurtmalar" bo'limidan to'lov yuboring.</div>` : '') +
       (products.length ? `<div class="grid">${products.map(p=>`
         <div class="pcard">
           <div class="pimg">${pimgHtml(p)}</div>
@@ -405,14 +439,62 @@ async function renderTab(){
   else if(state.tab==='orders' && isSeller){
     const { orders } = await api('/api/orders/incoming');
     const earn = await api('/api/earnings');
+    const { payments: myPayments } = await api('/api/payments/mine');
     const summary = `<div class="summary" style="margin-bottom:16px">
       <div class="sumrow"><span>Jami savdo</span><span>${fmt(earn.totalSales)}</span></div>
       <div class="sumrow"><span>Platforma komissiyasi (${(earn.commissionRate*100).toFixed(0)}%)</span><span>−${fmt(earn.totalCommission)}</span></div>
-      <div class="sumrow total"><span>Sizning sof daromadingiz</span><span>${fmt(earn.totalPayout)}</span></div>
-    </div>`;
-    if(!orders.length){ main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Kelgan buyurtmalar</div>${summary}<div class="empty">📦<br><br>Hali buyurtma tushmagan</div>`; return; }
-    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Kelgan buyurtmalar</div>${summary}` + orders.map(o=>{
-      const mySubtotal = o.items.reduce((s,it)=>s+(it.subtotal||it.price*it.qty),0);
+      <div class="sumrow"><span>To'langan komissiya</span><span>${fmt(earn.paidCommission)}</span></div>
+      <div class="sumrow total" style="color:${earn.debt>0?'var(--red)':'var(--ink)'}"><span>${earn.debt>0?"Qarzingiz":"Qarzingiz yo'q"}</span><span>${fmt(Math.max(0,earn.debt))}</span></div>
+      <div class="sumrow" style="margin-top:4px"><span>Ruxsat etilgan limit</span><span>${fmt(earn.debtLimit)}</span></div>
+      ${earn.restricted ? `<div style="margin-top:10px;background:#FDEDED;color:var(--red);font-size:12px;padding:10px 12px;border-radius:10px;font-weight:600">⚠️ Qarzingiz limitdan oshgan! Mahsulotlaringiz xaridorlarga ko'rinmayapti. To'lov qilib, admin tasdiqlashi bilan qayta ochiladi.</div>` : ''}
+      ${earn.payoutCard ? `
+      <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Komissiyani shu kartaga o'tkazing:</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--blue-lt);border-radius:10px;padding:10px 12px">
+          <div>
+            <div style="font-weight:800;font-size:14px;letter-spacing:0.5px;color:var(--blue-dk)">${earn.payoutCard.number}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${earn.payoutCard.name}</div>
+          </div>
+        </div>
+      </div>` : ''}
+    </div>
+    <div class="addform" style="margin-bottom:16px">
+      <div class="sectitle" style="margin-bottom:10px;font-size:14px">To'lov yuborish</div>
+      <div class="field"><label>To'langan summa (so'm)</label><input id="payAmount" type="number" placeholder="Masalan: 50000"></div>
+      <div class="field">
+        <label>Chek yoki skrinshot</label>
+        <div class="imgpreview" id="receiptPreview"><span>Rasm tanlanmagan</span></div>
+        <input id="payReceipt" type="file" accept="image/*">
+      </div>
+      <button class="primarybtn" id="sendPaymentBtn">Yuborish</button>
+    </div>
+    ${myPayments.length ? `<div class="sectitle" style="margin-bottom:10px;font-size:14px">Mening to'lovlarim</div>` + myPayments.map(p=>`
+      <div class="oitem">
+        <div class="top"><span>${fmt(p.amount)} · ${new Date(p.createdAt).toLocaleDateString('uz')}</span>
+        <span class="status" style="background:${p.status==='tasdiqlandi'?'#E6F4EA':p.status==='rad etildi'?'#FDEDED':'var(--blue-lt)'};color:${p.status==='tasdiqlandi'?'#1E7E34':p.status==='rad etildi'?'var(--red)':'var(--blue-dk)'}">${p.status}</span></div>
+        ${p.adminNote ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px">Admin izohi: ${p.adminNote}</div>` : ''}
+      </div>`).join('') : ''}`;
+    document.getElementById('payReceipt').onchange = async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      try{
+        showToast("Rasm tayyorlanmoqda...");
+        const dataUrl = await readImageAsBase64(file);
+        state.pendingReceipt = dataUrl;
+        document.getElementById('receiptPreview').innerHTML = `<img src="${dataUrl}">`;
+      } catch(err){ showToast("Rasmni yuklab bo'lmadi: " + err.message); }
+    };
+    document.getElementById('sendPaymentBtn').onclick = async ()=>{
+      const amount = document.getElementById('payAmount').value;
+      if(!amount || Number(amount)<=0){ showToast("Summani kiriting"); return; }
+      if(!state.pendingReceipt){ showToast("Chek yoki skrinshot yuklang"); return; }
+      try{
+        await api('/api/payments', { method:'POST', body: JSON.stringify({ amount, receiptImage: state.pendingReceipt }) });
+        state.pendingReceipt = null;
+        showToast("To'lov yuborildi, admin tasdiqlaydi ✅");
+        await renderTab();
+      } catch(e){ showToast(e.message); }
+    };
+    const ordersHtml = !orders.length ? `<div class="empty">📦<br><br>Hali buyurtma tushmagan</div>` : `<div class="sectitle" style="margin:16px 0 12px">Kelgan buyurtmalar</div>` + orders.map(o=>{
       const myCommission = o.items.reduce((s,it)=>s+(it.commission||0),0);
       const myPayout = o.items.reduce((s,it)=>s+(it.payout||it.price*it.qty),0);
       return `<div class="oitem">
@@ -426,6 +508,7 @@ async function renderTab(){
         </select>
       </div>`;
     }).join('');
+    main.insertAdjacentHTML('beforeend', ordersHtml);
     main.querySelectorAll('.statusSel').forEach(s=>s.onchange=async()=>{
       await api('/api/orders/'+s.dataset.order+'/status', { method:'PATCH', body: JSON.stringify({ status:s.value }) });
       showToast("Holat yangilandi");
@@ -433,6 +516,100 @@ async function renderTab(){
   }
 }
 
+// ---------- ADMIN PANEL ----------
+async function renderAdminTab(main){
+  if(state.tab==='sellers'){
+    const { sellers } = await api('/api/admin/sellers');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Sotuvchilar (${sellers.length})</div>` +
+      (sellers.length ? sellers.map(s=>`
+        <div class="oitem">
+          <div class="top"><span style="font-weight:700;color:var(--ink)">${s.name} ${s.restricted?'<span style="color:var(--red);font-size:10.5px">🚫 Cheklangan</span>':''}</span><span style="color:var(--muted)">${s.phone}</span></div>
+          <div class="oline"><span>Mahsulotlar</span><span>${s.productCount} ta</span></div>
+          <div class="oline"><span>Buyurtmalar</span><span>${s.orderCount} ta</span></div>
+          <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div>
+          <div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
+          <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
+          <div class="ototal" style="color:${s.debt>0?'var(--red)':'var(--ink)'}"><span>Qarzi</span><span>${fmt(Math.max(0,s.debt))}</span></div>
+        </div>`).join('') : `<div class="empty">Hali sotuvchi yo'q</div>`);
+  }
+
+  else if(state.tab==='products'){
+    const { products } = await api('/api/admin/products');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Barcha mahsulotlar (${products.length})</div>
+      <div class="grid">${products.length ? products.map(p=>`
+        <div class="pcard">
+          <div class="pimg">${pimgHtml(p)}</div>
+          <div class="pbody">
+            <span class="tag">${p.cat}</span>
+            <div class="pname">${p.name}</div>
+            <div class="pseller">${p.sellerName} · ${p.sellerPhone}</div>
+            <div class="price">${fmt(p.price)}</div>
+            <div style="font-size:10.5px;color:var(--muted)">Omborda: ${p.stock} dona</div>
+          </div>
+        </div>`).join('') : `<div class="empty" style="grid-column:1/-1">Mahsulot yo'q</div>`}
+      </div>`;
+  }
+
+  else if(state.tab==='buyers'){
+    const { buyers } = await api('/api/admin/buyers');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Xaridorlar (${buyers.length})</div>` +
+      (buyers.length ? buyers.map(b=>`
+        <div class="oitem">
+          <div class="top"><span style="font-weight:700;color:var(--ink)">${b.name}</span><span style="color:var(--muted)">${b.phone}</span></div>
+          <div class="oline"><span>Buyurtmalar soni</span><span>${b.orderCount} ta</span></div>
+          <div class="oline"><span>Jami xarid</span><span>${fmt(b.totalSpent)}</span></div>
+        </div>`).join('') : `<div class="empty">Hali xaridor yo'q</div>`);
+  }
+
+  else if(state.tab==='orders'){
+    const { orders } = await api('/api/admin/orders');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Barcha buyurtmalar (${orders.length})</div>` +
+      (orders.length ? orders.map(o=>`
+        <div class="oitem">
+          <div class="top"><span>№${o.id} · ${o.buyerName} · ${o.phone}</span><span class="status">${o.status}</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${o.address}</div>
+          ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
+          <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+          <div class="field" style="margin-top:8px"><label>Admin izohi</label><textarea class="adminNoteInput" data-order="${o.id}" rows="2" placeholder="Izoh yozing...">${o.adminNote||''}</textarea></div>
+          <button class="addbtn" style="background:var(--blue-dk)" data-savenote="${o.id}">Izohni saqlash</button>
+        </div>`).join('') : `<div class="empty">Hali buyurtma yo'q</div>`);
+    main.querySelectorAll('[data-savenote]').forEach(btn=>btn.onclick=async()=>{
+      const oid = btn.dataset.savenote;
+      const note = main.querySelector(`.adminNoteInput[data-order="${oid}"]`).value;
+      await api('/api/admin/orders/'+oid, { method:'PATCH', body: JSON.stringify({ adminNote: note }) });
+      showToast("Izoh saqlandi");
+    });
+  }
+
+  else if(state.tab==='payments'){
+    const { payments } = await api('/api/admin/payments');
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">To'lovlar (${payments.length})</div>` +
+      (payments.length ? payments.map(p=>`
+        <div class="oitem">
+          <div class="top"><span style="font-weight:700">${p.sellerName}</span><span class="status" style="background:${p.status==='tasdiqlandi'?'#E6F4EA':p.status==='rad etildi'?'#FDEDED':'var(--blue-lt)'};color:${p.status==='tasdiqlandi'?'#1E7E34':p.status==='rad etildi'?'var(--red)':'var(--blue-dk)'}">${p.status}</span></div>
+          <div class="oline"><span>Summa</span><span style="font-weight:800">${fmt(p.amount)}</span></div>
+          <div style="font-size:11px;color:var(--muted);margin:4px 0">${new Date(p.createdAt).toLocaleString('uz')}</div>
+          <div class="imgpreview" style="height:160px;margin-bottom:8px"><img src="${p.receiptImage}" style="cursor:pointer" data-fullimg="${p.id}"></div>
+          ${p.status==='kutilmoqda' ? `
+          <div style="display:flex;gap:6px">
+            <button class="addbtn" style="background:#1E7E34" data-approve="${p.id}">Tasdiqlash</button>
+            <button class="addbtn" style="background:var(--red)" data-reject="${p.id}">Rad etish</button>
+          </div>` : (p.adminNote ? `<div style="font-size:11.5px;color:var(--muted)">Izoh: ${p.adminNote}</div>` : '')}
+        </div>`).join('') : `<div class="empty">Hali to'lov yo'q</div>`);
+    main.querySelectorAll('[data-fullimg]').forEach(img=>img.onclick=()=>{ window.open(img.src, '_blank'); });
+    main.querySelectorAll('[data-approve]').forEach(btn=>btn.onclick=async()=>{
+      await api('/api/admin/payments/'+btn.dataset.approve, { method:'PATCH', body: JSON.stringify({ status:'tasdiqlandi' }) });
+      showToast("To'lov tasdiqlandi ✅"); await renderTab();
+    });
+    main.querySelectorAll('[data-reject]').forEach(btn=>btn.onclick=async()=>{
+      const note = prompt("Rad etish sababi (ixtiyoriy):") || '';
+      await api('/api/admin/payments/'+btn.dataset.reject, { method:'PATCH', body: JSON.stringify({ status:'rad etildi', adminNote: note }) });
+      showToast("To'lov rad etildi"); await renderTab();
+    });
+  }
+}
+
+// ---------- Ishga tushirish ----------
 (async function init(){
   if(state.token){
     try{
