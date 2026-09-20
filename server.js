@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// ---------- Ma'lumotlar bazasi (JSON fayl) ----------
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) {
     const empty = { users: [], products: [], orders: [], nextId: { user: 1, product: 1, order: 1 } };
@@ -23,7 +22,6 @@ function saveDB(db) {
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
-// ---------- Parol xeshlash ----------
 function hashPassword(password, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -34,8 +32,7 @@ function verifyPassword(password, salt, hash) {
   return check === hash;
 }
 
-// ---------- Sessiyalar (xotirada, server qayta ishga tushsa tozalanadi) ----------
-const sessions = {}; // token -> userId
+const sessions = {};
 
 function makeToken() {
   return crypto.randomBytes(24).toString('hex');
@@ -50,7 +47,6 @@ function getUserFromReq(req, db) {
   return db.users.find(u => u.id === userId) || null;
 }
 
-// ---------- Yordamchi funksiyalar ----------
 function sendJSON(res, status, data) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
@@ -77,14 +73,13 @@ function publicUser(u) {
   return { id: u.id, name: u.name, phone: u.phone, role: u.role };
 }
 
-const COMMISSION_RATE = 0.01; // SavdoUz platformasi komissiyasi — 1%
+const COMMISSION_RATE = 0.01;
 
 const CAT_ICON = {
   "Telefon": "phone", "Kiyim": "shirt", "Uy-ro'zg'or": "sofa",
   "Avto": "car", "Boshqa": "laptop"
 };
 
-// ---------- Statik fayllarni uzatish ----------
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json' };
 function serveStatic(req, res, pathname) {
   let filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
@@ -104,7 +99,6 @@ function serveStatic(req, res, pathname) {
   });
 }
 
-// ---------- Asosiy server ----------
 const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url, true);
   const pathname = parsed.pathname;
@@ -118,7 +112,6 @@ const server = http.createServer(async (req, res) => {
   const db = loadDB();
 
   try {
-    // ---- Ro'yxatdan o'tish ----
     if (pathname === '/api/register' && req.method === 'POST') {
       const { name, phone, password, role } = await readBody(req);
       if (!name || !phone || !password || !role) return sendJSON(res, 400, { error: "Barcha maydonlarni to'ldiring" });
@@ -133,7 +126,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { token, user: publicUser(user) });
     }
 
-    // ---- Kirish ----
     if (pathname === '/api/login' && req.method === 'POST') {
       const { phone, password } = await readBody(req);
       const user = db.users.find(u => u.phone === phone);
@@ -145,14 +137,12 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { token, user: publicUser(user) });
     }
 
-    // ---- Joriy foydalanuvchi ----
     if (pathname === '/api/me' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
       return sendJSON(res, 200, { user: publicUser(user) });
     }
 
-    // ---- Mahsulotlar ro'yxati (hammaga ochiq) ----
     if (pathname === '/api/products' && req.method === 'GET') {
       const list = db.products.map(p => {
         const seller = db.users.find(u => u.id === p.sellerId);
@@ -161,23 +151,22 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { products: list });
     }
 
-    // ---- Mahsulot qo'shish (faqat sotuvchi) ----
     if (pathname === '/api/products' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
-      const { name, cat, price, desc, stock } = await readBody(req);
+      const { name, cat, price, desc, stock, image } = await readBody(req);
       if (!name || !cat || !price) return sendJSON(res, 400, { error: "Nom, kategoriya va narxni kiriting" });
       const product = {
         id: db.nextId.product++, sellerId: user.id, name, cat,
         price: Number(price), desc: desc || '', icon: CAT_ICON[cat] || 'laptop',
-        stock: stock !== undefined && stock !== '' ? Number(stock) : 999
+        stock: stock !== undefined && stock !== '' ? Number(stock) : 999,
+        image: image || null
       };
       db.products.push(product);
       saveDB(db);
       return sendJSON(res, 200, { product });
     }
 
-    // ---- O'z mahsulotlarim (sotuvchi) ----
     if (pathname === '/api/my-products' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -185,7 +174,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { products: list });
     }
 
-    // ---- Mahsulotni o'chirish (faqat egasi) ----
     const delMatch = pathname.match(/^\/api\/products\/(\d+)$/);
     if (delMatch && req.method === 'DELETE') {
       const user = getUserFromReq(req, db);
@@ -199,7 +187,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true });
     }
 
-    // ---- Buyurtma berish (xaridor) ----
     if (pathname === '/api/orders' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar buyurtma bera oladi" });
@@ -218,7 +205,6 @@ const server = http.createServer(async (req, res) => {
         total += subtotal;
         return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout };
       });
-      // Zaxirani kamaytirish
       orderItems.forEach(it => {
         const p = db.products.find(pp => pp.id === it.productId);
         if (p) p.stock -= it.qty;
@@ -234,7 +220,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { order });
     }
 
-    // ---- Xaridorning o'z buyurtmalari ----
     if (pathname === '/api/orders/mine' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
@@ -242,7 +227,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { orders: list });
     }
 
-    // ---- Sotuvchiga kelgan buyurtmalar ----
     if (pathname === '/api/orders/incoming' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -253,7 +237,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { orders: list });
     }
 
-    // ---- Sotuvchi daromadi (jami tushum, komissiya) ----
     if (pathname === '/api/earnings' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -272,7 +255,6 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { totalSales, totalCommission, totalPayout, orderCount, commissionRate: COMMISSION_RATE });
     }
 
-    // ---- Buyurtma holatini yangilash (sotuvchi) ----
     const statusMatch = pathname.match(/^\/api\/orders\/(\d+)\/status$/);
     if (statusMatch && req.method === 'PATCH') {
       const user = getUserFromReq(req, db);
