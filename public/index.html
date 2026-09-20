@@ -88,7 +88,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid 
 
 <script>
 const API = '';
-let state = { token: localStorage.getItem('savdouz_token') || null, user: null, tab: 'home', cat: 'Barchasi', cart: {}, pendingImage: null };
+let state = { token: localStorage.getItem('savdouz_token') || null, user: null, tab: 'home', cat: 'Barchasi', cart: {}, pendingImage: null, editingProduct: null };
 const ICONS = {
   phone:'<svg viewBox="0 0 24 24"><rect x="6" y="1.5" width="12" height="21" rx="2.3" fill="#2B3543"/><rect x="7.2" y="3.3" width="9.6" height="15.5" rx="0.6" fill="url(#g1)"/><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1868E0"/><stop offset="1" stop-color="#7BB3FF"/></linearGradient></defs></svg>',
   shirt:'<svg viewBox="0 0 24 24"><path d="M16 4l4.2 2-2.3 4.3-1.9-.9V20a1 1 0 01-1 1H9a1 1 0 01-1-1V9.4l-1.9.9L3.8 6 8 4l2 2h4z" fill="#3B82F6"/></svg>',
@@ -208,7 +208,7 @@ async function renderApp(){
     <main id="main"></main>
     <nav id="nav"></nav>`;
   document.getElementById('logoutBtn').onclick = ()=>{
-    localStorage.removeItem('savdouz_token'); state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{},pendingImage:null }; renderAuth();
+    localStorage.removeItem('savdouz_token'); state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{},pendingImage:null,editingProduct:null }; renderAuth();
   };
   renderNav();
   await renderTab();
@@ -227,7 +227,7 @@ function renderNav(){
     <div class="navitem ${state.tab===k?'active':''}" data-tab="${k}">
       <div class="navicon">${icon}</div>${label}${k==='cart'&&cartCount>0?`<span class="badge">${cartCount}</span>`:''}
     </div>`).join('');
-  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; state.pendingImage=null; renderNav(); await renderTab(); });
+  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; state.pendingImage=null; state.editingProduct=null; renderNav(); await renderTab(); });
 }
 
 async function renderTab(){
@@ -324,33 +324,44 @@ async function renderTab(){
             <div class="pname">${p.name}</div>
             <div class="price">${fmt(p.price)}</div>
             <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Omborda: ${p.stock} dona</div>
-            <button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button>
+            <div style="display:flex;gap:6px">
+              <button class="addbtn" style="background:var(--blue-dk)" data-edit="${p.id}">Tahrirlash</button>
+              <button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button>
+            </div>
           </div>
         </div>`).join('')}</div>` : `<div class="empty">Hali mahsulot qo'shmagansiz.<br>"Qo'shish" bo'limiga o'ting.</div>`);
     main.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+      if(!confirm("Rostdan ham o'chirmoqchimisiz?")) return;
       await api('/api/products/'+b.dataset.del, { method:'DELETE' });
       showToast("Mahsulot o'chirildi"); await renderTab();
+    });
+    main.querySelectorAll('[data-edit]').forEach(b=>b.onclick=async()=>{
+      const p = products.find(pp=>pp.id==b.dataset.edit);
+      state.editingProduct = p;
+      state.pendingImage = p.image || null;
+      state.tab = 'add'; renderNav(); await renderTab();
     });
   }
 
   else if(state.tab==='add' && isSeller){
-    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Yangi mahsulot</div>
+    const ed = state.editingProduct;
+    main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">${ed ? "Mahsulotni tahrirlash" : "Yangi mahsulot"}</div>
       <div class="addform">
         <div class="field">
           <label>Mahsulot rasmi</label>
-          <div class="imgpreview" id="imgPreview"><span>Rasm tanlanmagan</span></div>
+          <div class="imgpreview" id="imgPreview">${state.pendingImage ? `<img src="${state.pendingImage}">` : `<span>Rasm tanlanmagan</span>`}</div>
           <input id="pimageFile" type="file" accept="image/*">
         </div>
-        <div class="field"><label>Nomi</label><input id="pname" placeholder="Masalan: Samsung Galaxy"></div>
+        <div class="field"><label>Nomi</label><input id="pname" placeholder="Masalan: Samsung Galaxy" value="${ed ? ed.name.replace(/"/g,'&quot;') : ''}"></div>
         <div class="field"><label>Kategoriya</label>
-          <select id="pcat">${CATS.filter(c=>c!=='Barchasi').map(c=>`<option>${c}</option>`).join('')}</select>
+          <select id="pcat">${CATS.filter(c=>c!=='Barchasi').map(c=>`<option ${ed && ed.cat===c?'selected':''}>${c}</option>`).join('')}</select>
         </div>
-        <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" placeholder="150000"></div>
-        <div class="field"><label>Nechta bor (soni)</label><input id="pstock" type="number" placeholder="10"></div>
-        <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha"></textarea></div>
-        <button class="primarybtn" id="addProdBtn">Mahsulot qo'shish</button>
+        <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" placeholder="150000" value="${ed ? ed.price : ''}"></div>
+        <div class="field"><label>Nechta bor (soni)</label><input id="pstock" type="number" placeholder="10" value="${ed ? ed.stock : ''}"></div>
+        <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha">${ed ? (ed.desc||'') : ''}</textarea></div>
+        <button class="primarybtn" id="addProdBtn">${ed ? "Saqlash" : "Mahsulot qo'shish"}</button>
+        ${ed ? `<button class="primarybtn" id="cancelEditBtn" style="background:var(--bg);color:var(--muted);margin-top:8px">Bekor qilish</button>` : ''}
       </div>`;
-    state.pendingImage = null;
     document.getElementById('pimageFile').onchange = async (e)=>{
       const file = e.target.files[0];
       if(!file) return;
@@ -363,6 +374,12 @@ async function renderTab(){
         showToast("Rasmni yuklab bo'lmadi: " + err.message);
       }
     };
+    if(ed){
+      document.getElementById('cancelEditBtn').onclick = async ()=>{
+        state.editingProduct = null; state.pendingImage = null;
+        state.tab='home'; renderNav(); await renderTab();
+      };
+    }
     document.getElementById('addProdBtn').onclick = async ()=>{
       const name = document.getElementById('pname').value.trim();
       const cat = document.getElementById('pcat').value;
@@ -372,9 +389,15 @@ async function renderTab(){
       if(!name || !price){ showToast("Nom va narxni kiriting"); return; }
       if(!stock){ showToast("Nechta borligini kiriting"); return; }
       try{
-        await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage }) });
-        state.pendingImage = null;
-        showToast("Mahsulot qo'shildi! ✅"); state.tab='home'; renderNav(); await renderTab();
+        if(ed){
+          await api('/api/products/'+ed.id, { method:'PATCH', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage }) });
+          showToast("Mahsulot yangilandi! ✅");
+        } else {
+          await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage }) });
+          showToast("Mahsulot qo'shildi! ✅");
+        }
+        state.pendingImage = null; state.editingProduct = null;
+        state.tab='home'; renderNav(); await renderTab();
       } catch(e){ showToast(e.message); }
     };
   }
