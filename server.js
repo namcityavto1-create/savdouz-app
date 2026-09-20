@@ -187,6 +187,25 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true });
     }
 
+    const editMatch = pathname.match(/^\/api\/products\/(\d+)$/);
+    if (editMatch && req.method === 'PATCH') {
+      const user = getUserFromReq(req, db);
+      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      const pid = Number(editMatch[1]);
+      const product = db.products.find(p => p.id === pid);
+      if (!product) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
+      if (product.sellerId !== user.id) return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
+      const { name, cat, price, desc, stock, image } = await readBody(req);
+      if (name !== undefined) product.name = name;
+      if (cat !== undefined) { product.cat = cat; product.icon = CAT_ICON[cat] || 'laptop'; }
+      if (price !== undefined && price !== '') product.price = Number(price);
+      if (desc !== undefined) product.desc = desc;
+      if (stock !== undefined && stock !== '') product.stock = Number(stock);
+      if (image !== undefined) product.image = image;
+      saveDB(db);
+      return sendJSON(res, 200, { product });
+    }
+
     if (pathname === '/api/orders' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar buyurtma bera oladi" });
