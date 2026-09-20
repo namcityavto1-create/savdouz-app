@@ -17,8 +17,6 @@ input,select,textarea{font-family:inherit;font-size:14px;padding:11px 13px;borde
 button{font-family:inherit;cursor:pointer;}
 label{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;display:block;}
 .field{margin-bottom:12px;}
-
-/* auth screen */
 .authwrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:30px 26px;}
 .authlogo{width:60px;height:60px;border-radius:16px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
   display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px;margin:0 auto 16px;}
@@ -31,30 +29,23 @@ label{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;disp
 .switchmode{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
 .switchmode b{color:var(--blue-dk);cursor:pointer;}
 .errmsg{background:#FDEDED;color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:12px;display:none;}
-
-/* header */
 header{background:#fff;padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);}
-.brandrow{display:flex;gap:10px;align-items:center;}
-.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
+.brandrow{display:flex;gap:10px;align-items:center;} .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
   display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;}
 .brandtext .name{font-size:18px;font-weight:800;}
 .brandtext .tag{font-size:10.5px;color:var(--muted);}
 .logoutbtn{background:var(--bg);border:none;border-radius:8px;padding:7px 12px;font-size:11.5px;color:var(--muted);font-weight:600;}
-
 main{flex:1;padding:14px 18px 90px;}
 .sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
 .sectitle{font-size:16px;font-weight:800;}
-
-/* categories */
 .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:6px;}
 .cat{flex:0 0 auto;padding:7px 13px;border-radius:18px;background:var(--card);border:1px solid var(--line);font-size:12.5px;cursor:pointer;}
 .cat.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-
-/* product grid */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .pcard{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line);}
-.pimg{height:90px;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;}
+.pimg{height:90px;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .pimg svg{width:40px;height:40px;}
+.pimg img{width:100%;height:100%;object-fit:cover;display:block;}
 .pbody{padding:10px 11px 12px;}
 .tag{display:inline-block;background:var(--blue-lt);color:var(--blue-dk);font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:6px;margin-bottom:5px;}
 .pname{font-size:13px;font-weight:700;line-height:1.25;margin-bottom:2px;}
@@ -62,8 +53,6 @@ main{flex:1;padding:14px 18px 90px;}
 .price{font-weight:800;color:var(--blue-dk);font-size:13.5px;margin-bottom:8px;}
 .addbtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:9px;padding:8px 0;font-size:11.5px;font-weight:700;}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:60px 20px;line-height:1.6;}
-
-/* cart / orders */
 .citem,.oitem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;}
 .citem{display:flex;justify-content:space-between;align-items:center;}
 .cname{font-size:13px;font-weight:700;}
@@ -79,18 +68,16 @@ main{flex:1;padding:14px 18px 90px;}
 .oline{font-size:12.5px;display:flex;justify-content:space-between;margin-top:4px;}
 .ototal{font-weight:800;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;}
 select.statusSel{margin-top:8px;font-size:12px;padding:7px 9px;}
-
-/* seller add form */
 .addform{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;}
-
-/* bottom nav */
+.imgpreview{width:100%;height:140px;border-radius:12px;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1px dashed var(--line);}
+.imgpreview img{width:100%;height:100%;object-fit:cover;}
+.imgpreview span{font-size:12px;color:var(--muted);}
 nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);max-width:420px;margin:0 auto;display:flex;}
 .navitem{flex:1;text-align:center;padding:10px 0 8px;font-size:10.5px;color:var(--muted);cursor:pointer;border-top:2px solid transparent;}
 .navitem.active{color:var(--blue-dk);font-weight:700;border-top-color:var(--blue);}
 .navicon{margin-bottom:3px;display:flex;justify-content:center;}
 .navicon svg{width:19px;height:19px;}
 .badge{position:relative;top:-14px;left:8px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700;}
-
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
@@ -100,8 +87,8 @@ nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid 
 <div class="toast" id="toast"></div>
 
 <script>
-const API = ''; // bo'sh — bir xil serverdan ishlaydi
-let state = { token: localStorage.getItem('savdouz_token') || null, user: null, tab: 'home', cat: 'Barchasi', cart: {} };
+const API = '';
+let state = { token: localStorage.getItem('savdouz_token') || null, user: null, tab: 'home', cat: 'Barchasi', cart: {}, pendingImage: null };
 const ICONS = {
   phone:'<svg viewBox="0 0 24 24"><rect x="6" y="1.5" width="12" height="21" rx="2.3" fill="#2B3543"/><rect x="7.2" y="3.3" width="9.6" height="15.5" rx="0.6" fill="url(#g1)"/><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1868E0"/><stop offset="1" stop-color="#7BB3FF"/></linearGradient></defs></svg>',
   shirt:'<svg viewBox="0 0 24 24"><path d="M16 4l4.2 2-2.3 4.3-1.9-.9V20a1 1 0 01-1 1H9a1 1 0 01-1-1V9.4l-1.9.9L3.8 6 8 4l2 2h4z" fill="#3B82F6"/></svg>',
@@ -111,6 +98,35 @@ const ICONS = {
 };
 const CATS = ["Barchasi","Telefon","Kiyim","Uy-ro'zg'or","Avto","Boshqa"];
 const fmt = n => Number(n).toLocaleString('ru-RU') + " so'm";
+
+function pimgHtml(p){
+  if(p.image){ return `<img src="${p.image}" alt="${p.name}">`; }
+  return ICONS[p.icon] || ICONS.laptop;
+}
+
+function readImageAsBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error("Rasmni o'qib bo'lmadi"));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error("Rasm formatini aniqlab bo'lmadi"));
+      img.onload = ()=>{
+        const maxSize = 700;
+        let { width, height } = img;
+        if(width > height && width > maxSize){ height = Math.round(height*maxSize/width); width = maxSize; }
+        else if(height > maxSize){ width = Math.round(width*maxSize/height); height = maxSize; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 async function api(path, opts={}){
   const headers = { 'Content-Type':'application/json' };
@@ -127,7 +143,6 @@ function showToast(msg){
   window._tt = setTimeout(()=>t.classList.remove('show'), 2000);
 }
 
-// ---------- AUTH SCREEN ----------
 let authMode = 'login'; let authRole = 'buyer';
 function renderAuth(){
   const app = document.getElementById('app');
@@ -179,7 +194,6 @@ async function submitAuth(){
   }
 }
 
-// ---------- MAIN APP ----------
 async function renderApp(){
   const app = document.getElementById('app');
   const isSeller = state.user.role === 'seller';
@@ -194,7 +208,7 @@ async function renderApp(){
     <main id="main"></main>
     <nav id="nav"></nav>`;
   document.getElementById('logoutBtn').onclick = ()=>{
-    localStorage.removeItem('savdouz_token'); state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{} }; renderAuth();
+    localStorage.removeItem('savdouz_token'); state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{},pendingImage:null }; renderAuth();
   };
   renderNav();
   await renderTab();
@@ -213,7 +227,7 @@ function renderNav(){
     <div class="navitem ${state.tab===k?'active':''}" data-tab="${k}">
       <div class="navicon">${icon}</div>${label}${k==='cart'&&cartCount>0?`<span class="badge">${cartCount}</span>`:''}
     </div>`).join('');
-  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; renderNav(); await renderTab(); });
+  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; state.pendingImage=null; renderNav(); await renderTab(); });
 }
 
 async function renderTab(){
@@ -229,7 +243,7 @@ async function renderTab(){
       <div class="sechead"><div class="sectitle">Mahsulotlar</div></div>
       <div class="grid">${list.length ? list.map(p=>`
         <div class="pcard">
-          <div class="pimg">${ICONS[p.icon]||ICONS.laptop}</div>
+          <div class="pimg">${pimgHtml(p)}</div>
           <div class="pbody">
             <span class="tag">${p.cat}</span>
             <div class="pname">${p.name}</div>
@@ -304,7 +318,7 @@ async function renderTab(){
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Mening mahsulotlarim</div>` +
       (products.length ? `<div class="grid">${products.map(p=>`
         <div class="pcard">
-          <div class="pimg">${ICONS[p.icon]||ICONS.laptop}</div>
+          <div class="pimg">${pimgHtml(p)}</div>
           <div class="pbody">
             <span class="tag">${p.cat}</span>
             <div class="pname">${p.name}</div>
@@ -322,6 +336,11 @@ async function renderTab(){
   else if(state.tab==='add' && isSeller){
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Yangi mahsulot</div>
       <div class="addform">
+        <div class="field">
+          <label>Mahsulot rasmi</label>
+          <div class="imgpreview" id="imgPreview"><span>Rasm tanlanmagan</span></div>
+          <input id="pimageFile" type="file" accept="image/*">
+        </div>
         <div class="field"><label>Nomi</label><input id="pname" placeholder="Masalan: Samsung Galaxy"></div>
         <div class="field"><label>Kategoriya</label>
           <select id="pcat">${CATS.filter(c=>c!=='Barchasi').map(c=>`<option>${c}</option>`).join('')}</select>
@@ -331,6 +350,19 @@ async function renderTab(){
         <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha"></textarea></div>
         <button class="primarybtn" id="addProdBtn">Mahsulot qo'shish</button>
       </div>`;
+    state.pendingImage = null;
+    document.getElementById('pimageFile').onchange = async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        showToast("Rasm tayyorlanmoqda...");
+        const dataUrl = await readImageAsBase64(file);
+        state.pendingImage = dataUrl;
+        document.getElementById('imgPreview').innerHTML = `<img src="${dataUrl}">`;
+      } catch(err){
+        showToast("Rasmni yuklab bo'lmadi: " + err.message);
+      }
+    };
     document.getElementById('addProdBtn').onclick = async ()=>{
       const name = document.getElementById('pname').value.trim();
       const cat = document.getElementById('pcat').value;
@@ -340,7 +372,8 @@ async function renderTab(){
       if(!name || !price){ showToast("Nom va narxni kiriting"); return; }
       if(!stock){ showToast("Nechta borligini kiriting"); return; }
       try{
-        await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock }) });
+        await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage }) });
+        state.pendingImage = null;
         showToast("Mahsulot qo'shildi! ✅"); state.tab='home'; renderNav(); await renderTab();
       } catch(e){ showToast(e.message); }
     };
@@ -377,7 +410,6 @@ async function renderTab(){
   }
 }
 
-// ---------- Ishga tushirish ----------
 (async function init(){
   if(state.token){
     try{
