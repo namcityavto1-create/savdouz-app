@@ -6,79 +6,83 @@
 <title>SavdoUz</title>
 <style>
 :root{
-  --ink:#0E1F17; --blue:#1868E0; --blue-dk:#0B4AA8; --blue-lt:#E8F0FE;
-  --bg:#F7F8F7; --card:#FFFFFF; --muted:#6B7570; --line:#EAEFEA; --red:#E14848;
+  --ink:#150F2E; --violet:#6C4BF4; --violet-dk:#4E2FD9; --violet-lt:#F1EDFE;
+  --bg:#F5F4FA; --card:#FFFFFF; --muted:#8A8497; --line:#ECE9F5; --red:#F23557;
+  --orange:#FF6B35;
 }
 *{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Tahoma,sans-serif;}
 .app{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);}
 svg{display:block;}
-input,select,textarea{font-family:inherit;font-size:14px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);width:100%;background:#fff;}
-button{font-family:inherit;cursor:pointer;}
-label{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;display:block;}
-.field{margin-bottom:12px;}
+input,select,textarea{font-family:inherit;font-size:14px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);width:100%;background:#fff;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--violet);}
+button{font-family:inherit;cursor:pointer;transition:transform .1s,opacity .15s;}
+button:active{transform:scale(.97);}
+label{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;display:block;}
+.field{margin-bottom:13px;}
 .authwrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:30px 26px;}
-.authlogo{width:60px;height:60px;border-radius:16px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px;margin:0 auto 16px;}
-.authtitle{text-align:center;font-size:22px;font-weight:800;margin-bottom:4px;}
-.authsub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:26px;}
-.roletabs{display:flex;background:var(--blue-lt);border-radius:10px;padding:3px;margin-bottom:16px;}
-.roletab{flex:1;text-align:center;padding:8px 0;font-size:13px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer;}
-.roletab.active{background:#fff;color:var(--blue-dk);}
-.primarybtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:13px;font-weight:700;font-size:14px;margin-top:6px;}
-.switchmode{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
-.switchmode b{color:var(--blue-dk);cursor:pointer;}
-.errmsg{background:#FDEDED;color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:12px;display:none;}
-header{background:#fff;padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);}
-.brandrow{display:flex;gap:10px;align-items:center;} .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(150deg,var(--blue),var(--blue-dk));
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;}
-.brandtext .name{font-size:18px;font-weight:800;}
-.brandtext .tag{font-size:10.5px;color:var(--muted);}
-.logoutbtn{background:var(--bg);border:none;border-radius:8px;padding:7px 12px;font-size:11.5px;color:var(--muted);font-weight:600;}
-main{flex:1;padding:14px 18px 90px;}
+.authlogo{width:66px;height:66px;border-radius:22px;background:linear-gradient(150deg,var(--violet),var(--violet-dk));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:30px;margin:0 auto 18px;
+  box-shadow:0 10px 24px -6px rgba(108,75,244,.45);}
+.authtitle{text-align:center;font-size:23px;font-weight:800;margin-bottom:4px;letter-spacing:-.3px;}
+.authsub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:28px;}
+.roletabs{display:flex;background:var(--violet-lt);border-radius:14px;padding:4px;margin-bottom:16px;}
+.roletab{flex:1;text-align:center;padding:9px 0;font-size:13px;border-radius:11px;font-weight:700;color:var(--violet-dk);opacity:.55;cursor:pointer;}
+.roletab.active{background:#fff;opacity:1;box-shadow:0 2px 8px rgba(108,75,244,.15);}
+.primarybtn{width:100%;background:linear-gradient(135deg,var(--violet),var(--violet-dk));color:#fff;border:none;border-radius:16px;padding:15px;font-weight:800;font-size:14.5px;margin-top:6px;box-shadow:0 8px 18px -6px rgba(108,75,244,.5);}
+.switchmode{text-align:center;margin-top:18px;font-size:13px;color:var(--muted);}
+.switchmode b{color:var(--violet-dk);cursor:pointer;}
+.errmsg{background:#FEECEF;color:var(--red);font-size:12.5px;padding:10px 13px;border-radius:12px;margin-bottom:12px;display:none;font-weight:600;}
+header{background:linear-gradient(135deg,var(--violet),var(--violet-dk));padding:16px 18px 18px;display:flex;align-items:center;justify-content:space-between;border-radius:0 0 22px 22px;box-shadow:0 6px 20px -8px rgba(108,75,244,.5);}
+.brandrow{display:flex;gap:10px;align-items:center;} .logo{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.22);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;}
+.brandtext .name{font-size:17px;font-weight:800;color:#fff;}
+.brandtext .tag{font-size:10.5px;color:rgba(255,255,255,.78);}
+.logoutbtn{background:rgba(255,255,255,.18);border:none;border-radius:11px;padding:8px 13px;font-size:11.5px;color:#fff;font-weight:700;}
+main{flex:1;padding:16px 16px 92px;}
 .sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
-.sectitle{font-size:16px;font-weight:800;}
-.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:6px;}
-.cat{flex:0 0 auto;padding:7px 13px;border-radius:18px;background:var(--card);border:1px solid var(--line);font-size:12.5px;cursor:pointer;}
-.cat.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.sectitle{font-size:17px;font-weight:800;letter-spacing:-.2px;}
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:4px;}
+.cat{flex:0 0 auto;padding:8px 15px;border-radius:20px;background:var(--card);border:1.5px solid var(--line);font-size:12.5px;font-weight:600;cursor:pointer;}
+.cat.active{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 6px 14px -6px rgba(108,75,244,.6);}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.pcard{background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line);}
-.pimg{height:90px;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.pimg svg{width:40px;height:40px;}
+.pcard{background:var(--card);border-radius:20px;overflow:hidden;box-shadow:0 4px 16px -6px rgba(21,15,46,.1);}
+.pimg{height:110px;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.pimg svg{width:44px;height:44px;}
 .pimg img{width:100%;height:100%;object-fit:cover;display:block;}
-.pbody{padding:10px 11px 12px;}
-.tag{display:inline-block;background:var(--blue-lt);color:var(--blue-dk);font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:6px;margin-bottom:5px;}
+.pbody{padding:11px 12px 13px;}
+.tag{display:inline-block;background:var(--violet-lt);color:var(--violet-dk);font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:8px;margin-bottom:6px;}
 .pname{font-size:13px;font-weight:700;line-height:1.25;margin-bottom:2px;}
 .pseller{font-size:10.5px;color:var(--muted);margin-bottom:5px;}
-.price{font-weight:800;color:var(--blue-dk);font-size:13.5px;margin-bottom:8px;}
-.addbtn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:9px;padding:8px 0;font-size:11.5px;font-weight:700;}
+.price{font-weight:800;color:var(--ink);font-size:15px;margin-bottom:8px;}
+.addbtn{width:100%;background:linear-gradient(135deg,var(--violet),var(--violet-dk));color:#fff;border:none;border-radius:13px;padding:9px 0;font-size:11.5px;font-weight:800;box-shadow:0 6px 14px -6px rgba(108,75,244,.5);}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:60px 20px;line-height:1.6;}
-.citem,.oitem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;}
+.citem,.oitem{background:var(--card);border-radius:18px;padding:14px;margin-bottom:11px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
 .citem{display:flex;justify-content:space-between;align-items:center;}
 .cname{font-size:13px;font-weight:700;}
-.cprice{font-size:12px;color:var(--blue-dk);font-weight:700;margin-top:2px;}
-.qty{display:flex;align-items:center;gap:8px;}
-.qty button{width:25px;height:25px;border-radius:7px;border:1px solid var(--line);background:var(--bg);font-size:14px;}
-.summary{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:6px;}
-.sumrow{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--muted);}
-.sumrow.total{font-weight:800;font-size:15px;margin-top:6px;color:var(--ink);}
-.checkout{width:100%;margin-top:10px;background:var(--blue);color:#fff;border:none;border-radius:11px;padding:13px;font-weight:700;font-size:14px;}
-.oitem .top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:6px;}
-.status{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;background:var(--blue-lt);color:var(--blue-dk);}
+.cprice{font-size:12px;color:var(--violet-dk);font-weight:800;margin-top:2px;}
+.qty{display:flex;align-items:center;gap:10px;}
+.qty button{width:27px;height:27px;border-radius:9px;border:none;background:var(--violet-lt);color:var(--violet-dk);font-size:15px;font-weight:800;}
+.summary{background:var(--card);border-radius:18px;padding:16px;margin-top:6px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
+.sumrow{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px;color:var(--muted);}
+.sumrow.total{font-weight:800;font-size:16px;margin-top:6px;color:var(--ink);}
+.checkout{width:100%;margin-top:12px;background:linear-gradient(135deg,var(--violet),var(--violet-dk));color:#fff;border:none;border-radius:15px;padding:14px;font-weight:800;font-size:14.5px;box-shadow:0 8px 18px -6px rgba(108,75,244,.5);}
+.oitem .top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:7px;}
+.status{display:inline-block;padding:4px 10px;border-radius:9px;font-size:10.5px;font-weight:800;background:var(--violet-lt);color:var(--violet-dk);}
 .oline{font-size:12.5px;display:flex;justify-content:space-between;margin-top:4px;}
-.ototal{font-weight:800;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:flex;justify-content:space-between;}
-select.statusSel{margin-top:8px;font-size:12px;padding:7px 9px;}
-.addform{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;}
-.imgpreview{width:100%;height:140px;border-radius:12px;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1px dashed var(--line);}
+.ototal{font-weight:800;margin-top:9px;padding-top:9px;border-top:1.5px dashed var(--line);display:flex;justify-content:space-between;}
+select.statusSel{margin-top:9px;font-size:12px;padding:9px 11px;}
+.addform{background:var(--card);border-radius:18px;padding:17px;margin-bottom:16px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
+.imgpreview{width:100%;height:140px;border-radius:15px;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1.5px dashed #D7CCFB;}
 .imgpreview img{width:100%;height:100%;object-fit:cover;}
 .imgpreview span{font-size:12px;color:var(--muted);}
-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);max-width:420px;margin:0 auto;display:flex;}
-.navitem{flex:1;text-align:center;padding:10px 0 8px;font-size:10.5px;color:var(--muted);cursor:pointer;border-top:2px solid transparent;}
-.navitem.active{color:var(--blue-dk);font-weight:700;border-top-color:var(--blue);}
-.navicon{margin-bottom:3px;display:flex;justify-content:center;}
+nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radius:22px;max-width:396px;margin:0 auto;display:flex;box-shadow:0 10px 30px -8px rgba(21,15,46,.25);padding:4px;}
+.navitem{flex:1;text-align:center;padding:9px 0 7px;font-size:10px;color:var(--muted);cursor:pointer;border-radius:18px;font-weight:600;}
+.navitem.active{color:var(--violet-dk);font-weight:800;background:var(--violet-lt);}
+.navicon{margin-bottom:2px;display:flex;justify-content:center;font-size:17px;}
 .navicon svg{width:19px;height:19px;}
-.badge{position:relative;top:-14px;left:8px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700;}
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;}
+.badge{position:relative;top:-16px;left:10px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700;}
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;box-shadow:0 8px 22px -6px rgba(0,0,0,.35);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -418,7 +422,7 @@ async function renderTab(){
             <div style="font-size:10.5px;color:var(--muted);margin-bottom:2px">Omborda: ${p.stock} dona</div>
             <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:6px;line-height:1.4">${deliveryLabel(p, 'full')}</div>
             <div style="display:flex;gap:6px">
-              <button class="addbtn" style="background:var(--blue-dk)" data-edit="${p.id}">Tahrirlash</button>
+              <button class="addbtn" style="background:var(--violet-dk)" data-edit="${p.id}">Tahrirlash</button>
               <button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button>
             </div>
           </div>
@@ -534,9 +538,9 @@ async function renderTab(){
       ${earn.payoutCard ? `
       <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Komissiyani shu kartaga o'tkazing:</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--blue-lt);border-radius:10px;padding:10px 12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--violet-lt);border-radius:10px;padding:10px 12px">
           <div>
-            <div style="font-weight:800;font-size:14px;letter-spacing:0.5px;color:var(--blue-dk)">${earn.payoutCard.number}</div>
+            <div style="font-weight:800;font-size:14px;letter-spacing:0.5px;color:var(--violet-dk)">${earn.payoutCard.number}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${earn.payoutCard.name}</div>
           </div>
         </div>
@@ -555,7 +559,7 @@ async function renderTab(){
     ${myPayments.length ? `<div class="sectitle" style="margin-bottom:10px;font-size:14px">Mening to'lovlarim</div>` + myPayments.map(p=>`
       <div class="oitem">
         <div class="top"><span>${fmt(p.amount)} · ${new Date(p.createdAt).toLocaleDateString('uz')}</span>
-        <span class="status" style="background:${p.status==='tasdiqlandi'?'#E6F4EA':p.status==='rad etildi'?'#FDEDED':'var(--blue-lt)'};color:${p.status==='tasdiqlandi'?'#1E7E34':p.status==='rad etildi'?'var(--red)':'var(--blue-dk)'}">${p.status}</span></div>
+        <span class="status" style="background:${p.status==='tasdiqlandi'?'#E6F4EA':p.status==='rad etildi'?'#FDEDED':'var(--violet-lt)'};color:${p.status==='tasdiqlandi'?'#1E7E34':p.status==='rad etildi'?'var(--red)':'var(--violet-dk)'}">${p.status}</span></div>
         ${p.adminNote ? `<div style="font-size:11.5px;color:var(--muted);margin-top:4px">Admin izohi: ${p.adminNote}</div>` : ''}
       </div>`).join('') : ''}`;
     document.getElementById('payReceipt').onchange = async (e)=>{
@@ -658,7 +662,7 @@ async function renderAdminTab(main){
           ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
           <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
           <div class="field" style="margin-top:8px"><label>Admin izohi</label><textarea class="adminNoteInput" data-order="${o.id}" rows="2" placeholder="Izoh yozing...">${o.adminNote||''}</textarea></div>
-          <button class="addbtn" style="background:var(--blue-dk)" data-savenote="${o.id}">Izohni saqlash</button>
+          <button class="addbtn" style="background:var(--violet-dk)" data-savenote="${o.id}">Izohni saqlash</button>
         </div>`).join('') : `<div class="empty">Hali buyurtma yo'q</div>`);
     main.querySelectorAll('[data-savenote]').forEach(btn=>btn.onclick=async()=>{
       const oid = btn.dataset.savenote;
@@ -673,7 +677,7 @@ async function renderAdminTab(main){
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">To'lovlar (${payments.length})</div>` +
       (payments.length ? payments.map(p=>`
         <div class="oitem">
-          <div class="top"><span style="font-weight:700">${p.sellerName}</span><span class="status" style="background:${p.status==='tasdiqlandi'?'#E6F4EA':p.status==='rad etildi'?'#FDEDED':'var(--blue-lt)'};color:${p.status==='tasdiqlandi'?'#1E7E34':p.status==='rad etildi'?'var(--red)':'var(--blue-dk)'}">${p.status}</span></div>
+          <div class="top"><span style="font-weight:700">${p.sellerName}</span><span class="status" style="background:${p.status==='tasdiqlandi'?'#E6F4EA':p.status==='rad etildi'?'#FDEDED':'var(--violet-lt)'};color:${p.status==='tasdiqlandi'?'#1E7E34':p.status==='rad etildi'?'var(--red)':'var(--violet-dk)'}">${p.status}</span></div>
           <div class="oline"><span>Summa</span><span style="font-weight:800">${fmt(p.amount)}</span></div>
           <div style="font-size:11px;color:var(--muted);margin:4px 0">${new Date(p.createdAt).toLocaleString('uz')}</div>
           <div class="imgpreview" style="height:160px;margin-bottom:8px"><img src="${p.receiptImage}" style="cursor:pointer" data-fullimg="${p.id}"></div>
