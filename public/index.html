@@ -97,6 +97,11 @@ const ICONS = {
   laptop:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>',
 };
 const CATS = ["Barchasi","Telefon","Kiyim","Uy-ro'zg'or","Avto","Boshqa"];
+const REGIONS = [
+  "Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan",
+  "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand",
+  "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"
+];
 const fmt = n => Number(n).toLocaleString('ru-RU') + " so'm";
 
 function pimgHtml(p){
@@ -242,6 +247,14 @@ function starsHtml(avg, count){
   return `<div style="font-size:11px;margin-bottom:4px">${s} <span style="color:var(--muted)">(${count||0})</span></div>`;
 }
 
+function deliveryLabel(p, short){
+  const regions = p.deliveryRegions || [];
+  if(regions.length===0) return "🚫 Yetkazib berish yo'q";
+  const scope = regions.includes('barchasi') ? "Barcha viloyatlar" : (short ? `${regions.length} ta hudud` : `${regions.length} ta hududga`);
+  const price = p.deliveryPrice ? fmt(p.deliveryPrice) : "Bepul";
+  return `🚚 ${scope} · ${price}`;
+}
+
 async function renderTab(){
   const main = document.getElementById('main');
   const isSeller = state.user.role === 'seller';
@@ -264,6 +277,7 @@ async function renderTab(){
             <div class="pname">${p.name}</div>
             <div class="pseller">${p.sellerName}</div>
             ${starsHtml(p.avgRating, p.reviewCount)}
+            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:3px">${deliveryLabel(p)}</div>
             <div class="price">${fmt(p.price)}</div>
             <div style="font-size:10.5px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:6px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
             <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
@@ -295,9 +309,15 @@ async function renderTab(){
       </div>`;
     }).join('');
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Savat</div>${rows}
-      <div class="field" style="margin-top:14px"><label>Yetkazib berish manzili</label><input id="addr" placeholder="Shahar, ko'cha, uy"></div>
+      <div class="field" style="margin-top:14px"><label>Yetkazib berish viloyati</label>
+        <select id="region"><option value="">Viloyatni tanlang</option>${REGIONS.map(r=>`<option>${r}</option>`).join('')}</select>
+      </div>
+      <div id="regionWarning" style="display:none;background:#FDEDED;color:var(--red);font-size:12px;padding:9px 12px;border-radius:8px;margin-bottom:10px"></div>
+      <div class="field"><label>Yetkazib berish manzili</label><input id="addr" placeholder="Shahar, ko'cha, uy"></div>
       <div class="summary">
-        <div class="sumrow total"><span>Jami</span><span>${fmt(total)}</span></div>
+        <div class="sumrow"><span>Mahsulotlar</span><span id="itemsTotalDisp">${fmt(total)}</span></div>
+        <div class="sumrow"><span>Yetkazib berish</span><span id="deliveryTotalDisp">—</span></div>
+        <div class="sumrow total"><span>Jami</span><span id="grandTotalDisp">${fmt(total)}</span></div>
         <div class="sumrow" style="margin-top:4px">To'lov: naqd/yetkazishda</div>
         <button class="checkout" id="checkoutBtn">Buyurtma berish</button>
       </div>`;
@@ -307,12 +327,44 @@ async function renderTab(){
       state.cart[pid]++; await renderTab(); renderNav();
     });
     main.querySelectorAll('[data-dec]').forEach(b=>b.onclick=async()=>{state.cart[b.dataset.dec]=Math.max(0,state.cart[b.dataset.dec]-1);await renderTab();renderNav();});
+    function recalcDelivery(){
+      const region = document.getElementById('region').value;
+      const warnEl = document.getElementById('regionWarning');
+      if(!region){
+        document.getElementById('deliveryTotalDisp').textContent = '—';
+        document.getElementById('grandTotalDisp').textContent = fmt(total);
+        warnEl.style.display = 'none';
+        return null;
+      }
+      let deliveryTotal = 0;
+      const bad = [];
+      ids.forEach(id=>{
+        const p = products.find(pp=>pp.id==id); if(!p) return;
+        const regions = p.deliveryRegions || [];
+        const ok = regions.includes('barchasi') || regions.includes(region);
+        if(!ok) bad.push(p.name); else deliveryTotal += (p.deliveryPrice||0);
+      });
+      if(bad.length){
+        warnEl.style.display = 'block';
+        warnEl.textContent = `⚠️ Quyidagi mahsulotlar "${region}"ga yetkazilmaydi: ${bad.join(', ')}`;
+      } else {
+        warnEl.style.display = 'none';
+      }
+      document.getElementById('deliveryTotalDisp').textContent = fmt(deliveryTotal);
+      document.getElementById('grandTotalDisp').textContent = fmt(total + deliveryTotal);
+      return { deliveryTotal, bad };
+    }
+    document.getElementById('region').onchange = recalcDelivery;
     document.getElementById('checkoutBtn').onclick = async ()=>{
       const address = document.getElementById('addr').value.trim();
+      const region = document.getElementById('region').value;
+      if(!region){ showToast("Yetkazib berish viloyatini tanlang"); return; }
       if(!address){ showToast("Manzilni kiriting"); return; }
+      const calc = recalcDelivery();
+      if(calc && calc.bad.length){ showToast("Ba'zi mahsulotlar shu hududga yetkazilmaydi"); return; }
       const items = ids.map(id=>({ productId:Number(id), qty:state.cart[id] }));
       try{
-        await api('/api/orders', { method:'POST', body: JSON.stringify({ items, address }) });
+        await api('/api/orders', { method:'POST', body: JSON.stringify({ items, address, region }) });
         state.cart = {}; renderNav(); showToast("Buyurtma qabul qilindi! ✅"); state.tab='orders'; renderNav(); await renderTab();
       } catch(e){ showToast(e.message); }
     };
@@ -324,12 +376,14 @@ async function renderTab(){
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Buyurtmalarim</div>` + orders.map(o=>`
       <div class="oitem">
         <div class="top"><span>№${o.id} · ${new Date(o.createdAt).toLocaleDateString('uz')}</span><span class="status">${o.status}</span></div>
+        ${o.region ? `<div style="font-size:11px;color:var(--muted);margin-bottom:4px">📍 ${o.region}${o.address?', '+o.address:''}</div>` : ''}
         ${o.items.map(it=>`
           <div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>
           <div class="rate-row" data-pid="${it.productId}" data-pname="${it.name.replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:4px;margin:2px 0 6px">
             ${[1,2,3,4,5].map(n=>`<span class="starbtn" data-star="${n}" style="cursor:pointer;color:#DADEDA;font-size:15px">★</span>`).join('')}
             <span style="font-size:10.5px;color:var(--muted);margin-left:4px">Baho qo'ying</span>
           </div>`).join('')}
+        ${o.deliveryTotal ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(o.deliveryTotal)}</span></div>` : ''}
         <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
       </div>`).join('');
     main.querySelectorAll('.rate-row').forEach(row=>{
@@ -357,7 +411,8 @@ async function renderTab(){
             <span class="tag">${p.cat}</span>
             <div class="pname">${p.name}</div>
             <div class="price">${fmt(p.price)}</div>
-            <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Omborda: ${p.stock} dona</div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:2px">Omborda: ${p.stock} dona</div>
+            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:6px">${deliveryLabel(p)}</div>
             <div style="display:flex;gap:6px">
               <button class="addbtn" style="background:var(--blue-dk)" data-edit="${p.id}">Tahrirlash</button>
               <button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button>
@@ -393,6 +448,24 @@ async function renderTab(){
         <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" placeholder="150000" value="${ed ? ed.price : ''}"></div>
         <div class="field"><label>Nechta bor (soni)</label><input id="pstock" type="number" placeholder="10" value="${ed ? ed.stock : ''}"></div>
         <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha">${ed ? (ed.desc||'') : ''}</textarea></div>
+        <div class="field">
+          <label>🚚 Yetkazib berish narxi (so'm)</label>
+          <input id="pdeliveryprice" type="number" placeholder="Masalan: 15000" value="${ed ? (ed.deliveryPrice||0) : 0}">
+        </div>
+        <div class="field">
+          <label>Qaysi hududlarga yetkazib berasiz?</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <input id="pdeliveryall" type="checkbox" style="width:auto" ${(!ed || (ed.deliveryRegions||['barchasi']).includes('barchasi')) ? 'checked' : ''}>
+            <label style="margin:0" for="pdeliveryall">Barcha viloyatlar</label>
+          </div>
+          <div id="regionList" style="display:${(!ed || (ed.deliveryRegions||['barchasi']).includes('barchasi')) ? 'none' : 'grid'};grid-template-columns:1fr 1fr;gap:6px;background:var(--bg);border-radius:10px;padding:10px">
+            ${REGIONS.map(r=>`
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="checkbox" class="regionChk" value="${r}" style="width:auto" ${ed && (ed.deliveryRegions||[]).includes(r) ? 'checked' : ''}>
+                <label style="margin:0;font-size:12px;font-weight:400">${r}</label>
+              </div>`).join('')}
+          </div>
+        </div>
         <button class="primarybtn" id="addProdBtn">${ed ? "Saqlash" : "Mahsulot qo'shish"}</button>
         ${ed ? `<button class="primarybtn" id="cancelEditBtn" style="background:var(--bg);color:var(--muted);margin-top:8px">Bekor qilish</button>` : ''}
       </div>`;
@@ -408,6 +481,9 @@ async function renderTab(){
         showToast("Rasmni yuklab bo'lmadi: " + err.message);
       }
     };
+    document.getElementById('pdeliveryall').onchange = (e)=>{
+      document.getElementById('regionList').style.display = e.target.checked ? 'none' : 'grid';
+    };
     if(ed){
       document.getElementById('cancelEditBtn').onclick = async ()=>{
         state.editingProduct = null; state.pendingImage = null;
@@ -420,14 +496,18 @@ async function renderTab(){
       const price = document.getElementById('pprice').value;
       const stock = document.getElementById('pstock').value;
       const desc = document.getElementById('pdesc').value.trim();
+      const deliveryPrice = document.getElementById('pdeliveryprice').value || 0;
+      const allRegions = document.getElementById('pdeliveryall').checked;
+      const deliveryRegions = allRegions ? ['barchasi'] : Array.from(document.querySelectorAll('.regionChk:checked')).map(c=>c.value);
       if(!name || !price){ showToast("Nom va narxni kiriting"); return; }
       if(!stock){ showToast("Nechta borligini kiriting"); return; }
+      if(!allRegions && deliveryRegions.length===0){ showToast("Kamida bitta hududni tanlang yoki 'Barcha viloyatlar'ni belgilang"); return; }
       try{
         if(ed){
-          await api('/api/products/'+ed.id, { method:'PATCH', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage }) });
+          await api('/api/products/'+ed.id, { method:'PATCH', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage, deliveryRegions, deliveryPrice }) });
           showToast("Mahsulot yangilandi! ✅");
         } else {
-          await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage }) });
+          await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage, deliveryRegions, deliveryPrice }) });
           showToast("Mahsulot qo'shildi! ✅");
         }
         state.pendingImage = null; state.editingProduct = null;
@@ -496,15 +576,17 @@ async function renderTab(){
     };
     const ordersHtml = !orders.length ? `<div class="empty">📦<br><br>Hali buyurtma tushmagan</div>` : `<div class="sectitle" style="margin:16px 0 12px">Kelgan buyurtmalar</div>` + orders.map(o=>{
       const myCommission = o.items.reduce((s,it)=>s+(it.commission||0),0);
-      const myPayout = o.items.reduce((s,it)=>s+(it.payout||it.price*it.qty),0);
+      const myDelivery = o.items.reduce((s,it)=>s+(it.deliveryFee||0),0);
+      const myPayout = o.items.reduce((s,it)=>s+(it.payout||it.price*it.qty),0) + myDelivery;
       return `<div class="oitem">
         <div class="top"><span>№${o.id} · ${o.buyerName} · ${o.phone}</span><span class="status">${o.status}</span></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${o.address}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${o.region ? o.region+', ' : ''}${o.address}</div>
         ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
+        ${myDelivery ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(myDelivery)}</span></div>` : ''}
         <div class="oline" style="color:var(--red)"><span>Komissiya (1%)</span><span>−${fmt(myCommission)}</span></div>
         <div class="ototal"><span>Sizga tushum</span><span>${fmt(myPayout)}</span></div>
         <select class="statusSel" data-order="${o.id}">
-          ${['yangi','tasdiqlandi','yetkazilmoqda','yetkazildi','bekor qilindi'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+          ${['yangi','tasdiqlandi',"kuryerga topshirildi",'yetkazildi','bekor qilindi'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>`;
     }).join('');
@@ -545,6 +627,7 @@ async function renderAdminTab(main){
             <div class="pseller">${p.sellerName} · ${p.sellerPhone}</div>
             <div class="price">${fmt(p.price)}</div>
             <div style="font-size:10.5px;color:var(--muted)">Omborda: ${p.stock} dona</div>
+            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'}">${deliveryLabel(p, true)}</div>
           </div>
         </div>`).join('') : `<div class="empty" style="grid-column:1/-1">Mahsulot yo'q</div>`}
       </div>`;
@@ -567,7 +650,7 @@ async function renderAdminTab(main){
       (orders.length ? orders.map(o=>`
         <div class="oitem">
           <div class="top"><span>№${o.id} · ${o.buyerName} · ${o.phone}</span><span class="status">${o.status}</span></div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${o.address}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${o.region ? o.region+', ' : ''}${o.address}</div>
           ${o.items.map(it=>`<div class="oline"><span>${it.name} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('')}
           <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
           <div class="field" style="margin-top:8px"><label>Admin izohi</label><textarea class="adminNoteInput" data-order="${o.id}" rows="2" placeholder="Izoh yozing...">${o.adminNote||''}</textarea></div>
