@@ -22,6 +22,12 @@ function loadDB() {
   if (!db.nextId.payment) db.nextId.payment = 1;
   if (!db.nextId.review) db.nextId.review = 1;
   db.users.forEach(u => { if (u.paidCommission === undefined) u.paidCommission = 0; });
+  db.products.forEach(p => {
+    if (p.deliveryRegions === undefined) {
+      p.deliveryRegions = (p.deliveryAvailable === false) ? [] : ['barchasi'];
+    }
+    if (p.deliveryPrice === undefined) p.deliveryPrice = 0;
+  });
   ensureAdmin(db);
   return db;
 }
@@ -121,6 +127,17 @@ const CAT_ICON = {
   "Avto": "car", "Boshqa": "laptop"
 };
 
+const REGIONS = [
+  "Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan",
+  "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand",
+  "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"
+];
+
+function deliversToRegion(product, region) {
+  const regions = product.deliveryRegions || [];
+  return regions.includes('barchasi') || regions.includes(region);
+}
+
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json' };
 function serveStatic(req, res, pathname) {
   let filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
@@ -153,6 +170,10 @@ const server = http.createServer(async (req, res) => {
   const db = loadDB();
 
   try {
+    if (pathname === '/api/regions' && req.method === 'GET') {
+      return sendJSON(res, 200, { regions: REGIONS });
+    }
+
     if (pathname === '/api/register' && req.method === 'POST') {
       const { name, phone, password, role } = await readBody(req);
       if (!name || !phone || !password || !role) return sendJSON(res, 400, { error: "Barcha maydonlarni to'ldiring" });
@@ -199,13 +220,15 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/products' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
-      const { name, cat, price, desc, stock, image } = await readBody(req);
+      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice } = await readBody(req);
       if (!name || !cat || !price) return sendJSON(res, 400, { error: "Nom, kategoriya va narxni kiriting" });
       const product = {
         id: db.nextId.product++, sellerId: user.id, name, cat,
         price: Number(price), desc: desc || '', icon: CAT_ICON[cat] || 'laptop',
         stock: stock !== undefined && stock !== '' ? Number(stock) : 999,
-        image: image || null
+        image: image || null,
+        deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : ['barchasi'],
+        deliveryPrice: deliveryPrice !== undefined && deliveryPrice !== '' ? Number(deliveryPrice) : 0
       };
       db.products.push(product);
       saveDB(db);
@@ -240,13 +263,15 @@ const server = http.createServer(async (req, res) => {
       const product = db.products.find(p => p.id === pid);
       if (!product) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
       if (product.sellerId !== user.id) return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
-      const { name, cat, price, desc, stock, image } = await readBody(req);
+      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice } = await readBody(req);
       if (name !== undefined) product.name = name;
       if (cat !== undefined) { product.cat = cat; product.icon = CAT_ICON[cat] || 'laptop'; }
       if (price !== undefined && price !== '') product.price = Number(price);
       if (desc !== undefined) product.desc = desc;
       if (stock !== undefined && stock !== '') product.stock = Number(stock);
       if (image !== undefined) product.image = image;
+      if (Array.isArray(deliveryRegions)) product.deliveryRegions = deliveryRegions;
+      if (deliveryPrice !== undefined && deliveryPrice !== '') product.deliveryPrice = Number(deliveryPrice);
       saveDB(db);
       return sendJSON(res, 200, { product });
     }
@@ -383,20 +408,25 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/orders' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar buyurtma bera oladi" });
-      const { items, address, phone } = await readBody(req);
+      const { items, address, phone, region } = await readBody(req);
       if (!items || !items.length) return sendJSON(res, 400, { error: "Savat bo'sh" });
       if (!address) return sendJSON(res, 400, { error: "Manzilni kiriting" });
+      if (!region || !REGIONS.includes(region)) return sendJSON(res, 400, { error: "Yetkazib berish viloyatini tanlang" });
       let total = 0;
+      let deliveryTotal = 0;
       const orderItems = items.map(it => {
         const p = db.products.find(pp => pp.id === it.productId);
         if (!p) throw new Error("Mahsulot topilmadi: " + it.productId);
         const qty = Number(it.qty) || 1;
         if ((p.stock || 0) < qty) throw new Error(`"${p.name}" omborda yetarli emas (bor: ${p.stock} dona)`);
+        if (!deliversToRegion(p, region)) throw new Error(`"${p.name}" mahsuloti "${region}" hududiga yetkazilmaydi`);
         const subtotal = p.price * qty;
         const commission = Math.round(subtotal * COMMISSION_RATE);
         const payout = subtotal - commission;
+        const deliveryFee = p.deliveryPrice || 0;
         total += subtotal;
-        return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout };
+        deliveryTotal += deliveryFee;
+        return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout, deliveryFee };
       });
       orderItems.forEach(it => {
         const p = db.products.find(pp => pp.id === it.productId);
@@ -404,7 +434,8 @@ const server = http.createServer(async (req, res) => {
       });
       const order = {
         id: db.nextId.order++, buyerId: user.id, buyerName: user.name,
-        items: orderItems, total, address, phone: phone || user.phone,
+        items: orderItems, total: total + deliveryTotal, itemsTotal: total, deliveryTotal,
+        address, region, phone: phone || user.phone,
         status: 'yangi', paymentMethod: 'naqd/yetkazishda',
         createdAt: new Date().toISOString()
       };
