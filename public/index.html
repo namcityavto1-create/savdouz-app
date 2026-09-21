@@ -247,11 +247,15 @@ function starsHtml(avg, count){
   return `<div style="font-size:11px;margin-bottom:4px">${s} <span style="color:var(--muted)">(${count||0})</span></div>`;
 }
 
-function deliveryLabel(p, short){
+function deliveryLabel(p, mode){
   const regions = p.deliveryRegions || [];
   if(regions.length===0) return "🚫 Yetkazib berish yo'q";
-  const scope = regions.includes('barchasi') ? "Barcha viloyatlar" : (short ? `${regions.length} ta hudud` : `${regions.length} ta hududga`);
   const price = p.deliveryPrice ? fmt(p.deliveryPrice) : "Bepul";
+  if(mode==='full'){
+    const scope = regions.includes('barchasi') ? "Barcha viloyatlarga" : regions.join(', ');
+    return `🚚 ${scope} · ${price}`;
+  }
+  const scope = regions.includes('barchasi') ? "Barcha viloyatlar" : (mode==='short' ? `${regions.length} ta hudud` : `${regions.length} ta hududga`);
   return `🚚 ${scope} · ${price}`;
 }
 
@@ -412,7 +416,7 @@ async function renderTab(){
             <div class="pname">${p.name}</div>
             <div class="price">${fmt(p.price)}</div>
             <div style="font-size:10.5px;color:var(--muted);margin-bottom:2px">Omborda: ${p.stock} dona</div>
-            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:6px">${deliveryLabel(p)}</div>
+            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:6px;line-height:1.4">${deliveryLabel(p, 'full')}</div>
             <div style="display:flex;gap:6px">
               <button class="addbtn" style="background:var(--blue-dk)" data-edit="${p.id}">Tahrirlash</button>
               <button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button>
@@ -627,7 +631,7 @@ async function renderAdminTab(main){
             <div class="pseller">${p.sellerName} · ${p.sellerPhone}</div>
             <div class="price">${fmt(p.price)}</div>
             <div style="font-size:10.5px;color:var(--muted)">Omborda: ${p.stock} dona</div>
-            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'}">${deliveryLabel(p, true)}</div>
+            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'}">${deliveryLabel(p, 'short')}</div>
           </div>
         </div>`).join('') : `<div class="empty" style="grid-column:1/-1">Mahsulot yo'q</div>`}
       </div>`;
