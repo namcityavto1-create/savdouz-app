@@ -21,12 +21,13 @@ function loadDB() {
   if (!db.reviews) db.reviews = [];
   if (!db.nextId.payment) db.nextId.payment = 1;
   if (!db.nextId.review) db.nextId.review = 1;
-  db.users.forEach(u => { if (u.paidCommission === undefined) u.paidCommission = 0; });
+  db.users.forEach(u => { if (u.paidCommission === undefined) u.paidCommission = 0; if (u.favorites === undefined) u.favorites = []; });
   db.products.forEach(p => {
     if (p.deliveryRegions === undefined) {
       p.deliveryRegions = (p.deliveryAvailable === false) ? [] : ['barchasi'];
     }
     if (p.deliveryPrice === undefined) p.deliveryPrice = 0;
+    if (p.oldPrice === undefined) p.oldPrice = null;
   });
   ensureAdmin(db);
   return db;
@@ -206,13 +207,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/products' && req.method === 'GET') {
+      const requester = getUserFromReq(req, db);
+      const favSet = requester ? new Set(requester.favorites || []) : new Set();
       const list = db.products
         .filter(p => computeSellerDebt(db, p.sellerId) <= DEBT_LIMIT)
         .map(p => {
           const seller = db.users.find(u => u.id === p.sellerId);
           const prodReviews = db.reviews.filter(r => r.productId === p.id);
           const avgRating = prodReviews.length ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length) : 0;
-          return { ...p, sellerName: seller ? seller.name : "Noma'lum", avgRating, reviewCount: prodReviews.length };
+          return { ...p, sellerName: seller ? seller.name : "Noma'lum", avgRating, reviewCount: prodReviews.length, isFavorited: favSet.has(p.id) };
         });
       return sendJSON(res, 200, { products: list });
     }
@@ -220,7 +223,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/products' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
-      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice } = await readBody(req);
+      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = await readBody(req);
       if (!name || !cat || !price) return sendJSON(res, 400, { error: "Nom, kategoriya va narxni kiriting" });
       const product = {
         id: db.nextId.product++, sellerId: user.id, name, cat,
@@ -228,7 +231,8 @@ const server = http.createServer(async (req, res) => {
         stock: stock !== undefined && stock !== '' ? Number(stock) : 999,
         image: image || null,
         deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : ['barchasi'],
-        deliveryPrice: deliveryPrice !== undefined && deliveryPrice !== '' ? Number(deliveryPrice) : 0
+        deliveryPrice: deliveryPrice !== undefined && deliveryPrice !== '' ? Number(deliveryPrice) : 0,
+        oldPrice: (oldPrice !== undefined && oldPrice !== '' && Number(oldPrice) > Number(price)) ? Number(oldPrice) : null
       };
       db.products.push(product);
       saveDB(db);
@@ -263,7 +267,7 @@ const server = http.createServer(async (req, res) => {
       const product = db.products.find(p => p.id === pid);
       if (!product) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
       if (product.sellerId !== user.id) return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
-      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice } = await readBody(req);
+      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = await readBody(req);
       if (name !== undefined) product.name = name;
       if (cat !== undefined) { product.cat = cat; product.icon = CAT_ICON[cat] || 'laptop'; }
       if (price !== undefined && price !== '') product.price = Number(price);
@@ -272,6 +276,9 @@ const server = http.createServer(async (req, res) => {
       if (image !== undefined) product.image = image;
       if (Array.isArray(deliveryRegions)) product.deliveryRegions = deliveryRegions;
       if (deliveryPrice !== undefined && deliveryPrice !== '') product.deliveryPrice = Number(deliveryPrice);
+      if (oldPrice !== undefined) {
+        product.oldPrice = (oldPrice !== '' && Number(oldPrice) > product.price) ? Number(oldPrice) : null;
+      }
       saveDB(db);
       return sendJSON(res, 200, { product });
     }
@@ -296,6 +303,32 @@ const server = http.createServer(async (req, res) => {
       const pid = Number(reviewMatch[1]);
       const list = db.reviews.filter(r => r.productId === pid).sort((a, b) => b.id - a.id);
       return sendJSON(res, 200, { reviews: list });
+    }
+
+    if (pathname === '/api/favorites/toggle' && req.method === 'POST') {
+      const user = getUserFromReq(req, db);
+      if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar sevimlilarga qo'sha oladi" });
+      const { productId } = await readBody(req);
+      const pid = Number(productId);
+      if (!user.favorites) user.favorites = [];
+      const idx = user.favorites.indexOf(pid);
+      let favorited;
+      if (idx === -1) { user.favorites.push(pid); favorited = true; }
+      else { user.favorites.splice(idx, 1); favorited = false; }
+      saveDB(db);
+      return sendJSON(res, 200, { favorited });
+    }
+    if (pathname === '/api/favorites' && req.method === 'GET') {
+      const user = getUserFromReq(req, db);
+      if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      const favIds = user.favorites || [];
+      const list = db.products.filter(p => favIds.includes(p.id)).map(p => {
+        const seller = db.users.find(u => u.id === p.sellerId);
+        const prodReviews = db.reviews.filter(r => r.productId === p.id);
+        const avgRating = prodReviews.length ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length) : 0;
+        return { ...p, sellerName: seller ? seller.name : "Noma'lum", avgRating, reviewCount: prodReviews.length, isFavorited: true };
+      });
+      return sendJSON(res, 200, { products: list });
     }
 
     if (pathname === '/api/payments' && req.method === 'POST') {
