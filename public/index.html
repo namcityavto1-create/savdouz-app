@@ -33,23 +33,41 @@ label{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;disp
 .switchmode{text-align:center;margin-top:18px;font-size:13px;color:var(--muted);}
 .switchmode b{color:var(--violet-dk);cursor:pointer;}
 .errmsg{background:#FEECEF;color:var(--red);font-size:12.5px;padding:10px 13px;border-radius:12px;margin-bottom:12px;display:none;font-weight:600;}
+
 header{background:linear-gradient(135deg,var(--violet),var(--violet-dk));padding:16px 18px 18px;display:flex;align-items:center;justify-content:space-between;border-radius:0 0 22px 22px;box-shadow:0 6px 20px -8px rgba(108,75,244,.5);}
 .brandrow{display:flex;gap:10px;align-items:center;} .logo{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.22);backdrop-filter:blur(4px);
   display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;}
 .brandtext .name{font-size:17px;font-weight:800;color:#fff;}
 .brandtext .tag{font-size:10.5px;color:rgba(255,255,255,.78);}
 .logoutbtn{background:rgba(255,255,255,.18);border:none;border-radius:11px;padding:8px 13px;font-size:11.5px;color:#fff;font-weight:700;}
+
 main{flex:1;padding:16px 16px 92px;}
 .sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
 .sectitle{font-size:17px;font-weight:800;letter-spacing:-.2px;}
+
 .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:4px;}
 .cat{flex:0 0 auto;padding:8px 15px;border-radius:20px;background:var(--card);border:1.5px solid var(--line);font-size:12.5px;font-weight:600;cursor:pointer;}
 .cat.active{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 6px 14px -6px rgba(108,75,244,.6);}
+
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .pcard{background:var(--card);border-radius:20px;overflow:hidden;box-shadow:0 4px 16px -6px rgba(21,15,46,.1);}
 .pimg{height:110px;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
 .pimg svg{width:44px;height:44px;}
 .pimg img{width:100%;height:100%;object-fit:cover;display:block;}
+.heartbtn{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);border:none;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:2;}
+.discbadge{position:absolute;top:7px;left:7px;background:var(--orange);color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px;z-index:2;}
+.oldprice{font-size:11px;color:var(--muted);text-decoration:line-through;margin-right:5px;}
+.searchbar{position:relative;margin-bottom:12px;}
+.searchbar input{padding-left:38px;border-radius:16px;}
+.searchbar .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5;}
+.banner{background:linear-gradient(120deg,var(--violet),#9B7BFF);border-radius:20px;padding:18px 18px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;}
+.banner .btitle{font-size:16px;font-weight:800;margin-bottom:3px;}
+.banner .bsub{font-size:12px;opacity:.9;}
+.detailimg{width:100%;height:220px;border-radius:18px;overflow:hidden;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.detailimg img{width:100%;height:100%;object-fit:cover;}
+.detailimg svg{width:70px;height:70px;}
+.backbtn{background:var(--violet-lt);color:var(--violet-dk);border:none;border-radius:12px;padding:8px 14px;font-size:12.5px;font-weight:700;margin-bottom:12px;}
+.reviewitem{background:var(--card);border-radius:14px;padding:11px 13px;margin-bottom:8px;box-shadow:0 2px 8px -4px rgba(21,15,46,.08);}
 .pbody{padding:11px 12px 13px;}
 .tag{display:inline-block;background:var(--violet-lt);color:var(--violet-dk);font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:8px;margin-bottom:6px;}
 .pname{font-size:13px;font-weight:700;line-height:1.25;margin-bottom:2px;}
@@ -57,6 +75,7 @@ main{flex:1;padding:16px 16px 92px;}
 .price{font-weight:800;color:var(--ink);font-size:15px;margin-bottom:8px;}
 .addbtn{width:100%;background:linear-gradient(135deg,var(--violet),var(--violet-dk));color:#fff;border:none;border-radius:13px;padding:9px 0;font-size:11.5px;font-weight:800;box-shadow:0 6px 14px -6px rgba(108,75,244,.5);}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:60px 20px;line-height:1.6;}
+
 .citem,.oitem{background:var(--card);border-radius:18px;padding:14px;margin-bottom:11px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
 .citem{display:flex;justify-content:space-between;align-items:center;}
 .cname{font-size:13px;font-weight:700;}
@@ -72,16 +91,19 @@ main{flex:1;padding:16px 16px 92px;}
 .oline{font-size:12.5px;display:flex;justify-content:space-between;margin-top:4px;}
 .ototal{font-weight:800;margin-top:9px;padding-top:9px;border-top:1.5px dashed var(--line);display:flex;justify-content:space-between;}
 select.statusSel{margin-top:9px;font-size:12px;padding:9px 11px;}
+
 .addform{background:var(--card);border-radius:18px;padding:17px;margin-bottom:16px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
 .imgpreview{width:100%;height:140px;border-radius:15px;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1.5px dashed #D7CCFB;}
 .imgpreview img{width:100%;height:100%;object-fit:cover;}
 .imgpreview span{font-size:12px;color:var(--muted);}
+
 nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radius:22px;max-width:396px;margin:0 auto;display:flex;box-shadow:0 10px 30px -8px rgba(21,15,46,.25);padding:4px;}
 .navitem{flex:1;text-align:center;padding:9px 0 7px;font-size:10px;color:var(--muted);cursor:pointer;border-radius:18px;font-weight:600;}
 .navitem.active{color:var(--violet-dk);font-weight:800;background:var(--violet-lt);}
 .navicon{margin-bottom:2px;display:flex;justify-content:center;font-size:17px;}
 .navicon svg{width:19px;height:19px;}
 .badge{position:relative;top:-16px;left:10px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700;}
+
 .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;box-shadow:0 8px 22px -6px rgba(0,0,0,.35);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
@@ -235,13 +257,13 @@ function renderNav(){
   ] : isSeller ? [
     ['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar']
   ] : [
-    ['home','🏠','Bosh sahifa'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']
+    ['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']
   ];
   nav.innerHTML = items.map(([k,icon,label])=>`
     <div class="navitem ${state.tab===k?'active':''}" data-tab="${k}">
       <div class="navicon">${icon}</div>${label}${k==='cart'&&cartCount>0?`<span class="badge">${cartCount}</span>`:''}
     </div>`).join('');
-  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; state.pendingImage=null; state.editingProduct=null; renderNav(); await renderTab(); });
+  nav.querySelectorAll('.navitem').forEach(n=>n.onclick=async()=>{ state.tab=n.dataset.tab; state.pendingImage=null; state.editingProduct=null; state.selectedProduct=null; renderNav(); await renderTab(); });
 }
 
 function starsHtml(avg, count){
@@ -263,6 +285,110 @@ function deliveryLabel(p, mode){
   return `🚚 ${scope} · ${price}`;
 }
 
+function priceHtml(p){
+  if(p.oldPrice && p.oldPrice > p.price){
+    return `<div class="price"><span class="oldprice">${fmt(p.oldPrice)}</span>${fmt(p.price)}</div>`;
+  }
+  return `<div class="price">${fmt(p.price)}</div>`;
+}
+
+function discBadgeHtml(p){
+  if(p.oldPrice && p.oldPrice > p.price){
+    const pct = Math.round((1 - p.price/p.oldPrice)*100);
+    return `<div class="discbadge">−${pct}%</div>`;
+  }
+  return '';
+}
+
+function productCardHtml(p, isBuyerView){
+  return `
+    <div class="pcard">
+      <div class="pimg" data-detail="${p.id}">
+        ${discBadgeHtml(p)}
+        ${isBuyerView ? `<button class="heartbtn" data-fav="${p.id}">${p.isFavorited ? '❤️' : '🤍'}</button>` : ''}
+        ${pimgHtml(p)}
+      </div>
+      <div class="pbody">
+        <span class="tag">${p.cat}</span>
+        <div class="pname" data-detail="${p.id}">${p.name}</div>
+        <div class="pseller">${p.sellerName}</div>
+        ${starsHtml(p.avgRating, p.reviewCount)}
+        <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:3px">${deliveryLabel(p)}</div>
+        ${priceHtml(p)}
+        <div style="font-size:10.5px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:6px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
+        <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
+      </div>
+    </div>`;
+}
+
+function wireProductCardEvents(main, products, afterFavToggle){
+  main.querySelectorAll('[data-add]').forEach(b=>b.onclick=(e)=>{
+    e.stopPropagation();
+    const id=b.dataset.add;
+    const p = products.find(pp=>pp.id==id);
+    const inCart = state.cart[id]||0;
+    if(inCart >= p.stock){ showToast("Omborda shuncha bor: "+p.stock+" dona"); return; }
+    state.cart[id]=inCart+1;
+    showToast(`"${p.name}" savatga qo'shildi`); renderNav();
+  });
+  main.querySelectorAll('[data-fav]').forEach(b=>b.onclick=async(e)=>{
+    e.stopPropagation();
+    try{
+      const { favorited } = await api('/api/favorites/toggle', { method:'POST', body: JSON.stringify({ productId: Number(b.dataset.fav) }) });
+      b.textContent = favorited ? '❤️' : '🤍';
+      showToast(favorited ? "Sevimlilarga qo'shildi ❤️" : "Sevimlilardan olib tashlandi");
+      if(afterFavToggle) afterFavToggle();
+    } catch(e){ showToast(e.message); }
+  });
+  main.querySelectorAll('[data-detail]').forEach(el=>el.onclick=async()=>{
+    const p = products.find(pp=>pp.id==el.dataset.detail);
+    if(!p) return;
+    state.selectedProduct = p;
+    state.prevTab = state.tab;
+    state.tab = 'detail';
+    await renderTab();
+  });
+}
+
+async function renderProductDetail(main){
+  const p = state.selectedProduct;
+  if(!p){ state.tab = state.prevTab || 'home'; await renderTab(); return; }
+  let reviews = [];
+  try{ const r = await api('/api/products/'+p.id+'/reviews'); reviews = r.reviews; } catch(e){}
+  main.innerHTML = `
+    <button class="backbtn" id="backBtn">← Orqaga</button>
+    <div class="detailimg">${pimgHtml(p)}</div>
+    <span class="tag">${p.cat}</span>
+    <div style="font-size:19px;font-weight:800;margin:6px 0 4px">${p.name}</div>
+    <div class="pseller" style="margin-bottom:6px">${p.sellerName}</div>
+    ${starsHtml(p.avgRating, p.reviewCount)}
+    <div style="font-size:10.5px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:8px">${deliveryLabel(p, 'full')}</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">${p.oldPrice && p.oldPrice>p.price ? `<span class="oldprice" style="font-size:14px">${fmt(p.oldPrice)}</span>` : ''}${fmt(p.price)}</div>
+    <div style="font-size:11px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:14px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
+    ${p.desc ? `<div class="summary" style="margin-bottom:14px"><div style="font-size:12.5px;line-height:1.5">${p.desc}</div></div>` : ''}
+    <button class="checkout" id="detailAddBtn" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
+    <div class="sectitle" style="margin:20px 0 10px;font-size:14px">Sharhlar (${reviews.length})</div>
+    ${reviews.length ? reviews.map(r=>`
+      <div class="reviewitem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-weight:700;font-size:12.5px">${r.buyerName}</span>
+          <span style="font-size:11px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+        </div>
+        ${r.comment ? `<div style="font-size:12px;color:var(--muted)">${r.comment}</div>` : ''}
+      </div>`).join('') : `<div class="empty" style="padding:20px">Hali sharh yo'q</div>`}
+  `;
+  document.getElementById('backBtn').onclick = async ()=>{
+    state.tab = state.prevTab || 'home'; state.selectedProduct = null; renderNav(); await renderTab();
+  };
+  const addBtn = document.getElementById('detailAddBtn');
+  if(addBtn) addBtn.onclick = ()=>{
+    const inCart = state.cart[p.id]||0;
+    if(inCart >= p.stock){ showToast("Omborda shuncha bor: "+p.stock+" dona"); return; }
+    state.cart[p.id]=inCart+1;
+    showToast(`"${p.name}" savatga qo'shildi`); renderNav();
+  };
+}
+
 async function renderTab(){
   const main = document.getElementById('main');
   const isSeller = state.user.role === 'seller';
@@ -271,36 +397,40 @@ async function renderTab(){
 
   if(isAdmin){ await renderAdminTab(main); return; }
 
+  if(state.tab==='detail'){ await renderProductDetail(main); return; }
+
   if(state.tab==='home' && !isSeller){
     const { products } = await api('/api/products');
-    const list = state.cat==='Barchasi' ? products : products.filter(p=>p.cat===state.cat);
+    const search = (state.search||'').trim().toLowerCase();
+    let list = state.cat==='Barchasi' ? products : products.filter(p=>p.cat===state.cat);
+    if(search) list = list.filter(p=>p.name.toLowerCase().includes(search) || (p.desc||'').toLowerCase().includes(search));
     main.innerHTML = `
+      <div class="banner">
+        <div class="btitle">Xush kelibsiz, ${state.user.name}! 👋</div>
+        <div class="bsub">SavdoUz'da minglab mahsulot — ishonchli sotuvchilardan</div>
+      </div>
+      <div class="searchbar"><span class="sicon">🔍</span><input id="searchInput" placeholder="Mahsulot qidirish..." value="${state.search||''}"></div>
       <div class="cats">${CATS.map(c=>`<div class="cat ${c===state.cat?'active':''}" data-cat="${c}">${c}</div>`).join('')}</div>
-      <div class="sechead"><div class="sectitle">Mahsulotlar</div></div>
-      <div class="grid">${list.length ? list.map(p=>`
-        <div class="pcard">
-          <div class="pimg">${pimgHtml(p)}</div>
-          <div class="pbody">
-            <span class="tag">${p.cat}</span>
-            <div class="pname">${p.name}</div>
-            <div class="pseller">${p.sellerName}</div>
-            ${starsHtml(p.avgRating, p.reviewCount)}
-            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:3px">${deliveryLabel(p)}</div>
-            <div class="price">${fmt(p.price)}</div>
-            <div style="font-size:10.5px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:6px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
-            <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
-          </div>
-        </div>`).join('') : `<div class="empty" style="grid-column:1/-1">Hozircha bu kategoriyada mahsulot yo'q</div>`}
+      <div class="sechead"><div class="sectitle">${search ? `"${state.search}" bo'yicha natijalar` : 'Mahsulotlar'}</div></div>
+      <div class="grid">${list.length ? list.map(p=>productCardHtml(p, true)).join('') : `<div class="empty" style="grid-column:1/-1">${search ? "Hech narsa topilmadi" : "Hozircha bu kategoriyada mahsulot yo'q"}</div>`}
       </div>`;
     main.querySelectorAll('.cat').forEach(c=>c.onclick=async()=>{state.cat=c.dataset.cat; await renderTab();});
-    main.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
-      const id=b.dataset.add;
-      const p = products.find(pp=>pp.id==id);
-      const inCart = state.cart[id]||0;
-      if(inCart >= p.stock){ showToast("Omborda shuncha bor: "+p.stock+" dona"); return; }
-      state.cart[id]=inCart+1;
-      showToast(`"${p.name}" savatga qo'shildi`); renderNav();
-    });
+    let searchTimer;
+    document.getElementById('searchInput').oninput = (e)=>{
+      clearTimeout(searchTimer);
+      const val = e.target.value;
+      searchTimer = setTimeout(()=>{ state.search = val; renderTab(); }, 350);
+    };
+    wireProductCardEvents(main, products);
+  }
+
+  else if(state.tab==='favorites' && !isSeller){
+    const { products } = await api('/api/favorites');
+    main.innerHTML = `
+      <div class="sectitle" style="margin-bottom:12px">Sevimlilar</div>
+      <div class="grid">${products.length ? products.map(p=>productCardHtml(p, true)).join('') : `<div class="empty" style="grid-column:1/-1">❤️<br><br>Hali sevimli mahsulot yo'q</div>`}
+      </div>`;
+    wireProductCardEvents(main, products, ()=>renderTab());
   }
 
   else if(state.tab==='cart' && !isSeller){
@@ -418,7 +548,7 @@ async function renderTab(){
           <div class="pbody">
             <span class="tag">${p.cat}</span>
             <div class="pname">${p.name}</div>
-            <div class="price">${fmt(p.price)}</div>
+            ${priceHtml(p)}
             <div style="font-size:10.5px;color:var(--muted);margin-bottom:2px">Omborda: ${p.stock} dona</div>
             <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:6px;line-height:1.4">${deliveryLabel(p, 'full')}</div>
             <div style="display:flex;gap:6px">
@@ -454,6 +584,7 @@ async function renderTab(){
           <select id="pcat">${CATS.filter(c=>c!=='Barchasi').map(c=>`<option ${ed && ed.cat===c?'selected':''}>${c}</option>`).join('')}</select>
         </div>
         <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" placeholder="150000" value="${ed ? ed.price : ''}"></div>
+        <div class="field"><label>Eski narx (chegirma uchun, ixtiyoriy)</label><input id="poldprice" type="number" placeholder="Masalan: 200000" value="${ed && ed.oldPrice ? ed.oldPrice : ''}"></div>
         <div class="field"><label>Nechta bor (soni)</label><input id="pstock" type="number" placeholder="10" value="${ed ? ed.stock : ''}"></div>
         <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha">${ed ? (ed.desc||'') : ''}</textarea></div>
         <div class="field">
@@ -505,6 +636,7 @@ async function renderTab(){
       const stock = document.getElementById('pstock').value;
       const desc = document.getElementById('pdesc').value.trim();
       const deliveryPrice = document.getElementById('pdeliveryprice').value || 0;
+      const oldPrice = document.getElementById('poldprice').value || '';
       const allRegions = document.getElementById('pdeliveryall').checked;
       const deliveryRegions = allRegions ? ['barchasi'] : Array.from(document.querySelectorAll('.regionChk:checked')).map(c=>c.value);
       if(!name || !price){ showToast("Nom va narxni kiriting"); return; }
@@ -512,10 +644,10 @@ async function renderTab(){
       if(!allRegions && deliveryRegions.length===0){ showToast("Kamida bitta hududni tanlang yoki 'Barcha viloyatlar'ni belgilang"); return; }
       try{
         if(ed){
-          await api('/api/products/'+ed.id, { method:'PATCH', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage, deliveryRegions, deliveryPrice }) });
+          await api('/api/products/'+ed.id, { method:'PATCH', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage, deliveryRegions, deliveryPrice, oldPrice }) });
           showToast("Mahsulot yangilandi! ✅");
         } else {
-          await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage, deliveryRegions, deliveryPrice }) });
+          await api('/api/products', { method:'POST', body: JSON.stringify({ name, cat, price, desc, stock, image: state.pendingImage, deliveryRegions, deliveryPrice, oldPrice }) });
           showToast("Mahsulot qo'shildi! ✅");
         }
         state.pendingImage = null; state.editingProduct = null;
@@ -633,7 +765,7 @@ async function renderAdminTab(main){
             <span class="tag">${p.cat}</span>
             <div class="pname">${p.name}</div>
             <div class="pseller">${p.sellerName} · ${p.sellerPhone}</div>
-            <div class="price">${fmt(p.price)}</div>
+            ${priceHtml(p)}
             <div style="font-size:10.5px;color:var(--muted)">Omborda: ${p.stock} dona</div>
             <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'}">${deliveryLabel(p, 'short')}</div>
           </div>
