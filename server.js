@@ -21,6 +21,8 @@ function loadDB() {
   if (!db.reviews) db.reviews = [];
   if (!db.nextId.payment) db.nextId.payment = 1;
   if (!db.nextId.review) db.nextId.review = 1;
+  if (!db.messages) db.messages = [];
+  if (!db.nextId.message) db.nextId.message = 1;
   db.users.forEach(u => { if (u.paidCommission === undefined) u.paidCommission = 0; if (u.favorites === undefined) u.favorites = []; });
   db.products.forEach(p => {
     if (p.deliveryRegions === undefined) {
@@ -173,6 +175,22 @@ const server = http.createServer(async (req, res) => {
   try {
     if (pathname === '/api/regions' && req.method === 'GET') {
       return sendJSON(res, 200, { regions: REGIONS });
+    }
+
+    const sellerStoreMatch = pathname.match(/^\/api\/sellers\/(\d+)$/);
+    if (sellerStoreMatch && req.method === 'GET') {
+      const sid = Number(sellerStoreMatch[1]);
+      const seller = db.users.find(u => u.id === sid && u.role === 'seller');
+      if (!seller) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
+      const requester = getUserFromReq(req, db);
+      const favSet = requester ? new Set(requester.favorites || []) : new Set();
+      const restricted = computeSellerDebt(db, sid) > DEBT_LIMIT;
+      const products = restricted ? [] : db.products.filter(p => p.sellerId === sid).map(p => {
+        const prodReviews = db.reviews.filter(r => r.productId === p.id);
+        const avgRating = prodReviews.length ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length) : 0;
+        return { ...p, sellerName: seller.name, avgRating, reviewCount: prodReviews.length, isFavorited: favSet.has(p.id) };
+      });
+      return sendJSON(res, 200, { seller: { id: seller.id, name: seller.name, phone: seller.phone }, products });
     }
 
     if (pathname === '/api/register' && req.method === 'POST') {
@@ -329,6 +347,33 @@ const server = http.createServer(async (req, res) => {
         return { ...p, sellerName: seller ? seller.name : "Noma'lum", avgRating, reviewCount: prodReviews.length, isFavorited: true };
       });
       return sendJSON(res, 200, { products: list });
+    }
+
+    const orderMsgMatch = pathname.match(/^\/api\/orders\/(\d+)\/messages$/);
+    if (orderMsgMatch) {
+      const user = getUserFromReq(req, db);
+      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      const oid = Number(orderMsgMatch[1]);
+      const order = db.orders.find(o => o.id === oid);
+      if (!order) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
+      const isBuyer = order.buyerId === user.id;
+      const isSellerParty = order.items.some(it => it.sellerId === user.id);
+      if (!isBuyer && !isSellerParty && user.role !== 'admin') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      if (req.method === 'GET') {
+        const list = db.messages.filter(m => m.orderId === oid).sort((a, b) => a.id - b.id);
+        return sendJSON(res, 200, { messages: list });
+      }
+      if (req.method === 'POST') {
+        const { text } = await readBody(req);
+        if (!text || !text.trim()) return sendJSON(res, 400, { error: "Xabar matnini kiriting" });
+        const msg = {
+          id: db.nextId.message++, orderId: oid, senderId: user.id, senderRole: user.role,
+          senderName: user.name, text: text.trim(), createdAt: new Date().toISOString()
+        };
+        db.messages.push(msg);
+        saveDB(db);
+        return sendJSON(res, 200, { message: msg });
+      }
     }
 
     if (pathname === '/api/payments' && req.method === 'POST') {
