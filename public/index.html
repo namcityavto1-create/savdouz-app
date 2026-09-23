@@ -33,22 +33,18 @@ label{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;disp
 .switchmode{text-align:center;margin-top:18px;font-size:13px;color:var(--muted);}
 .switchmode b{color:var(--violet-dk);cursor:pointer;}
 .errmsg{background:#FEECEF;color:var(--red);font-size:12.5px;padding:10px 13px;border-radius:12px;margin-bottom:12px;display:none;font-weight:600;}
-
 header{background:linear-gradient(135deg,var(--violet),var(--violet-dk));padding:16px 18px 18px;display:flex;align-items:center;justify-content:space-between;border-radius:0 0 22px 22px;box-shadow:0 6px 20px -8px rgba(108,75,244,.5);}
 .brandrow{display:flex;gap:10px;align-items:center;} .logo{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.22);backdrop-filter:blur(4px);
   display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;}
 .brandtext .name{font-size:17px;font-weight:800;color:#fff;}
 .brandtext .tag{font-size:10.5px;color:rgba(255,255,255,.78);}
 .logoutbtn{background:rgba(255,255,255,.18);border:none;border-radius:11px;padding:8px 13px;font-size:11.5px;color:#fff;font-weight:700;}
-
 main{flex:1;padding:16px 16px 92px;}
 .sechead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
 .sectitle{font-size:17px;font-weight:800;letter-spacing:-.2px;}
-
 .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:4px;}
 .cat{flex:0 0 auto;padding:8px 15px;border-radius:20px;background:var(--card);border:1.5px solid var(--line);font-size:12.5px;font-weight:600;cursor:pointer;}
 .cat.active{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 6px 14px -6px rgba(108,75,244,.6);}
-
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .pcard{background:var(--card);border-radius:20px;overflow:hidden;box-shadow:0 4px 16px -6px rgba(21,15,46,.1);}
 .pimg{height:110px;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
@@ -60,6 +56,20 @@ main{flex:1;padding:16px 16px 92px;}
 .searchbar{position:relative;margin-bottom:12px;}
 .searchbar input{padding-left:38px;border-radius:16px;}
 .searchbar .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5;}
+.sortrow{display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;}
+.sortchip{flex:0 0 auto;padding:7px 13px;border-radius:16px;background:var(--card);border:1.5px solid var(--line);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.sortchip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.storehead{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
+.storeavatar{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--violet),var(--violet-dk));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;flex-shrink:0;}
+.lowstock{color:var(--orange)!important;font-weight:700;}
+.chatwrap{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.chatmsg{max-width:78%;padding:9px 13px;border-radius:14px;font-size:12.5px;line-height:1.4;}
+.chatmsg.mine{align-self:flex-end;background:var(--violet);color:#fff;border-bottom-right-radius:4px;}
+.chatmsg.theirs{align-self:flex-start;background:var(--card);border-bottom-left-radius:4px;box-shadow:0 2px 8px -4px rgba(21,15,46,.08);}
+.chatmsg .who{font-size:9.5px;opacity:.7;margin-bottom:2px;font-weight:700;}
+.chatinput{display:flex;gap:8px;}
+.chatinput input{flex:1;}
+.chatinput button{background:var(--violet);color:#fff;border:none;border-radius:14px;padding:0 18px;font-weight:800;}
 .banner{background:linear-gradient(120deg,var(--violet),#9B7BFF);border-radius:20px;padding:18px 18px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;}
 .banner .btitle{font-size:16px;font-weight:800;margin-bottom:3px;}
 .banner .bsub{font-size:12px;opacity:.9;}
@@ -75,7 +85,6 @@ main{flex:1;padding:16px 16px 92px;}
 .price{font-weight:800;color:var(--ink);font-size:15px;margin-bottom:8px;}
 .addbtn{width:100%;background:linear-gradient(135deg,var(--violet),var(--violet-dk));color:#fff;border:none;border-radius:13px;padding:9px 0;font-size:11.5px;font-weight:800;box-shadow:0 6px 14px -6px rgba(108,75,244,.5);}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:60px 20px;line-height:1.6;}
-
 .citem,.oitem{background:var(--card);border-radius:18px;padding:14px;margin-bottom:11px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
 .citem{display:flex;justify-content:space-between;align-items:center;}
 .cname{font-size:13px;font-weight:700;}
@@ -91,19 +100,16 @@ main{flex:1;padding:16px 16px 92px;}
 .oline{font-size:12.5px;display:flex;justify-content:space-between;margin-top:4px;}
 .ototal{font-weight:800;margin-top:9px;padding-top:9px;border-top:1.5px dashed var(--line);display:flex;justify-content:space-between;}
 select.statusSel{margin-top:9px;font-size:12px;padding:9px 11px;}
-
 .addform{background:var(--card);border-radius:18px;padding:17px;margin-bottom:16px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09);}
 .imgpreview{width:100%;height:140px;border-radius:15px;background:var(--violet-lt);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1.5px dashed #D7CCFB;}
 .imgpreview img{width:100%;height:100%;object-fit:cover;}
 .imgpreview span{font-size:12px;color:var(--muted);}
-
 nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radius:22px;max-width:396px;margin:0 auto;display:flex;box-shadow:0 10px 30px -8px rgba(21,15,46,.25);padding:4px;}
 .navitem{flex:1;text-align:center;padding:9px 0 7px;font-size:10px;color:var(--muted);cursor:pointer;border-radius:18px;font-weight:600;}
 .navitem.active{color:var(--violet-dk);font-weight:800;background:var(--violet-lt);}
 .navicon{margin-bottom:2px;display:flex;justify-content:center;font-size:17px;}
 .navicon svg{width:19px;height:19px;}
 .badge{position:relative;top:-16px;left:10px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700;}
-
 .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;box-shadow:0 8px 22px -6px rgba(0,0,0,.35);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
@@ -301,6 +307,7 @@ function discBadgeHtml(p){
 }
 
 function productCardHtml(p, isBuyerView){
+  const lowStock = p.stock > 0 && p.stock <= 5;
   return `
     <div class="pcard">
       <div class="pimg" data-detail="${p.id}">
@@ -311,11 +318,11 @@ function productCardHtml(p, isBuyerView){
       <div class="pbody">
         <span class="tag">${p.cat}</span>
         <div class="pname" data-detail="${p.id}">${p.name}</div>
-        <div class="pseller">${p.sellerName}</div>
+        <div class="pseller" data-store="${p.sellerId}" style="cursor:pointer;text-decoration:underline">${p.sellerName}</div>
         ${starsHtml(p.avgRating, p.reviewCount)}
         <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:3px">${deliveryLabel(p)}</div>
         ${priceHtml(p)}
-        <div style="font-size:10.5px;color:${p.stock>0?'var(--muted)':'var(--red)'};margin-bottom:6px">${p.stock>0 ? `Omborda: ${p.stock} dona` : "Tugagan"}</div>
+        <div style="font-size:10.5px;margin-bottom:6px" class="${lowStock?'lowstock':''}">${p.stock>0 ? (lowStock ? `⚡ Faqat ${p.stock} dona qoldi!` : `Omborda: ${p.stock} dona`) : `<span style="color:var(--red)">Tugagan</span>`}</div>
         <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled style="opacity:.5"'}>${p.stock>0?"Savatga qo'shish":"Tugagan"}</button>
       </div>
     </div>`;
@@ -348,6 +355,77 @@ function wireProductCardEvents(main, products, afterFavToggle){
     state.tab = 'detail';
     await renderTab();
   });
+  main.querySelectorAll('[data-store]').forEach(el=>el.onclick=async(e)=>{
+    e.stopPropagation();
+    state.selectedSellerId = Number(el.dataset.store);
+    state.prevTab = state.tab;
+    state.tab = 'store';
+    await renderTab();
+  });
+}
+
+async function renderSellerStore(main){
+  const sid = state.selectedSellerId;
+  if(!sid){ state.tab = state.prevTab || 'home'; await renderTab(); return; }
+  let data;
+  try{ data = await api('/api/sellers/'+sid); } catch(e){ showToast(e.message); state.tab='home'; await renderTab(); return; }
+  const { seller, products } = data;
+  main.innerHTML = `
+    <button class="backbtn" id="backBtn">← Orqaga</button>
+    <div class="storehead">
+      <div class="storeavatar">${seller.name.charAt(0).toUpperCase()}</div>
+      <div><div style="font-weight:800;font-size:15px">${seller.name}</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">${products.length} ta mahsulot</div></div>
+    </div>
+    <div class="grid">${products.length ? products.map(p=>productCardHtml(p, true)).join('') : `<div class="empty" style="grid-column:1/-1">Hozircha mahsulot yo'q</div>`}</div>
+  `;
+  document.getElementById('backBtn').onclick = async ()=>{
+    state.tab = state.prevTab || 'home'; renderNav(); await renderTab();
+  };
+  wireProductCardEvents(main, products);
+}
+
+function chatToggleHtml(orderId){
+  return `<button class="addbtn" style="background:var(--violet-lt);color:var(--violet-dk);margin-top:8px" data-chattoggle="${orderId}">💬 Xabarlar</button><div class="chat-container" data-chatbox="${orderId}" style="display:none;margin-top:10px"></div>`;
+}
+
+function wireChatToggles(main){
+  main.querySelectorAll('[data-chattoggle]').forEach(btn=>btn.onclick=async()=>{
+    const oid = btn.dataset.chattoggle;
+    const box = main.querySelector(`[data-chatbox="${oid}"]`);
+    if(box.style.display==='none'){
+      box.style.display='block';
+      await loadChat(oid, box);
+    } else {
+      box.style.display='none';
+    }
+  });
+}
+
+async function loadChat(oid, box){
+  box.innerHTML = `<div class="empty" style="padding:10px">Yuklanmoqda...</div>`;
+  try{
+    const { messages } = await api('/api/orders/'+oid+'/messages');
+    box.innerHTML = `
+      <div class="chatwrap">${messages.length ? messages.map(m=>`
+        <div class="chatmsg ${m.senderId===state.user.id?'mine':'theirs'}">
+          <div class="who">${m.senderName}</div>${m.text}
+        </div>`).join('') : `<div class="empty" style="padding:10px;font-size:11.5px">Hali xabar yo'q</div>`}
+      </div>
+      <div class="chatinput"><input id="chatInput-${oid}" placeholder="Xabar yozing..."><button id="chatSend-${oid}">➤</button></div>
+    `;
+    const send = async ()=>{
+      const inp = document.getElementById('chatInput-'+oid);
+      const text = inp.value.trim();
+      if(!text) return;
+      try{
+        await api('/api/orders/'+oid+'/messages', { method:'POST', body: JSON.stringify({ text }) });
+        inp.value='';
+        await loadChat(oid, box);
+      } catch(e){ showToast(e.message); }
+    };
+    document.getElementById('chatSend-'+oid).onclick = send;
+    document.getElementById('chatInput-'+oid).onkeydown = (e)=>{ if(e.key==='Enter') send(); };
+  } catch(e){ box.innerHTML = `<div class="empty" style="padding:10px">${e.message}</div>`; }
 }
 
 async function renderProductDetail(main){
@@ -360,7 +438,7 @@ async function renderProductDetail(main){
     <div class="detailimg">${pimgHtml(p)}</div>
     <span class="tag">${p.cat}</span>
     <div style="font-size:19px;font-weight:800;margin:6px 0 4px">${p.name}</div>
-    <div class="pseller" style="margin-bottom:6px">${p.sellerName}</div>
+    <div class="pseller" id="sellerLink" style="margin-bottom:6px;cursor:pointer;text-decoration:underline">${p.sellerName}</div>
     ${starsHtml(p.avgRating, p.reviewCount)}
     <div style="font-size:10.5px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:8px">${deliveryLabel(p, 'full')}</div>
     <div style="font-size:20px;font-weight:800;margin-bottom:4px">${p.oldPrice && p.oldPrice>p.price ? `<span class="oldprice" style="font-size:14px">${fmt(p.oldPrice)}</span>` : ''}${fmt(p.price)}</div>
@@ -379,6 +457,9 @@ async function renderProductDetail(main){
   `;
   document.getElementById('backBtn').onclick = async ()=>{
     state.tab = state.prevTab || 'home'; state.selectedProduct = null; renderNav(); await renderTab();
+  };
+  document.getElementById('sellerLink').onclick = async ()=>{
+    state.selectedSellerId = p.sellerId; state.prevTab = 'home'; state.tab = 'store'; await renderTab();
   };
   const addBtn = document.getElementById('detailAddBtn');
   if(addBtn) addBtn.onclick = ()=>{
@@ -399,11 +480,18 @@ async function renderTab(){
 
   if(state.tab==='detail'){ await renderProductDetail(main); return; }
 
+  if(state.tab==='store'){ await renderSellerStore(main); return; }
+
   if(state.tab==='home' && !isSeller){
     const { products } = await api('/api/products');
     const search = (state.search||'').trim().toLowerCase();
     let list = state.cat==='Barchasi' ? products : products.filter(p=>p.cat===state.cat);
     if(search) list = list.filter(p=>p.name.toLowerCase().includes(search) || (p.desc||'').toLowerCase().includes(search));
+    const sortKey = state.sort || 'none';
+    if(sortKey==='priceAsc') list = [...list].sort((a,b)=>a.price-b.price);
+    else if(sortKey==='priceDesc') list = [...list].sort((a,b)=>b.price-a.price);
+    else if(sortKey==='rating') list = [...list].sort((a,b)=>(b.avgRating||0)-(a.avgRating||0));
+    const sortOptions = [['none','Odatiy'],['priceAsc','Arzon→Qimmat'],['priceDesc','Qimmat→Arzon'],['rating','Reyting']];
     main.innerHTML = `
       <div class="banner">
         <div class="btitle">Xush kelibsiz, ${state.user.name}! 👋</div>
@@ -411,10 +499,12 @@ async function renderTab(){
       </div>
       <div class="searchbar"><span class="sicon">🔍</span><input id="searchInput" placeholder="Mahsulot qidirish..." value="${state.search||''}"></div>
       <div class="cats">${CATS.map(c=>`<div class="cat ${c===state.cat?'active':''}" data-cat="${c}">${c}</div>`).join('')}</div>
+      <div class="sortrow">${sortOptions.map(([k,label])=>`<div class="sortchip ${sortKey===k?'active':''}" data-sort="${k}">${label}</div>`).join('')}</div>
       <div class="sechead"><div class="sectitle">${search ? `"${state.search}" bo'yicha natijalar` : 'Mahsulotlar'}</div></div>
       <div class="grid">${list.length ? list.map(p=>productCardHtml(p, true)).join('') : `<div class="empty" style="grid-column:1/-1">${search ? "Hech narsa topilmadi" : "Hozircha bu kategoriyada mahsulot yo'q"}</div>`}
       </div>`;
     main.querySelectorAll('.cat').forEach(c=>c.onclick=async()=>{state.cat=c.dataset.cat; await renderTab();});
+    main.querySelectorAll('[data-sort]').forEach(c=>c.onclick=async()=>{state.sort=c.dataset.sort; await renderTab();});
     let searchTimer;
     document.getElementById('searchInput').oninput = (e)=>{
       clearTimeout(searchTimer);
@@ -446,12 +536,14 @@ async function renderTab(){
         <div class="qty"><button data-dec="${id}">−</button><span>${state.cart[id]}</span><button data-inc="${id}">+</button></div>
       </div>`;
     }).join('');
+    const savedAddr = localStorage.getItem('savdouz_addr') || '';
+    const savedRegion = localStorage.getItem('savdouz_region') || '';
     main.innerHTML = `<div class="sectitle" style="margin-bottom:12px">Savat</div>${rows}
       <div class="field" style="margin-top:14px"><label>Yetkazib berish viloyati</label>
-        <select id="region"><option value="">Viloyatni tanlang</option>${REGIONS.map(r=>`<option>${r}</option>`).join('')}</select>
+        <select id="region"><option value="">Viloyatni tanlang</option>${REGIONS.map(r=>`<option ${r===savedRegion?'selected':''}>${r}</option>`).join('')}</select>
       </div>
       <div id="regionWarning" style="display:none;background:#FDEDED;color:var(--red);font-size:12px;padding:9px 12px;border-radius:8px;margin-bottom:10px"></div>
-      <div class="field"><label>Yetkazib berish manzili</label><input id="addr" placeholder="Shahar, ko'cha, uy"></div>
+      <div class="field"><label>Yetkazib berish manzili</label><input id="addr" placeholder="Shahar, ko'cha, uy" value="${savedAddr.replace(/"/g,'&quot;')}"></div>
       <div class="summary">
         <div class="sumrow"><span>Mahsulotlar</span><span id="itemsTotalDisp">${fmt(total)}</span></div>
         <div class="sumrow"><span>Yetkazib berish</span><span id="deliveryTotalDisp">—</span></div>
@@ -493,6 +585,7 @@ async function renderTab(){
       return { deliveryTotal, bad };
     }
     document.getElementById('region').onchange = recalcDelivery;
+    if(savedRegion) recalcDelivery();
     document.getElementById('checkoutBtn').onclick = async ()=>{
       const address = document.getElementById('addr').value.trim();
       const region = document.getElementById('region').value;
@@ -503,6 +596,8 @@ async function renderTab(){
       const items = ids.map(id=>({ productId:Number(id), qty:state.cart[id] }));
       try{
         await api('/api/orders', { method:'POST', body: JSON.stringify({ items, address, region }) });
+        localStorage.setItem('savdouz_addr', address);
+        localStorage.setItem('savdouz_region', region);
         state.cart = {}; renderNav(); showToast("Buyurtma qabul qilindi! ✅"); state.tab='orders'; renderNav(); await renderTab();
       } catch(e){ showToast(e.message); }
     };
@@ -523,6 +618,7 @@ async function renderTab(){
           </div>`).join('')}
         ${o.deliveryTotal ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(o.deliveryTotal)}</span></div>` : ''}
         <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+        ${chatToggleHtml(o.id)}
       </div>`).join('');
     main.querySelectorAll('.rate-row').forEach(row=>{
       const stars = row.querySelectorAll('.starbtn');
@@ -535,6 +631,7 @@ async function renderTab(){
         } catch(e){ showToast(e.message); }
       });
     });
+    wireChatToggles(main);
   }
 
   else if(state.tab==='home' && isSeller){
@@ -728,6 +825,7 @@ async function renderTab(){
         <select class="statusSel" data-order="${o.id}">
           ${['yangi','tasdiqlandi',"kuryerga topshirildi",'yetkazildi','bekor qilindi'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
         </select>
+        ${chatToggleHtml(o.id)}
       </div>`;
     }).join('');
     main.insertAdjacentHTML('beforeend', ordersHtml);
@@ -735,6 +833,7 @@ async function renderTab(){
       await api('/api/orders/'+s.dataset.order+'/status', { method:'PATCH', body: JSON.stringify({ status:s.value }) });
       showToast("Holat yangilandi");
     });
+    wireChatToggles(main);
   }
 }
 
