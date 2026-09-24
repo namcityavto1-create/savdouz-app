@@ -1,22 +1,37 @@
 // SavdoUz — oddiy ko'p-sotuvchili marketplace backendi
-// Tashqi kutubxonasiz (faqat Node.js o'zi kifoya)
+// MongoDB Atlas orqali ma'lumotlarni doimiy saqlaydi
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const url = require('url');
+const { MongoClient } = require('mongodb');
 
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-function loadDB() {
-  if (!fs.existsSync(DB_FILE)) {
-    const empty = { users: [], products: [], orders: [], payments: [], reviews: [], nextId: { user: 1, product: 1, order: 1, payment: 1, review: 1 } };
-    fs.writeFileSync(DB_FILE, JSON.stringify(empty, null, 2));
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error("XATO: MONGODB_URI environment o'zgaruvchisi topilmadi. Render'ning Environment bo'limiga qo'shing.");
+}
+const mongoClient = new MongoClient(MONGODB_URI);
+let stateCollection;
+
+async function connectMongo() {
+  await mongoClient.connect();
+  const mongoDb = mongoClient.db('savdouz');
+  stateCollection = mongoDb.collection('state');
+  console.log('MongoDB ulanish muvaffaqiyatli ✅');
+}
+
+// ---------- Ma'lumotlar bazasi (MongoDB, bitta hujjatda) ----------
+async function loadDB() {
+  let db = await stateCollection.findOne({ _id: 'main' });
+  if (!db) {
+    db = { _id: 'main', users: [], products: [], orders: [], payments: [], reviews: [], messages: [], nextId: { user: 1, product: 1, order: 1, payment: 1, review: 1, message: 1 } };
+    await stateCollection.insertOne(db);
   }
-  const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   if (!db.payments) db.payments = [];
   if (!db.reviews) db.reviews = [];
   if (!db.nextId.payment) db.nextId.payment = 1;
@@ -31,13 +46,14 @@ function loadDB() {
     if (p.deliveryPrice === undefined) p.deliveryPrice = 0;
     if (p.oldPrice === undefined) p.oldPrice = null;
   });
-  ensureAdmin(db);
+  await ensureAdmin(db);
   return db;
 }
-function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+async function saveDB(db) {
+  await stateCollection.replaceOne({ _id: 'main' }, db, { upsert: true });
 }
 
+// ---------- Parol xeshlash ----------
 function hashPassword(password, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -48,7 +64,8 @@ function verifyPassword(password, salt, hash) {
   return check === hash;
 }
 
-const sessions = {};
+// ---------- Sessiyalar (xotirada, server qayta ishga tushsa tozalanadi) ----------
+const sessions = {}; // token -> userId
 
 function makeToken() {
   return crypto.randomBytes(24).toString('hex');
@@ -63,6 +80,7 @@ function getUserFromReq(req, db) {
   return db.users.find(u => u.id === userId) || null;
 }
 
+// ---------- Yordamchi funksiyalar ----------
 function sendJSON(res, status, data) {
   const body = JSON.stringify(data);
   res.writeHead(status, {
@@ -89,11 +107,11 @@ function publicUser(u) {
   return { id: u.id, name: u.name, phone: u.phone, role: u.role };
 }
 
-const COMMISSION_RATE = 0.01;
+const COMMISSION_RATE = 0.01; // SavdoUz platformasi komissiyasi — 1%
 
 const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
 
-const DEBT_LIMIT = 10000;
+const DEBT_LIMIT = 10000; // shu summadan oshsa, sotuvchining mahsulotlari xaridorlarga ko'rinmay qoladi
 
 function computeSellerDebt(db, sellerId) {
   const items = db.orders.map(o => o.items.filter(it => it.sellerId === sellerId)).flat();
@@ -104,18 +122,18 @@ function computeSellerDebt(db, sellerId) {
 }
 
 const ADMIN_PHONE = '+998774071234';
-const ADMIN_PASSWORD = '1992tillo';
+const ADMIN_PASSWORD = '1992tillo'; // faqat birinchi marta admin hisobini yaratish uchun
 
-function ensureAdmin(db) {
+async function ensureAdmin(db) {
   let admin = db.users.find(u => u.phone === ADMIN_PHONE);
   if (!admin) {
     const { salt, hash } = hashPassword(ADMIN_PASSWORD);
     admin = { id: db.nextId.user++, name: 'Admin', phone: ADMIN_PHONE, role: 'admin', salt, hash, paidCommission: 0 };
     db.users.push(admin);
-    saveDB(db);
+    await saveDB(db);
   } else if (admin.role !== 'admin') {
     admin.role = 'admin';
-    saveDB(db);
+    await saveDB(db);
   }
 }
 
@@ -141,6 +159,7 @@ function deliversToRegion(product, region) {
   return regions.includes('barchasi') || regions.includes(region);
 }
 
+// ---------- Statik fayllarni uzatish ----------
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json' };
 function serveStatic(req, res, pathname) {
   let filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
@@ -160,6 +179,7 @@ function serveStatic(req, res, pathname) {
   });
 }
 
+// ---------- Asosiy server ----------
 const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url, true);
   const pathname = parsed.pathname;
@@ -170,9 +190,10 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(req, res, pathname);
   }
 
-  const db = loadDB();
-
   try {
+    const db = await loadDB();
+
+    // ---- Viloyatlar ro'yxati (hammaga ochiq) ----
     if (pathname === '/api/regions' && req.method === 'GET') {
       return sendJSON(res, 200, { regions: REGIONS });
     }
@@ -193,6 +214,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { seller: { id: seller.id, name: seller.name, phone: seller.phone }, products });
     }
 
+    // ---- Ro'yxatdan o'tish ----
     if (pathname === '/api/register' && req.method === 'POST') {
       const { name, phone, password, role } = await readBody(req);
       if (!name || !phone || !password || !role) return sendJSON(res, 400, { error: "Barcha maydonlarni to'ldiring" });
@@ -201,12 +223,13 @@ const server = http.createServer(async (req, res) => {
       const { salt, hash } = hashPassword(password);
       const user = { id: db.nextId.user++, name, phone, role, salt, hash };
       db.users.push(user);
-      saveDB(db);
+      await saveDB(db);
       const token = makeToken();
       sessions[token] = user.id;
       return sendJSON(res, 200, { token, user: publicUser(user) });
     }
 
+    // ---- Kirish ----
     if (pathname === '/api/login' && req.method === 'POST') {
       const { phone, password } = await readBody(req);
       const user = db.users.find(u => u.phone === phone);
@@ -218,12 +241,14 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { token, user: publicUser(user) });
     }
 
+    // ---- Joriy foydalanuvchi ----
     if (pathname === '/api/me' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
       return sendJSON(res, 200, { user: publicUser(user) });
     }
 
+    // ---- Mahsulotlar ro'yxati (hammaga ochiq) ----
     if (pathname === '/api/products' && req.method === 'GET') {
       const requester = getUserFromReq(req, db);
       const favSet = requester ? new Set(requester.favorites || []) : new Set();
@@ -238,6 +263,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { products: list });
     }
 
+    // ---- Mahsulot qo'shish (faqat sotuvchi) ----
     if (pathname === '/api/products' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
@@ -253,10 +279,11 @@ const server = http.createServer(async (req, res) => {
         oldPrice: (oldPrice !== undefined && oldPrice !== '' && Number(oldPrice) > Number(price)) ? Number(oldPrice) : null
       };
       db.products.push(product);
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { product });
     }
 
+    // ---- O'z mahsulotlarim (sotuvchi) ----
     if (pathname === '/api/my-products' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -264,6 +291,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { products: list });
     }
 
+    // ---- Mahsulotni o'chirish (egasi yoki admin) ----
     const delMatch = pathname.match(/^\/api\/products\/(\d+)$/);
     if (delMatch && req.method === 'DELETE') {
       const user = getUserFromReq(req, db);
@@ -271,12 +299,13 @@ const server = http.createServer(async (req, res) => {
       const pid = Number(delMatch[1]);
       const idx = db.products.findIndex(p => p.id === pid);
       if (idx === -1) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
-      if (db.products[idx].sellerId !== user.id) return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
+      if (db.products[idx].sellerId !== user.id && user.role !== 'admin') return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
       db.products.splice(idx, 1);
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
 
+    // ---- Mahsulotni tahrirlash (faqat egasi) ----
     const editMatch = pathname.match(/^\/api\/products\/(\d+)$/);
     if (editMatch && req.method === 'PATCH') {
       const user = getUserFromReq(req, db);
@@ -297,10 +326,11 @@ const server = http.createServer(async (req, res) => {
       if (oldPrice !== undefined) {
         product.oldPrice = (oldPrice !== '' && Number(oldPrice) > product.price) ? Number(oldPrice) : null;
       }
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { product });
     }
 
+    // ---- Mahsulotga baho/izoh (xaridor) ----
     const reviewMatch = pathname.match(/^\/api\/products\/(\d+)\/reviews$/);
     if (reviewMatch && req.method === 'POST') {
       const user = getUserFromReq(req, db);
@@ -314,7 +344,7 @@ const server = http.createServer(async (req, res) => {
       const already = db.reviews.find(rv => rv.productId === pid && rv.buyerId === user.id);
       if (already) { already.rating = r; already.comment = comment || ''; already.createdAt = new Date().toISOString(); }
       else db.reviews.push({ id: db.nextId.review++, productId: pid, buyerId: user.id, buyerName: user.name, rating: r, comment: comment || '', createdAt: new Date().toISOString() });
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
     if (reviewMatch && req.method === 'GET') {
@@ -323,6 +353,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { reviews: list });
     }
 
+    // ---- Sevimlilar (xaridor) ----
     if (pathname === '/api/favorites/toggle' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar sevimlilarga qo'sha oladi" });
@@ -333,7 +364,7 @@ const server = http.createServer(async (req, res) => {
       let favorited;
       if (idx === -1) { user.favorites.push(pid); favorited = true; }
       else { user.favorites.splice(idx, 1); favorited = false; }
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { favorited });
     }
     if (pathname === '/api/favorites' && req.method === 'GET') {
@@ -349,6 +380,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { products: list });
     }
 
+    // ---- Buyurtma bo'yicha xabar almashish ----
     const orderMsgMatch = pathname.match(/^\/api\/orders\/(\d+)\/messages$/);
     if (orderMsgMatch) {
       const user = getUserFromReq(req, db);
@@ -371,11 +403,12 @@ const server = http.createServer(async (req, res) => {
           senderName: user.name, text: text.trim(), createdAt: new Date().toISOString()
         };
         db.messages.push(msg);
-        saveDB(db);
+        await saveDB(db);
         return sendJSON(res, 200, { message: msg });
       }
     }
 
+    // ---- Sotuvchi komissiya to'lovini yuborish (chek/skrinshot bilan) ----
     if (pathname === '/api/payments' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar to'lov yubora oladi" });
@@ -388,10 +421,11 @@ const server = http.createServer(async (req, res) => {
         createdAt: new Date().toISOString()
       };
       db.payments.push(payment);
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { payment });
     }
 
+    // ---- Sotuvchining o'z to'lovlari ----
     if (pathname === '/api/payments/mine' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -399,6 +433,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { payments: list });
     }
 
+    // ==================== ADMIN ====================
     if (pathname === '/api/admin/sellers' && req.method === 'GET') {
       const admin = requireAdmin(req, db);
       if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
@@ -450,7 +485,7 @@ const server = http.createServer(async (req, res) => {
       if (!order) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
       const { adminNote } = await readBody(req);
       order.adminNote = adminNote || '';
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { order });
     }
 
@@ -479,10 +514,11 @@ const server = http.createServer(async (req, res) => {
       if (status !== 'tasdiqlandi' && wasApproved && seller) {
         seller.paidCommission = Math.max(0, (seller.paidCommission || 0) - payment.amount);
       }
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { payment });
     }
 
+    // ---- Buyurtma berish (xaridor) ----
     if (pathname === '/api/orders' && req.method === 'POST') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar buyurtma bera oladi" });
@@ -506,6 +542,7 @@ const server = http.createServer(async (req, res) => {
         deliveryTotal += deliveryFee;
         return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout, deliveryFee };
       });
+      // Zaxirani kamaytirish
       orderItems.forEach(it => {
         const p = db.products.find(pp => pp.id === it.productId);
         if (p) p.stock -= it.qty;
@@ -518,10 +555,11 @@ const server = http.createServer(async (req, res) => {
         createdAt: new Date().toISOString()
       };
       db.orders.push(order);
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { order });
     }
 
+    // ---- Xaridorning o'z buyurtmalari ----
     if (pathname === '/api/orders/mine' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
@@ -529,6 +567,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { orders: list });
     }
 
+    // ---- Sotuvchiga kelgan buyurtmalar ----
     if (pathname === '/api/orders/incoming' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -539,6 +578,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { orders: list });
     }
 
+    // ---- Sotuvchi daromadi (jami tushum, komissiya) ----
     if (pathname === '/api/earnings' && req.method === 'GET') {
       const user = getUserFromReq(req, db);
       if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -558,6 +598,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { totalSales, totalCommission, totalPayout, orderCount, commissionRate: COMMISSION_RATE, payoutCard: PAYOUT_CARD, paidCommission: user.paidCommission || 0, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT });
     }
 
+    // ---- Buyurtma holatini yangilash (sotuvchi) ----
     const statusMatch = pathname.match(/^\/api\/orders\/(\d+)\/status$/);
     if (statusMatch && req.method === 'PATCH') {
       const user = getUserFromReq(req, db);
@@ -569,7 +610,7 @@ const server = http.createServer(async (req, res) => {
       if (!ownsItem) return sendJSON(res, 403, { error: "Bu sizning buyurtmangiz emas" });
       const { status } = await readBody(req);
       order.status = status;
-      saveDB(db);
+      await saveDB(db);
       return sendJSON(res, 200, { order });
     }
 
@@ -580,6 +621,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`);
+connectMongo().then(() => {
+  server.listen(PORT, () => {
+    console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`);
+  });
+}).catch(err => {
+  console.error('MongoDB ulanishda xato:', err.message);
+  process.exit(1);
 });
