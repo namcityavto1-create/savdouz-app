@@ -1,10 +1,13 @@
 {
   "name": "savdouz",
   "version": "1.0.0",
-  "description": "SavdoUz - ko'p sotuvchili marketplace (backend + frontend)",
+  "description": "SavdoUz - ko'p sotuvchili marketplace",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": { "node": ">=14" }
+  "engines": { "node": ">=14" },
+  "dependencies": {
+    "mongodb": "^6.10.0"
+  }
 }
