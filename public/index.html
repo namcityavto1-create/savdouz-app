@@ -170,7 +170,15 @@ async function api(path, opts={}){
   if(state.token) headers['Authorization'] = 'Bearer ' + state.token;
   const res = await fetch(API + path, { ...opts, headers });
   const data = await res.json();
-  if(!res.ok) throw new Error(data.error || 'Xato yuz berdi');
+  if(!res.ok){
+    if(res.status===401 && state.token){
+      localStorage.removeItem('savdouz_token');
+      state = { token:null,user:null,tab:'home',cat:'Barchasi',cart:{},pendingImage:null,editingProduct:null };
+      showToast("Sessiya tugadi, qaytadan kiring");
+      renderAuth();
+    }
+    throw new Error(data.error || 'Xato yuz berdi');
+  }
   return data;
 }
 function showToast(msg){
@@ -866,10 +874,19 @@ async function renderAdminTab(main){
             <div class="pseller">${p.sellerName} · ${p.sellerPhone}</div>
             ${priceHtml(p)}
             <div style="font-size:10.5px;color:var(--muted)">Omborda: ${p.stock} dona</div>
-            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'}">${deliveryLabel(p, 'short')}</div>
+            <div style="font-size:10px;color:${(p.deliveryRegions||[]).length>0?'#1E7E34':'var(--muted)'};margin-bottom:6px">${deliveryLabel(p, 'short')}</div>
+            <button class="addbtn" style="background:var(--red)" data-admindel="${p.id}">O'chirish</button>
           </div>
         </div>`).join('') : `<div class="empty" style="grid-column:1/-1">Mahsulot yo'q</div>`}
       </div>`;
+    main.querySelectorAll('[data-admindel]').forEach(b=>b.onclick=async()=>{
+      if(!confirm("Bu mahsulotni o'chirishni tasdiqlaysizmi?")) return;
+      try{
+        await api('/api/products/'+b.dataset.admindel, { method:'DELETE' });
+        showToast("Mahsulot o'chirildi");
+        await renderTab();
+      } catch(e){ showToast(e.message); }
+    });
   }
 
   else if(state.tab==='buyers'){
