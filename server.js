@@ -15,7 +15,7 @@ const COMMISSION_RATE = 0.01;
 const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
 const DEBT_LIMIT = 10000;
 const ADMIN_PHONE = '+998774071234';
-const CAT_ICON = { "Telefon": "phone", "Kiyim": "shirt", "Uy-ro'zg'or": "sofa", "Avto": "car", "Boshqa": "laptop" };
+const CAT_ICON = { "Telefon": "phone", "Kompyuter": "laptop", "Elektronika": "laptop", "Maishiy texnika": "laptop", "Kiyim": "shirt", "Poyabzal": "shirt", "Aksessuarlar": "shirt", "Go'zallik": "shirt", "Oziq-ovqat": "sofa", "Uy-ro'zg'or": "sofa", "Mebel": "sofa", "Bolalar": "shirt", "Sport": "shirt", "Avto": "car", "Qurilish": "car", "Kitob": "laptop", "Boshqa": "laptop" };
 const REGIONS = ["Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan", "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand", "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"];
 class UserErr extends Error {}
 
