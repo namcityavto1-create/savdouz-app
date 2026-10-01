@@ -1,4 +1,4 @@
-// SavdoUz backend v2 — MongoDB Atlas
+// SavdoUz backend v3 — MongoDB Atlas + hafta chegirmasi
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
 const { MongoClient } = require('mongodb');
 
@@ -8,13 +8,13 @@ const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) console.error("XATO: MONGODB_URI topilmadi. Render Environment'ga qo'shing.");
 const mongoClient = new MongoClient(MONGODB_URI);
 let stateCollection, cache = null, adminDone = false;
-// Token imzosi uchun sir. Render Environment'da SESSION_SECRET qo'yish tavsiya etiladi.
 const SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update('sv:' + String(MONGODB_URI)).digest('hex');
 
 const COMMISSION_RATE = 0.01;
 const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
 const DEBT_LIMIT = 10000;
 const ADMIN_PHONE = '+998774071234';
+const WEEK = 7 * 864e5;
 const CAT_ICON = { "Telefon": "phone", "Kompyuter": "laptop", "Elektronika": "laptop", "Maishiy texnika": "laptop", "Kiyim": "shirt", "Poyabzal": "shirt", "Aksessuarlar": "shirt", "Go'zallik": "shirt", "Oziq-ovqat": "sofa", "Uy-ro'zg'or": "sofa", "Mebel": "sofa", "Bolalar": "shirt", "Sport": "shirt", "Avto": "car", "Qurilish": "car", "Kitob": "laptop", "Boshqa": "laptop" };
 const REGIONS = ["Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan", "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand", "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"];
 class UserErr extends Error {}
@@ -25,7 +25,7 @@ async function connectMongo() {
   console.log('MongoDB ulanish muvaffaqiyatli ✅');
 }
 
-// ---------- Baza: bir marta yuklanadi va xotirada turadi (tez) ----------
+// ---------- Baza ----------
 async function loadDB() {
   if (cache) return cache;
   let db = await stateCollection.findOne({ _id: 'main' });
@@ -46,6 +46,7 @@ async function loadDB() {
     if (p.deliveryRegions === undefined) p.deliveryRegions = (p.deliveryAvailable === false) ? [] : ['barchasi'];
     if (p.deliveryPrice === undefined) p.deliveryPrice = 0;
     if (p.oldPrice === undefined) p.oldPrice = null;
+    if (p.salePrice === undefined) { p.salePrice = null; p.saleEndsAt = null; }
   });
   db.orders.forEach(o => {
     if (!o.paymentMethod || o.paymentMethod === 'naqd/yetkazishda') o.paymentMethod = 'naqd';
@@ -65,7 +66,6 @@ function hashPassword(password, salt) {
 }
 function verifyPassword(password, salt, hash) { return crypto.scryptSync(password, salt, 64).toString('hex') === hash; }
 const sign = p => crypto.createHmac('sha256', SECRET).update(p).digest('hex');
-// Token endi imzolangan: server qayta ishga tushsa ham foydalanuvchi chiqib ketmaydi
 function makeToken(id) { const p = id + '.' + (Date.now() + 30 * 864e5); return p + '.' + sign(p); }
 function getUserFromReq(req, db) {
   const a = req.headers['authorization'];
@@ -79,7 +79,6 @@ function getUserFromReq(req, db) {
   return db.users.find(u => u.id === Number(id)) || null;
 }
 
-// Admin parolini kodda saqlamang: Render Environment'ga ADMIN_PASSWORD qo'ying
 async function ensureAdmin(db) {
   if (adminDone) return; adminDone = true;
   const pw = process.env.ADMIN_PASSWORD;
@@ -113,8 +112,27 @@ function readBody(req) {
   });
 }
 const publicUser = u => ({ id: u.id, name: u.name, phone: u.phone, role: u.role });
-// Ro'yxatlarda rasm matni emas, qisqa havola yuboriladi (juda tez ochiladi)
-const pub = p => ({ ...p, image: p.image ? `/api/img/${p.id}?v=${p.imgv || 0}` : null });
+
+// ---- Hafta chegirmasi: 7 kundan keyin o'zi tugaydi (vaqt tekshiriladi, qo'shimcha ish kerak emas) ----
+const saleActive = p => p.salePrice > 0 && p.saleEndsAt && Date.now() < new Date(p.saleEndsAt).getTime();
+const curPrice = p => saleActive(p) ? p.salePrice : p.price;
+function applySale(p, b) {
+  if (b.saleOn === undefined) return;
+  const sp = Number(b.salePrice);
+  if (b.saleOn && sp > 0 && sp < p.price) {
+    if (!saleActive(p)) p.saleEndsAt = new Date(Date.now() + WEEK).toISOString();
+    p.salePrice = sp;
+  } else { p.salePrice = null; p.saleEndsAt = null; }
+}
+// Ro'yxatlarda rasm matni emas, qisqa havola yuboriladi
+const pub = p => {
+  const on = saleActive(p);
+  return {
+    ...p, image: p.image ? `/api/img/${p.id}?v=${p.imgv || 0}` : null,
+    regularPrice: p.price, price: on ? p.salePrice : p.price, oldPrice: on ? p.price : p.oldPrice,
+    onSale: !!on, daysLeft: on ? Math.max(1, Math.ceil((new Date(p.saleEndsAt).getTime() - Date.now()) / 864e5)) : 0
+  };
+};
 const initials = n => String(n || '').trim().split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase() + '.').join(' ');
 function ordOut(o, db) {
   const { receiptImage, ...r } = o;
@@ -127,13 +145,11 @@ function ordOut(o, db) {
 function sellerItems(db, sid, deliveredOnly) {
   return db.orders.filter(o => !deliveredOnly || o.status === 'yetkazildi').flatMap(o => o.items.filter(it => it.sellerId === sid));
 }
-// Qarz = yetkazilgan buyurtmalar komissiyasi − to'langani
 function computeSellerDebt(db, sid) {
   const c = sellerItems(db, sid, true).reduce((s, it) => s + (it.commission || 0), 0);
   const u = db.users.find(x => x.id === sid);
   return c - (u ? u.paidCommission || 0 : 0);
 }
-// Qarz bo'lsa, sotuvchi hisobidagi balansdan yechiladi
 function settle(db, s) {
   const take = Math.min(s.balance || 0, Math.max(0, computeSellerDebt(db, s.id)));
   if (take > 0) {
@@ -144,7 +160,7 @@ function settle(db, s) {
 const deliversTo = (p, region) => (p.deliveryRegions || []).some(r => r === 'barchasi' || r === region);
 const ratingOf = (db, pid) => { const r = db.reviews.filter(x => x.productId === pid); return { avgRating: r.length ? r.reduce((s, x) => s + x.rating, 0) / r.length : 0, reviewCount: r.length }; };
 
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json' };
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 function serveStatic(req, res, pathname) {
   const filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
   if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
@@ -180,12 +196,10 @@ const server = http.createServer(async (req, res) => {
     const M = req.method;
     let m;
 
-    // Mahsulot rasmi (ochiq, keshlanadi)
     if ((m = pathname.match(/^\/api\/img\/(\d+)$/)) && M === 'GET') {
       const p = db.products.find(x => x.id === Number(m[1]));
       return sendDataImage(res, p && p.image, 'public, max-age=31536000');
     }
-    // Chek rasmi (faqat xaridor, shu buyurtma sotuvchisi yoki admin)
     if ((m = pathname.match(/^\/api\/receipt\/(\d+)$/)) && M === 'GET') {
       const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
       if (!u || !o || !(o.buyerId === u.id || u.role === 'admin' || o.items.some(i => i.sellerId === u.id))) { res.writeHead(403); return res.end(); }
@@ -254,7 +268,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/products' && M === 'POST') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
-      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = await readBody(req);
+      const body = await readBody(req);
+      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = body;
       if (!name || !cat || !price) return sendJSON(res, 400, { error: "Nom, kategoriya va narxni kiriting" });
       const product = {
         id: db.nextId.product++, sellerId: u.id, name, cat, price: Number(price), desc: desc || '', icon: CAT_ICON[cat] || 'laptop',
@@ -262,8 +277,10 @@ const server = http.createServer(async (req, res) => {
         image: typeof image === 'string' && image.startsWith('data:') ? image : null, imgv: 1,
         deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : ['barchasi'],
         deliveryPrice: deliveryPrice !== undefined && deliveryPrice !== '' ? Number(deliveryPrice) : 0,
-        oldPrice: (oldPrice !== undefined && oldPrice !== '' && Number(oldPrice) > Number(price)) ? Number(oldPrice) : null
+        oldPrice: (oldPrice !== undefined && oldPrice !== '' && Number(oldPrice) > Number(price)) ? Number(oldPrice) : null,
+        salePrice: null, saleEndsAt: null
       };
+      applySale(product, body);
       db.products.push(product); await saveDB(db);
       return sendJSON(res, 200, { product: pub(product) });
     }
@@ -295,6 +312,7 @@ const server = http.createServer(async (req, res) => {
       if (Array.isArray(b.deliveryRegions)) p.deliveryRegions = b.deliveryRegions;
       if (b.deliveryPrice !== undefined && b.deliveryPrice !== '') p.deliveryPrice = Number(b.deliveryPrice);
       if (b.oldPrice !== undefined) p.oldPrice = (b.oldPrice !== '' && Number(b.oldPrice) > p.price) ? Number(b.oldPrice) : null;
+      applySale(p, b);
       await saveDB(db);
       return sendJSON(res, 200, { product: pub(p) });
     }
@@ -352,7 +370,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // ---- Sotuvchining platformaga komissiya to'lovi (admin tasdiqlaydi) ----
+    // ---- Sotuvchining komissiya to'lovi ----
     if (pathname === '/api/payments' && M === 'POST') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar to'lov yubora oladi" });
       const { amount, receiptImage } = await readBody(req);
@@ -386,7 +404,6 @@ const server = http.createServer(async (req, res) => {
         });
         return sendJSON(res, 200, { sellers });
       }
-      // Sotuvchi hisobiga pul tushirish — faqat admin
       if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/deposit$/)) && M === 'POST') {
         const s = db.users.find(u => u.id === Number(m[1]) && u.role === 'seller');
         if (!s) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
@@ -398,7 +415,6 @@ const server = http.createServer(async (req, res) => {
         await saveDB(db);
         return sendJSON(res, 200, { balance: s.balance });
       }
-      // Sotuvchini o'chirish — faqat admin (faol buyurtmasi bo'lsa o'chirilmaydi)
       if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)$/)) && M === 'DELETE') {
         const sid = Number(m[1]);
         const i = db.users.findIndex(u => u.id === sid && u.role === 'seller');
@@ -465,9 +481,10 @@ const server = http.createServer(async (req, res) => {
         if ((p.stock || 0) < qty) throw new UserErr(`"${p.name}" omborda yetarli emas (bor: ${p.stock} dona)`);
         if (!deliversTo(p, region)) throw new UserErr(`"${p.name}" "${region}" hududiga yetkazilmaydi`);
         if (method === 'karta') { const s = db.users.find(x => x.id === p.sellerId); if (!s || !s.card) throw new UserErr(`"${p.name}" sotuvchisi karta kiritmagan. Naqd to'lovni tanlang`); }
-        const subtotal = p.price * qty, commission = Math.round(subtotal * COMMISSION_RATE), deliveryFee = p.deliveryPrice || 0;
+        const unit = curPrice(p);
+        const subtotal = unit * qty, commission = Math.round(subtotal * COMMISSION_RATE), deliveryFee = p.deliveryPrice || 0;
         total += subtotal; deliveryTotal += deliveryFee;
-        return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout: subtotal - commission, deliveryFee };
+        return { productId: p.id, name: p.name, price: unit, qty, sellerId: p.sellerId, subtotal, commission, payout: subtotal - commission, deliveryFee };
       });
       orderItems.forEach(it => { const p = db.products.find(x => x.id === it.productId); if (p) p.stock -= it.qty; });
       const order = {
@@ -501,7 +518,6 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Xaridor chek yuboradi
     if ((m = pathname.match(/^\/api\/orders\/(\d+)\/receipt$/)) && M === 'POST') {
       const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
       if (!u || !o || o.buyerId !== u.id) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -512,7 +528,6 @@ const server = http.createServer(async (req, res) => {
       o.receiptImage = image; o.paymentStatus = 'chek yuborildi'; await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
-    // Sotuvchi to'lovni tasdiqlaydi yoki rad etadi
     if ((m = pathname.match(/^\/api\/orders\/(\d+)\/payment$/)) && M === 'POST') {
       const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
       if (!u || !o || u.role !== 'seller' || !o.items.some(i => i.sellerId === u.id)) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -522,7 +537,6 @@ const server = http.createServer(async (req, res) => {
       o.paymentStatus = status; await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
-    // Xaridor mahsulotni oldim deydi — shundan keyin komissiya yechiladi
     if ((m = pathname.match(/^\/api\/orders\/(\d+)\/received$/)) && M === 'POST') {
       const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
       if (!u || !o || o.buyerId !== u.id) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
@@ -533,7 +547,6 @@ const server = http.createServer(async (req, res) => {
       await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
-    // Sotuvchi holatni o'zgartiradi ("yetkazildi" ni faqat xaridor qo'yadi)
     if ((m = pathname.match(/^\/api\/orders\/(\d+)\/status$/)) && M === 'PATCH') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
       const o = db.orders.find(x => x.id === Number(m[1]));
