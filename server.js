@@ -168,10 +168,10 @@ function serveStatic(req, res, pathname) {
     if (err) {
       return fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (e2, c2) => {
         if (e2) { res.writeHead(404); return res.end('Not found'); }
-        res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(c2);
+        res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' }); res.end(c2);
       });
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(content);
   });
 }
@@ -244,6 +244,7 @@ const server = http.createServer(async (req, res) => {
     // ---- Sotuvchi hisobi va kartasi ----
     if (pathname === '/api/account' && M === 'GET') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      { const before = u.balance || 0; settle(db, u); if ((u.balance || 0) !== before) await saveDB(db); }
       return sendJSON(res, 200, { accountNumber: u.accountNumber, balance: u.balance || 0, card: u.card || null, transactions: (u.txs || []).slice(-20).reverse() });
     }
     if (pathname === '/api/me/card' && M === 'PATCH') {
@@ -507,6 +508,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/earnings' && M === 'GET') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      { const before = u.balance || 0; settle(db, u); if ((u.balance || 0) !== before) await saveDB(db); }
       const all = sellerItems(db, u.id, false), del = sellerItems(db, u.id, true);
       const totalCommission = del.reduce((s, it) => s + (it.commission || 0), 0);
       const debt = totalCommission - (u.paidCommission || 0);
