@@ -114,7 +114,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fmt = n => Number(n || 0).toLocaleString('ru-RU') + " so'm";
 const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none' });
 let S = { ...fresh(), token: localStorage.getItem('savdouz_token') };
-const CATS = ["Barchasi","Telefon","Kiyim","Uy-ro'zg'or","Avto","Boshqa"];
+const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","Kiyim","Poyabzal","Aksessuarlar","Go'zallik","Oziq-ovqat","Uy-ro'zg'or","Mebel","Bolalar","Sport","Avto","Qurilish","Kitob","Boshqa"];
 const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
 
@@ -218,7 +218,7 @@ function renderApp(){
 function renderNav(){
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
   const items = role()==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]]
-    : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar'],['account','💼','Hisobim']]
+    : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar'],['pay','💰',"To'lov"],['account','💼','Hisobim']]
     : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']];
   const active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
   $('nav').innerHTML = items.map(([k,i,l]) => `<div class="navitem ${active===k?'active':''}" data-tab="${k}"><div class="navicon">${i}</div>${l}${k==='cart'&&cnt>0?`<span class="badge">${cnt}</span>`:''}</div>`).join('');
@@ -345,6 +345,7 @@ async function renderTabInner(main){
   if(S.tab==='orders') return seller ? sellerOrders(main) : buyerOrders(main);
   if(S.tab==='add' && seller) return sellerAdd(main);
   if(S.tab==='account' && seller) return sellerAccount(main);
+  if(S.tab==='pay' && seller) return sellerPayments(main);
   S.tab = 'home'; renderNav(); return renderTab();
 }
 
@@ -593,22 +594,8 @@ async function sellerAdd(main){
 }
 
 async function sellerOrders(main){
-  const [{ orders }, earn, pay] = await Promise.all([
-    api('/api/orders/incoming'),
-    api('/api/earnings').catch(() => null),
-    api('/api/payments/mine').catch(() => ({ payments: [] }))
-  ]);
-  const myPay = pay.payments || [];
+  const [{ orders }, earn] = await Promise.all([api('/api/orders/incoming'), api('/api/earnings').catch(() => null)]);
   const rate = earn ? Math.round((earn.commissionRate || 0) * 100) : 0;
-  const summary = earn ? `<div class="summary">
-    <div class="sumrow"><span>Jami savdo</span><span>${fmt(earn.totalSales)}</span></div>
-    <div class="sumrow"><span>Platforma komissiyasi (${rate}%)</span><span>−${fmt(earn.totalCommission)}</span></div>
-    <div class="sumrow"><span>To'langan komissiya</span><span>${fmt(earn.paidCommission)}</span></div>
-    <div class="sumrow total" style="color:${earn.debt>0?'var(--red)':'var(--ink)'}"><span>${earn.debt>0 ? 'Qarzingiz' : "Qarzingiz yo'q"}</span><span>${fmt(Math.max(0, earn.debt))}</span></div>
-    <div class="sumrow" style="margin-top:4px"><span>Ruxsat etilgan limit</span><span>${fmt(earn.debtLimit)}</span></div>
-    ${earn.restricted ? '<div class="warn" style="margin-top:10px">⚠️ Qarzingiz limitdan oshgan! Mahsulotlaringiz ko\'rinmayapti. To\'lov qilib, admin tasdiqlashi bilan qayta ochiladi.</div>' : ''}
-    ${earn.payoutCard ? `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)"><div style="font-size:11px;color:var(--mut);margin-bottom:6px">Komissiyani shu kartaga o'tkazing:</div><div style="background:var(--vl);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:14px;color:var(--vd)">${esc(earn.payoutCard.number)}</div><div style="font-size:11px;color:var(--mut);margin-top:2px">${esc(earn.payoutCard.name)}</div></div></div>` : ''}</div>`
-    : '<div class="warn">Daromad ma\'lumotlarini yuklab bo\'lmadi</div>';
   const ordersHtml = !orders.length ? '<div class="empty">📦<br><br>Hali buyurtma tushmagan</div>' : '<div class="sectitle" style="margin:16px 0 12px">Kelgan buyurtmalar</div>' + orders.map(o => {
     const its = o.items || [];
     const com = its.reduce((s, i) => s + (i.commission || 0), 0), del = its.reduce((s, i) => s + (i.deliveryFee || 0), 0);
@@ -625,12 +612,34 @@ async function sellerOrders(main){
       <select class="statusSel" data-order="${o.id}" ${done ? 'disabled' : ''}>${opts.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>
       ${!done ? '<div style="font-size:10.5px;color:var(--mut);margin-top:5px">«Yetkazildi» holatini xaridor «Oldim» tugmasi bilan qo\'yadi</div>' : ''}${chatBtn(o.id)}</div>`;
   }).join('');
+  main.innerHTML = ordersHtml;
+  main.querySelectorAll('.statusSel').forEach(s => s.onchange = async () => {
+    try { await api('/api/orders/' + s.dataset.order + '/status', { method:'PATCH', body:JSON.stringify({ status:s.value }) }); toast('Holat yangilandi'); }
+    catch(e){ toast(e.message); renderTab(); }
+  });
+  wirePay(main, renderTab);
+  wireChat(main);
+}
+
+async function sellerPayments(main){
+  const [earn, pay] = await Promise.all([api('/api/earnings').catch(() => null), api('/api/payments/mine').catch(() => ({ payments: [] }))]);
+  const myPay = pay.payments || [];
+  const rate = earn ? Math.round((earn.commissionRate || 0) * 100) : 0;
+  const summary = earn ? `<div class="summary">
+    <div class="sumrow"><span>Jami savdo</span><span>${fmt(earn.totalSales)}</span></div>
+    <div class="sumrow"><span>Platforma komissiyasi (${rate}%)</span><span>−${fmt(earn.totalCommission)}</span></div>
+    <div class="sumrow"><span>To'langan komissiya</span><span>${fmt(earn.paidCommission)}</span></div>
+    <div class="sumrow total" style="color:${earn.debt>0?'var(--red)':'var(--ink)'}"><span>${earn.debt>0 ? 'Qarzingiz' : "Qarzingiz yo'q"}</span><span>${fmt(Math.max(0, earn.debt))}</span></div>
+    <div class="sumrow" style="margin-top:4px"><span>Ruxsat etilgan limit</span><span>${fmt(earn.debtLimit)}</span></div>
+    ${earn.restricted ? '<div class="warn" style="margin-top:10px">⚠️ Qarzingiz limitdan oshgan! Mahsulotlaringiz ko\'rinmayapti. To\'lov qilib, admin tasdiqlashi bilan qayta ochiladi.</div>' : ''}
+    ${earn.payoutCard ? `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)"><div style="font-size:11px;color:var(--mut);margin-bottom:6px">Komissiyani shu kartaga o'tkazing:</div><div style="background:var(--vl);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:14px;color:var(--vd)">${esc(earn.payoutCard.number)}</div><div style="font-size:11px;color:var(--mut);margin-top:2px">${esc(earn.payoutCard.name)}</div></div></div>` : ''}</div>`
+    : '<div class="warn">Daromad ma\'lumotlarini yuklab bo\'lmadi</div>';
   const stc = s => s==='tasdiqlandi' ? ['#E6F4EA','var(--grn)'] : s==='rad etildi' ? ['#FDEDED','var(--red)'] : ['var(--vl)','var(--vd)'];
-  main.innerHTML = summary + `<div class="addform"><div class="sectitle" style="font-size:14px">To'lov yuborish</div>
+  main.innerHTML = '<div class="sectitle">Komissiya va to\'lov</div>' + summary + `<div class="addform"><div class="sectitle" style="font-size:14px">To'lov yuborish</div>
     <div class="field"><label>To'langan summa (so'm)</label><input id="payAmount" type="number" inputmode="numeric" placeholder="Masalan: 50000"></div>
     <div class="field"><label>Chek yoki skrinshot</label><div class="imgpreview" id="receiptPreview"><span>Rasm tanlanmagan</span></div><input id="payReceipt" type="file" accept="image/*"></div>
     <button class="primarybtn" id="sendPay">Yuborish</button></div>` +
-    (myPay.length ? '<div class="sectitle" style="font-size:14px">Mening to\'lovlarim</div>' + myPay.map(p => { const c = stc(p.status); return `<div class="oitem"><div class="top"><span>${fmt(p.amount)} · ${new Date(p.createdAt).toLocaleDateString('uz')}</span><span class="status" style="background:${c[0]};color:${c[1]}">${esc(p.status)}</span></div>${p.adminNote ? `<div style="font-size:11.5px;color:var(--mut)">Admin izohi: ${esc(p.adminNote)}</div>` : ''}</div>`; }).join('') : '') + ordersHtml;
+    (myPay.length ? '<div class="sectitle" style="font-size:14px">Mening to\'lovlarim</div>' + myPay.map(p => { const c = stc(p.status); return `<div class="oitem"><div class="top"><span>${fmt(p.amount)} · ${new Date(p.createdAt).toLocaleDateString('uz')}</span><span class="status" style="background:${c[0]};color:${c[1]}">${esc(p.status)}</span></div>${p.adminNote ? `<div style="font-size:11.5px;color:var(--mut)">Admin izohi: ${esc(p.adminNote)}</div>` : ''}</div>`; }).join('') : '');
   S.receipt = null;
   $('payReceipt').onchange = async e => {
     const f = e.target.files[0]; if(!f) return;
@@ -645,13 +654,8 @@ async function sellerOrders(main){
     try { await api('/api/payments', { method:'POST', body:JSON.stringify({ amount, receiptImage:S.receipt }) }); S.receipt = null; toast("To'lov yuborildi, admin tasdiqlaydi ✅"); renderTab(); }
     catch(e){ toast(e.message); $('sendPay').disabled = false; }
   };
-  main.querySelectorAll('.statusSel').forEach(s => s.onchange = async () => {
-    try { await api('/api/orders/' + s.dataset.order + '/status', { method:'PATCH', body:JSON.stringify({ status:s.value }) }); toast('Holat yangilandi'); }
-    catch(e){ toast(e.message); renderTab(); }
-  });
-  wirePay(main, renderTab);
-  wireChat(main);
 }
+
 
 // ---- Admin ----
 async function renderAdmin(main){
