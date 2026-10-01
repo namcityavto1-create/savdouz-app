@@ -398,6 +398,18 @@ const server = http.createServer(async (req, res) => {
         await saveDB(db);
         return sendJSON(res, 200, { balance: s.balance });
       }
+      // Sotuvchini o'chirish — faqat admin (faol buyurtmasi bo'lsa o'chirilmaydi)
+      if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)$/)) && M === 'DELETE') {
+        const sid = Number(m[1]);
+        const i = db.users.findIndex(u => u.id === sid && u.role === 'seller');
+        if (i === -1) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
+        const active = db.orders.some(o => !['yetkazildi', 'bekor qilindi'].includes(o.status) && o.items.some(it => it.sellerId === sid));
+        if (active) return sendJSON(res, 400, { error: "Sotuvchining tugallanmagan buyurtmalari bor. Avval ularni yakunlang yoki bekor qiling" });
+        db.products = db.products.filter(p => p.sellerId !== sid);
+        db.users.splice(i, 1);
+        await saveDB(db);
+        return sendJSON(res, 200, { ok: true });
+      }
       if (pathname === '/api/admin/buyers' && M === 'GET') {
         const buyers = db.users.filter(u => u.role === 'buyer').map(b => {
           const mo = db.orders.filter(o => o.buyerId === b.id);
