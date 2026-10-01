@@ -216,7 +216,7 @@ function renderApp(){
 function renderNav(){
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
   const items = role()==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]]
-    : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar']]
+    : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['add','➕',"Qo'shish"],['orders','📦','Buyurtmalar'],['account','💼','Hisobim']]
     : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']];
   const active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
   $('nav').innerHTML = items.map(([k,i,l]) => `<div class="navitem ${active===k?'active':''}" data-tab="${k}"><div class="navicon">${i}</div>${l}${k==='cart'&&cnt>0?`<span class="badge">${cnt}</span>`:''}</div>`).join('');
@@ -342,6 +342,7 @@ async function renderTabInner(main){
   if(S.tab==='cart' && !seller) return buyerCart(main);
   if(S.tab==='orders') return seller ? sellerOrders(main) : buyerOrders(main);
   if(S.tab==='add' && seller) return sellerAdd(main);
+  if(S.tab==='account' && seller) return sellerAccount(main);
   S.tab = 'home'; renderNav(); return renderTab();
 }
 
@@ -504,10 +505,10 @@ async function buyerOrders(main){
 
 function accountHtml(a){
   if(!a) return '';
-  return `<div class="summary"><div class="sectitle" style="font-size:14px">💼 Mening hisobim</div>
+  return `<div class="summary"><div style="font-size:12px;color:var(--mut);margin-bottom:10px">Admin pul tushirsa, balansda shu yerda ko'rinadi</div>
     <div class="sumrow"><span>Hisob raqami</span><span style="font-weight:800;color:var(--ink)">${esc(a.accountNumber)}</span></div>
     <div class="sumrow total"><span>Balans</span><span>${fmt(a.balance)}</span></div>
-    ${(a.transactions||[]).length ? `<div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">${a.transactions.slice(0,5).map(t => `<div class="oline" style="font-size:11.5px"><span>${esc(t.note)}</span><span style="font-weight:700;color:${t.amount<0?'var(--red)':'var(--grn)'}">${t.amount>0?'+':''}${fmt(t.amount)}</span></div>`).join('')}</div>` : ''}
+    ${(a.transactions||[]).length ? `<div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">${a.transactions.slice(0,20).map(t => `<div class="oline" style="font-size:11.5px"><span>${esc(t.note)}</span><span style="font-weight:700;color:${t.amount<0?'var(--red)':'var(--grn)'}">${t.amount>0?'+':''}${fmt(t.amount)}</span></div>`).join('')}</div>` : ''}
     <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
       <div style="font-size:12px;font-weight:800;margin-bottom:8px">💳 Qabul qilish kartasi ${a.card ? '' : '<span style="color:var(--red)">(kiritilmagan)</span>'}</div>
       <div class="field"><label>Karta raqami (16 xonali)</label><input id="cardNum" inputmode="numeric" maxlength="19" placeholder="8600 0000 0000 0000" value="${a.card ? esc(a.card.number) : ''}"></div>
@@ -524,16 +525,21 @@ function wireCard(main){
   };
 }
 
+async function sellerAccount(main){
+  const acc = await api('/api/account');
+  main.innerHTML = '<div class="sectitle">Mening hisobim</div>' + accountHtml(acc);
+  wireCard(main);
+}
+
 async function sellerHome(main){
-  const [{ products }, earn, acc] = await Promise.all([api('/api/my-products'), api('/api/earnings').catch(() => null), api('/api/account').catch(() => null)]);
-  main.innerHTML = accountHtml(acc) + '<div class="sectitle">Mening mahsulotlarim</div>' +
+  const [{ products }, earn] = await Promise.all([api('/api/my-products'), api('/api/earnings').catch(() => null)]);
+  main.innerHTML = '<div class="sectitle">Mening mahsulotlarim</div>' +
     (earn && earn.restricted ? `<div class="warn">⚠️ Qarzingiz limitdan (${fmt(earn.debtLimit)}) oshgan! Mahsulotlaringiz xaridorlarga ko'rinmayapti. "Buyurtmalar" bo'limidan to'lov yuboring.</div>` : '') +
     (products.length ? `<div class="grid">${products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
       <span class="tag">${esc(p.cat)}</span><div class="pname">${esc(p.name)}</div>${priceHtml(p)}
       <div style="font-size:10.5px;color:var(--mut);margin-bottom:2px">Omborda: ${p.stock} dona</div>
       <div style="font-size:10px;color:${dcolor(p)};margin-bottom:6px;line-height:1.4">${delivery(p,'full')}</div>
       <div style="display:flex;gap:6px"><button class="addbtn" style="background:var(--vd)" data-edit="${p.id}">Tahrirlash</button><button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button></div></div></div>`).join('')}</div>` : '<div class="empty">Hali mahsulot qo\'shmagansiz.<br>"Qo\'shish" bo\'limiga o\'ting.</div>');
-  wireCard(main);
   main.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if(!confirm("Rostdan ham o'chirmoqchimisiz?")) return;
     try { await api('/api/products/' + b.dataset.del, { method:'DELETE' }); toast("Mahsulot o'chirildi"); renderTab(); } catch(e){ toast(e.message); }
