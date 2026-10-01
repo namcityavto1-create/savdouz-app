@@ -280,6 +280,23 @@ function wire(main, products, after){
 }
 const goBack = () => { S.tab = S.prev || 'home'; S.sel = null; renderNav(); renderTab(); };
 
+// ---- To'lov yordamchilari ----
+const PAYST = { naqd:'💵 Naqd', 'kutilmoqda':'⏳ Chek kutilmoqda', 'chek yuborildi':'🧾 Chek tekshirilmoqda', 'tasdiqlandi':"✅ To'lov tasdiqlandi", 'rad etildi':'❌ Chek rad etildi' };
+const payLabel = o => o.paymentMethod==='karta' ? (PAYST[o.paymentStatus] || o.paymentStatus) : PAYST.naqd;
+const rcpUrl = id => '/api/receipt/' + id + '?t=' + encodeURIComponent(S.token);
+const sellerPay = o => `<div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>`
+  + (o.hasReceipt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : '')
+  + (o.paymentStatus==='chek yuborildi' ? `<div style="display:flex;gap:6px;margin-top:8px"><button class="addbtn" style="background:var(--grn)" data-payok="${o.id}">Tasdiqlash</button><button class="addbtn" style="background:var(--red)" data-payno="${o.id}">Rad etish</button></div>` : '');
+function wirePay(main, after){
+  main.querySelectorAll('[data-fullimg]').forEach(i => i.onclick = () => window.open(i.src, '_blank'));
+  const act = (sel, key, status, msg) => main.querySelectorAll(sel).forEach(b => b.onclick = async () => {
+    try { await api('/api/orders/' + b.dataset[key] + '/payment', { method:'POST', body:JSON.stringify({ status }) }); toast(msg); after(); }
+    catch(e){ toast(e.message); }
+  });
+  act('[data-payok]', 'payok', 'tasdiqlandi', "To'lov tasdiqlandi ✅");
+  act('[data-payno]', 'payno', 'rad etildi', "To'lov rad etildi");
+}
+
 // ---- Chat ----
 const chatBtn = id => `<button class="addbtn" style="background:var(--vl);color:var(--vd);margin-top:8px" data-chattoggle="${id}">💬 Xabarlar</button><div data-chatbox="${id}" style="display:none;margin-top:10px"></div>`;
 function wireChat(main){
@@ -405,7 +422,8 @@ async function buyerCart(main){
     <div class="summary"><div class="sumrow"><span>Mahsulotlar</span><span>${fmt(total)}</span></div>
     <div class="sumrow"><span>Yetkazib berish</span><span id="dDisp">—</span></div>
     <div class="sumrow total"><span>Jami</span><span id="gDisp">${fmt(total)}</span></div>
-    <div class="sumrow" style="margin-top:4px">To'lov: naqd/yetkazishda</div>
+    <div class="field" style="margin-top:10px"><label>To'lov usuli</label><select id="pm"><option value="naqd">💵 Naqd (yetkazishda)</option><option value="karta">💳 Karta orqali (sotuvchi kartasiga)</option></select></div>
+    <div id="pmHint" style="font-size:11px;color:var(--mut);margin:-6px 0 8px;display:none">Buyurtmadan keyin «Buyurtmalarim» bo'limida sotuvchi kartasi ko'rinadi va chekni yuklaysiz.</div>
     <button class="checkout" id="checkoutBtn">Buyurtma berish</button></div>`;
   main.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const p = products.find(x => x.id == b.dataset.inc); if(p && S.cart[p.id] >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; } S.cart[b.dataset.inc]++; renderTab(); renderNav(); });
   main.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { S.cart[b.dataset.dec] = Math.max(0, S.cart[b.dataset.dec] - 1); renderTab(); renderNav(); });
@@ -420,16 +438,18 @@ async function buyerCart(main){
     return { bad };
   };
   $('region').onchange = calc; if(reg) calc();
+  $('pm').onchange = () => { $('pmHint').style.display = $('pm').value==='karta' ? 'block' : 'none'; };
   $('checkoutBtn').onclick = async () => {
-    const address = $('addr').value.trim(), region = $('region').value;
+    const address = $('addr').value.trim(), region = $('region').value, paymentMethod = $('pm').value;
     if(!region){ toast('Viloyatni tanlang'); return; }
     if(!address){ toast('Manzilni kiriting'); return; }
     const c = calc(); if(c && c.bad.length){ toast("Ba'zi mahsulotlar shu hududga yetkazilmaydi"); return; }
     $('checkoutBtn').disabled = true;
     try {
-      await api('/api/orders', { method:'POST', body:JSON.stringify({ items:ids.map(id => ({ productId:Number(id), qty:S.cart[id] })), address, region }) });
+      await api('/api/orders', { method:'POST', body:JSON.stringify({ items:ids.map(id => ({ productId:Number(id), qty:S.cart[id] })), address, region, paymentMethod }) });
       localStorage.setItem('savdouz_addr', address); localStorage.setItem('savdouz_region', region);
-      S.cart = {}; toast('Buyurtma qabul qilindi! ✅'); S.tab = 'orders'; renderNav(); renderTab();
+      S.cart = {}; toast(paymentMethod==='karta' ? "Qabul qilindi! «Buyurtmalarim»da chekni yuklang 🧾" : 'Buyurtma qabul qilindi! ✅');
+      S.tab = 'orders'; renderNav(); renderTab();
     } catch(e){ toast(e.message); $('checkoutBtn').disabled = false; }
   };
 }
@@ -437,13 +457,24 @@ async function buyerCart(main){
 async function buyerOrders(main){
   const { orders } = await api('/api/orders/mine');
   if(!orders.length){ main.innerHTML = '<div class="empty">📦<br><br>Hali buyurtmalar yo\'q</div>'; return; }
-  main.innerHTML = '<div class="sectitle">Buyurtmalarim</div>' + orders.map(o => `<div class="oitem">
+  main.innerHTML = '<div class="sectitle">Buyurtmalarim</div>' + orders.map(o => {
+    const needRcpt = o.paymentMethod==='karta' && ['kutilmoqda','rad etildi'].includes(o.paymentStatus) && o.status!=='bekor qilindi';
+    const canRecv = o.status==='kuryerga topshirildi' && (o.paymentMethod!=='karta' || o.paymentStatus==='tasdiqlandi');
+    return `<div class="oitem">
     <div class="top"><span>№${o.id} · ${new Date(o.createdAt).toLocaleDateString('uz')}</span><span class="status">${esc(o.status)}</span></div>
     ${o.region ? `<div style="font-size:11px;color:var(--mut);margin-bottom:4px">📍 ${esc(o.region)}${o.address ? ', ' + esc(o.address) : ''}</div>` : ''}
     ${(o.items||[]).map(it => `<div class="oline"><span>${esc(it.name)} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>
       <div class="rate-row" data-pid="${it.productId}" data-pname="${esc(it.name)}" style="display:flex;align-items:center;gap:4px;margin:2px 0 6px">${[1,2,3,4,5].map(n => `<span class="starbtn" data-star="${n}" style="cursor:pointer;color:#DADEDA;font-size:15px">★</span>`).join('')}<span style="font-size:10.5px;color:var(--mut);margin-left:4px">Baho qo'ying</span></div>`).join('')}
     ${o.deliveryTotal ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(o.deliveryTotal)}</span></div>` : ''}
-    <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>${chatBtn(o.id)}</div>`).join('');
+    <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+    <div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>
+    ${needRcpt ? `<div class="summary" style="margin:10px 0 0;background:var(--vl)">
+      <div style="font-size:11.5px;color:var(--mut);margin-bottom:6px">${fmt(o.total)} ni sotuvchi kartasiga o'tkazing:</div>
+      ${(o.sellers||[]).map(s => `<div style="margin-bottom:6px"><div style="font-weight:800;font-size:14px;color:var(--vd)">${s.card ? esc(s.card.number) : "Karta kiritilmagan"}</div><div style="font-size:11px;color:var(--mut)">${esc(s.name)}${s.card ? ' · ' + esc(s.card.holder) : ''} · ${esc(s.phone)}</div></div>`).join('')}
+      <label style="margin-top:8px">Chek yoki skrinshot yuklang</label><input type="file" accept="image/*" data-rfile="${o.id}"></div>` : ''}
+    ${o.hasReceipt && !needRcpt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
+    ${canRecv ? `<button class="checkout" style="margin-top:10px" data-recv="${o.id}">✅ Mahsulotni oldim</button>` : ''}
+    ${chatBtn(o.id)}</div>`; }).join('');
   main.querySelectorAll('.rate-row').forEach(row => {
     const st = row.querySelectorAll('.starbtn');
     st.forEach(s => s.onclick = async () => {
@@ -453,18 +484,56 @@ async function buyerOrders(main){
       catch(e){ toast(e.message); }
     });
   });
+  main.querySelectorAll('[data-rfile]').forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if(!f) return;
+    try {
+      toast('Chek yuborilmoqda...');
+      const image = await readImage(f);
+      await api('/api/orders/' + inp.dataset.rfile + '/receipt', { method:'POST', body:JSON.stringify({ image }) });
+      toast('Chek yuborildi, sotuvchi tasdiqlaydi ✅'); renderTab();
+    } catch(e){ toast(e.message); }
+  });
+  main.querySelectorAll('[data-recv]').forEach(b => b.onclick = async () => {
+    if(!confirm("Mahsulotni olganingizni tasdiqlaysizmi?")) return;
+    try { await api('/api/orders/' + b.dataset.recv + '/received', { method:'POST' }); toast('Rahmat! Buyurtma yetkazildi ✅'); renderTab(); }
+    catch(e){ toast(e.message); }
+  });
+  wirePay(main, () => {});
   wireChat(main);
 }
 
+function accountHtml(a){
+  if(!a) return '';
+  return `<div class="summary"><div class="sectitle" style="font-size:14px">💼 Mening hisobim</div>
+    <div class="sumrow"><span>Hisob raqami</span><span style="font-weight:800;color:var(--ink)">${esc(a.accountNumber)}</span></div>
+    <div class="sumrow total"><span>Balans</span><span>${fmt(a.balance)}</span></div>
+    ${(a.transactions||[]).length ? `<div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">${a.transactions.slice(0,5).map(t => `<div class="oline" style="font-size:11.5px"><span>${esc(t.note)}</span><span style="font-weight:700;color:${t.amount<0?'var(--red)':'var(--grn)'}">${t.amount>0?'+':''}${fmt(t.amount)}</span></div>`).join('')}</div>` : ''}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+      <div style="font-size:12px;font-weight:800;margin-bottom:8px">💳 Qabul qilish kartasi ${a.card ? '' : '<span style="color:var(--red)">(kiritilmagan)</span>'}</div>
+      <div class="field"><label>Karta raqami (16 xonali)</label><input id="cardNum" inputmode="numeric" maxlength="19" placeholder="8600 0000 0000 0000" value="${a.card ? esc(a.card.number) : ''}"></div>
+      <div class="field"><label>Ism familiya</label><input id="cardHolder" placeholder="Karta egasi" value="${a.card ? esc(a.card.holder) : ''}"></div>
+      <button class="primarybtn" id="saveCard" style="margin-top:0">Kartani saqlash</button>
+      <div style="font-size:10.5px;color:var(--mut);margin-top:6px">Xaridorlar karta orqali to'laganda shu kartaga o'tkazadi (ism faqat bosh harflarda ko'rinadi).</div></div></div>`;
+}
+function wireCard(main){
+  const b = $('saveCard'); if(!b) return;
+  b.onclick = async () => {
+    b.disabled = true;
+    try { await api('/api/me/card', { method:'PATCH', body:JSON.stringify({ number:$('cardNum').value, holder:$('cardHolder').value }) }); toast('Karta saqlandi ✅'); renderTab(); }
+    catch(e){ toast(e.message); b.disabled = false; }
+  };
+}
+
 async function sellerHome(main){
-  const [{ products }, earn] = await Promise.all([api('/api/my-products'), api('/api/earnings').catch(() => null)]);
-  main.innerHTML = '<div class="sectitle">Mening mahsulotlarim</div>' +
+  const [{ products }, earn, acc] = await Promise.all([api('/api/my-products'), api('/api/earnings').catch(() => null), api('/api/account').catch(() => null)]);
+  main.innerHTML = accountHtml(acc) + '<div class="sectitle">Mening mahsulotlarim</div>' +
     (earn && earn.restricted ? `<div class="warn">⚠️ Qarzingiz limitdan (${fmt(earn.debtLimit)}) oshgan! Mahsulotlaringiz xaridorlarga ko'rinmayapti. "Buyurtmalar" bo'limidan to'lov yuboring.</div>` : '') +
     (products.length ? `<div class="grid">${products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
       <span class="tag">${esc(p.cat)}</span><div class="pname">${esc(p.name)}</div>${priceHtml(p)}
       <div style="font-size:10.5px;color:var(--mut);margin-bottom:2px">Omborda: ${p.stock} dona</div>
       <div style="font-size:10px;color:${dcolor(p)};margin-bottom:6px;line-height:1.4">${delivery(p,'full')}</div>
       <div style="display:flex;gap:6px"><button class="addbtn" style="background:var(--vd)" data-edit="${p.id}">Tahrirlash</button><button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button></div></div></div>`).join('')}</div>` : '<div class="empty">Hali mahsulot qo\'shmagansiz.<br>"Qo\'shish" bo\'limiga o\'ting.</div>');
+  wireCard(main);
   main.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     if(!confirm("Rostdan ham o'chirmoqchimisiz?")) return;
     try { await api('/api/products/' + b.dataset.del, { method:'DELETE' }); toast("Mahsulot o'chirildi"); renderTab(); } catch(e){ toast(e.message); }
@@ -516,7 +585,6 @@ async function sellerAdd(main){
 }
 
 async function sellerOrders(main){
-  // Asosiy so'rov xato bersa — xato ko'rsatiladi; qo'shimchalari bo'lmasa ham sahifa ochiladi
   const [{ orders }, earn, pay] = await Promise.all([
     api('/api/orders/incoming'),
     api('/api/earnings').catch(() => null),
@@ -537,13 +605,17 @@ async function sellerOrders(main){
     const its = o.items || [];
     const com = its.reduce((s, i) => s + (i.commission || 0), 0), del = its.reduce((s, i) => s + (i.deliveryFee || 0), 0);
     const out = its.reduce((s, i) => s + (i.payout || i.price * i.qty), 0) + del;
+    const done = o.status==='yetkazildi';
+    const opts = ['yangi','tasdiqlandi','kuryerga topshirildi', ...(done ? ['yetkazildi'] : []), 'bekor qilindi'];
     return `<div class="oitem"><div class="top"><span>№${o.id} · ${esc(o.buyerName)} · ${esc(o.phone)}</span><span class="status">${esc(o.status)}</span></div>
       <div style="font-size:12px;color:var(--mut);margin-bottom:4px">📍 ${o.region ? esc(o.region) + ', ' : ''}${esc(o.address)}</div>
       ${its.map(i => `<div class="oline"><span>${esc(i.name)} × ${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
       ${del ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(del)}</span></div>` : ''}
       <div class="oline" style="color:var(--red)"><span>Komissiya${rate ? ' (' + rate + '%)' : ''}</span><span>−${fmt(com)}</span></div>
       <div class="ototal"><span>Sizga tushum</span><span>${fmt(out)}</span></div>
-      <select class="statusSel" data-order="${o.id}">${['yangi','tasdiqlandi','kuryerga topshirildi','yetkazildi','bekor qilindi'].map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>${chatBtn(o.id)}</div>`;
+      ${sellerPay(o)}
+      <select class="statusSel" data-order="${o.id}" ${done ? 'disabled' : ''}>${opts.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>
+      ${!done ? '<div style="font-size:10.5px;color:var(--mut);margin-top:5px">«Yetkazildi» holatini xaridor «Oldim» tugmasi bilan qo\'yadi</div>' : ''}${chatBtn(o.id)}</div>`;
   }).join('');
   const stc = s => s==='tasdiqlandi' ? ['#E6F4EA','var(--grn)'] : s==='rad etildi' ? ['#FDEDED','var(--red)'] : ['var(--vl)','var(--vd)'];
   main.innerHTML = summary + `<div class="addform"><div class="sectitle" style="font-size:14px">To'lov yuborish</div>
@@ -569,6 +641,7 @@ async function sellerOrders(main){
     try { await api('/api/orders/' + s.dataset.order + '/status', { method:'PATCH', body:JSON.stringify({ status:s.value }) }); toast('Holat yangilandi'); }
     catch(e){ toast(e.message); renderTab(); }
   });
+  wirePay(main, renderTab);
   wireChat(main);
 }
 
@@ -580,6 +653,7 @@ async function renderAdmin(main){
     const { sellers } = await api('/api/admin/sellers');
     main.innerHTML = `<div class="sectitle">Sotuvchilar (${sellers.length})</div>` + (sellers.length ? sellers.map(s => `<div class="oitem">
       <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Cheklangan</span>' : ''}</span><span>${esc(s.phone)}</span></div>
+      <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div><div class="oline"><span>Balans</span><span>${fmt(s.balance)}</span></div>
       <div class="oline"><span>Mahsulotlar</span><span>${s.productCount} ta</span></div><div class="oline"><span>Buyurtmalar</span><span>${s.orderCount} ta</span></div>
       <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
       <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
@@ -617,8 +691,11 @@ async function renderAdmin(main){
       <div style="font-size:12px;color:var(--mut);margin-bottom:4px">📍 ${o.region ? esc(o.region) + ', ' : ''}${esc(o.address)}</div>
       ${(o.items||[]).map(i => `<div class="oline"><span>${esc(i.name)} × ${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
       <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+      <div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>
+      ${o.hasReceipt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
       <div class="field" style="margin-top:8px"><label>Admin izohi</label><textarea class="adminNote" data-order="${o.id}" rows="2" placeholder="Izoh yozing...">${esc(o.adminNote || '')}</textarea></div>
       <button class="addbtn" style="background:var(--vd)" data-savenote="${o.id}">Izohni saqlash</button></div>`).join('') : none("Hali buyurtma yo'q"));
+    main.querySelectorAll('[data-fullimg]').forEach(im => im.onclick = () => window.open(im.src, '_blank'));
     main.querySelectorAll('[data-savenote]').forEach(b => b.onclick = async () => {
       const note = main.querySelector(`.adminNote[data-order="${b.dataset.savenote}"]`).value;
       try { await api('/api/admin/orders/' + b.dataset.savenote, { method:'PATCH', body:JSON.stringify({ adminNote:note }) }); toast('Izoh saqlandi'); } catch(e){ toast(e.message); }
