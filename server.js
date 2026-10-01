@@ -1,631 +1,549 @@
-// SavdoUz — oddiy ko'p-sotuvchili marketplace backendi
-// MongoDB Atlas orqali ma'lumotlarni doimiy saqlaydi
-
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const url = require('url');
+// SavdoUz backend v2 — MongoDB Atlas
+const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
 const { MongoClient } = require('mongodb');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
-
 const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error("XATO: MONGODB_URI environment o'zgaruvchisi topilmadi. Render'ning Environment bo'limiga qo'shing.");
-}
+if (!MONGODB_URI) console.error("XATO: MONGODB_URI topilmadi. Render Environment'ga qo'shing.");
 const mongoClient = new MongoClient(MONGODB_URI);
-let stateCollection;
+let stateCollection, cache = null, adminDone = false;
+// Token imzosi uchun sir. Render Environment'da SESSION_SECRET qo'yish tavsiya etiladi.
+const SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update('sv:' + String(MONGODB_URI)).digest('hex');
+
+const COMMISSION_RATE = 0.01;
+const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
+const DEBT_LIMIT = 10000;
+const ADMIN_PHONE = '+998774071234';
+const CAT_ICON = { "Telefon": "phone", "Kiyim": "shirt", "Uy-ro'zg'or": "sofa", "Avto": "car", "Boshqa": "laptop" };
+const REGIONS = ["Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan", "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand", "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"];
+class UserErr extends Error {}
 
 async function connectMongo() {
   await mongoClient.connect();
-  const mongoDb = mongoClient.db('savdouz');
-  stateCollection = mongoDb.collection('state');
+  stateCollection = mongoClient.db('savdouz').collection('state');
   console.log('MongoDB ulanish muvaffaqiyatli ✅');
 }
 
-// ---------- Ma'lumotlar bazasi (MongoDB, bitta hujjatda) ----------
+// ---------- Baza: bir marta yuklanadi va xotirada turadi (tez) ----------
 async function loadDB() {
+  if (cache) return cache;
   let db = await stateCollection.findOne({ _id: 'main' });
-  if (!db) {
-    db = { _id: 'main', users: [], products: [], orders: [], payments: [], reviews: [], messages: [], nextId: { user: 1, product: 1, order: 1, payment: 1, review: 1, message: 1 } };
-    await stateCollection.insertOne(db);
-  }
-  if (!db.payments) db.payments = [];
-  if (!db.reviews) db.reviews = [];
-  if (!db.nextId.payment) db.nextId.payment = 1;
-  if (!db.nextId.review) db.nextId.review = 1;
-  if (!db.messages) db.messages = [];
-  if (!db.nextId.message) db.nextId.message = 1;
-  db.users.forEach(u => { if (u.paidCommission === undefined) u.paidCommission = 0; if (u.favorites === undefined) u.favorites = []; });
-  db.products.forEach(p => {
-    if (p.deliveryRegions === undefined) {
-      p.deliveryRegions = (p.deliveryAvailable === false) ? [] : ['barchasi'];
+  if (!db) db = { _id: 'main', users: [], products: [], orders: [], payments: [], reviews: [], messages: [], nextId: {} };
+  db.nextId = db.nextId || {};
+  for (const k of ['user', 'product', 'order', 'payment', 'review', 'message']) if (!db.nextId[k]) db.nextId[k] = 1;
+  for (const k of ['users', 'products', 'orders', 'payments', 'reviews', 'messages']) if (!db[k]) db[k] = [];
+  db.users.forEach(u => {
+    if (u.paidCommission === undefined) u.paidCommission = 0;
+    if (!u.favorites) u.favorites = [];
+    if (u.role === 'seller') {
+      if (!u.accountNumber) u.accountNumber = 'SU' + String(u.id).padStart(8, '0');
+      if (u.balance === undefined) u.balance = 0;
+      if (!u.txs) u.txs = [];
     }
+  });
+  db.products.forEach(p => {
+    if (p.deliveryRegions === undefined) p.deliveryRegions = (p.deliveryAvailable === false) ? [] : ['barchasi'];
     if (p.deliveryPrice === undefined) p.deliveryPrice = 0;
     if (p.oldPrice === undefined) p.oldPrice = null;
   });
+  db.orders.forEach(o => {
+    if (!o.paymentMethod || o.paymentMethod === 'naqd/yetkazishda') o.paymentMethod = 'naqd';
+    if (!o.paymentStatus) o.paymentStatus = 'naqd';
+  });
   await ensureAdmin(db);
+  await saveDB(db);
+  cache = db;
   return db;
 }
-async function saveDB(db) {
-  await stateCollection.replaceOne({ _id: 'main' }, db, { upsert: true });
-}
+async function saveDB(db) { await stateCollection.replaceOne({ _id: 'main' }, db, { upsert: true }); }
 
-// ---------- Parol xeshlash ----------
+// ---------- Parol va token ----------
 function hashPassword(password, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return { salt, hash };
+  return { salt, hash: crypto.scryptSync(password, salt, 64).toString('hex') };
 }
-function verifyPassword(password, salt, hash) {
-  const check = crypto.scryptSync(password, salt, 64).toString('hex');
-  return check === hash;
-}
-
-// ---------- Sessiyalar (xotirada, server qayta ishga tushsa tozalanadi) ----------
-const sessions = {}; // token -> userId
-
-function makeToken() {
-  return crypto.randomBytes(24).toString('hex');
-}
-
+function verifyPassword(password, salt, hash) { return crypto.scryptSync(password, salt, 64).toString('hex') === hash; }
+const sign = p => crypto.createHmac('sha256', SECRET).update(p).digest('hex');
+// Token endi imzolangan: server qayta ishga tushsa ham foydalanuvchi chiqib ketmaydi
+function makeToken(id) { const p = id + '.' + (Date.now() + 30 * 864e5); return p + '.' + sign(p); }
 function getUserFromReq(req, db) {
-  const auth = req.headers['authorization'];
-  if (!auth || !auth.startsWith('Bearer ')) return null;
-  const token = auth.slice(7);
-  const userId = sessions[token];
-  if (!userId) return null;
-  return db.users.find(u => u.id === userId) || null;
+  const a = req.headers['authorization'];
+  const t = a && a.startsWith('Bearer ') ? a.slice(7) : (req._q && req._q.t);
+  if (!t) return null;
+  const [id, exp, sig] = String(t).split('.');
+  if (!sig) return null;
+  const good = sign(id + '.' + exp);
+  if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
+  if (Date.now() > Number(exp)) return null;
+  return db.users.find(u => u.id === Number(id)) || null;
 }
 
-// ---------- Yordamchi funksiyalar ----------
+// Admin parolini kodda saqlamang: Render Environment'ga ADMIN_PASSWORD qo'ying
+async function ensureAdmin(db) {
+  if (adminDone) return; adminDone = true;
+  const pw = process.env.ADMIN_PASSWORD;
+  let a = db.users.find(u => u.phone === ADMIN_PHONE);
+  if (!a) {
+    if (!pw) { console.error("ADMIN_PASSWORD yo'q — admin yaratilmadi"); return; }
+    const h = hashPassword(pw);
+    db.users.push({ id: db.nextId.user++, name: 'Admin', phone: ADMIN_PHONE, role: 'admin', salt: h.salt, hash: h.hash, paidCommission: 0 });
+  } else {
+    a.role = 'admin';
+    if (pw) { const h = hashPassword(pw); a.salt = h.salt; a.hash = h.hash; }
+  }
+}
+const requireAdmin = (req, db) => { const u = getUserFromReq(req, db); return u && u.role === 'admin' ? u : null; };
+
+// ---------- Yordamchilar ----------
 function sendJSON(res, status, data) {
-  const body = JSON.stringify(data);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS'
   });
-  res.end(body);
+  res.end(JSON.stringify(data));
 }
-
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', chunk => data += chunk);
-    req.on('end', () => {
-      if (!data) return resolve({});
-      try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-    });
+    req.on('data', c => { data += c; if (data.length > 12e6) { reject(new UserErr('Hajm juda katta')); req.destroy(); } });
+    req.on('end', () => { if (!data) return resolve({}); try { resolve(JSON.parse(data)); } catch (e) { reject(new UserErr("Noto'g'ri so'rov")); } });
   });
 }
-
-function publicUser(u) {
-  return { id: u.id, name: u.name, phone: u.phone, role: u.role };
+const publicUser = u => ({ id: u.id, name: u.name, phone: u.phone, role: u.role });
+// Ro'yxatlarda rasm matni emas, qisqa havola yuboriladi (juda tez ochiladi)
+const pub = p => ({ ...p, image: p.image ? `/api/img/${p.id}?v=${p.imgv || 0}` : null });
+const initials = n => String(n || '').trim().split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase() + '.').join(' ');
+function ordOut(o, db) {
+  const { receiptImage, ...r } = o;
+  const sellers = [...new Set(o.items.map(i => i.sellerId))].map(id => {
+    const s = db.users.find(u => u.id === id);
+    return s ? { id: s.id, name: s.name, phone: s.phone, card: s.card ? { number: s.card.number, holder: initials(s.card.holder) } : null } : null;
+  }).filter(Boolean);
+  return { ...r, hasReceipt: !!receiptImage, sellers };
 }
-
-const COMMISSION_RATE = 0.01; // SavdoUz platformasi komissiyasi — 1%
-
-const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
-
-const DEBT_LIMIT = 10000; // shu summadan oshsa, sotuvchining mahsulotlari xaridorlarga ko'rinmay qoladi
-
-function computeSellerDebt(db, sellerId) {
-  const items = db.orders.map(o => o.items.filter(it => it.sellerId === sellerId)).flat();
-  const totalCommission = items.reduce((s, it) => s + (it.commission || 0), 0);
-  const seller = db.users.find(u => u.id === sellerId);
-  const paid = seller ? (seller.paidCommission || 0) : 0;
-  return totalCommission - paid;
+function sellerItems(db, sid, deliveredOnly) {
+  return db.orders.filter(o => !deliveredOnly || o.status === 'yetkazildi').flatMap(o => o.items.filter(it => it.sellerId === sid));
 }
-
-const ADMIN_PHONE = '+998774071234';
-const ADMIN_PASSWORD = '1992tillo'; // faqat birinchi marta admin hisobini yaratish uchun
-
-async function ensureAdmin(db) {
-  let admin = db.users.find(u => u.phone === ADMIN_PHONE);
-  if (!admin) {
-    const { salt, hash } = hashPassword(ADMIN_PASSWORD);
-    admin = { id: db.nextId.user++, name: 'Admin', phone: ADMIN_PHONE, role: 'admin', salt, hash, paidCommission: 0 };
-    db.users.push(admin);
-    await saveDB(db);
-  } else if (admin.role !== 'admin') {
-    admin.role = 'admin';
-    await saveDB(db);
+// Qarz = yetkazilgan buyurtmalar komissiyasi − to'langani
+function computeSellerDebt(db, sid) {
+  const c = sellerItems(db, sid, true).reduce((s, it) => s + (it.commission || 0), 0);
+  const u = db.users.find(x => x.id === sid);
+  return c - (u ? u.paidCommission || 0 : 0);
+}
+// Qarz bo'lsa, sotuvchi hisobidagi balansdan yechiladi
+function settle(db, s) {
+  const take = Math.min(s.balance || 0, Math.max(0, computeSellerDebt(db, s.id)));
+  if (take > 0) {
+    s.balance -= take; s.paidCommission = (s.paidCommission || 0) + take;
+    s.txs.push({ id: Date.now(), amount: -take, note: 'Komissiya hisobdan yechildi', createdAt: new Date().toISOString() });
   }
 }
+const deliversTo = (p, region) => (p.deliveryRegions || []).some(r => r === 'barchasi' || r === region);
+const ratingOf = (db, pid) => { const r = db.reviews.filter(x => x.productId === pid); return { avgRating: r.length ? r.reduce((s, x) => s + x.rating, 0) / r.length : 0, reviewCount: r.length }; };
 
-function requireAdmin(req, db) {
-  const user = getUserFromReq(req, db);
-  if (!user || user.role !== 'admin') return null;
-  return user;
-}
-
-const CAT_ICON = {
-  "Telefon": "phone", "Kiyim": "shirt", "Uy-ro'zg'or": "sofa",
-  "Avto": "car", "Boshqa": "laptop"
-};
-
-const REGIONS = [
-  "Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan",
-  "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand",
-  "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"
-];
-
-function deliversToRegion(product, region) {
-  const regions = product.deliveryRegions || [];
-  return regions.includes('barchasi') || regions.includes(region);
-}
-
-// ---------- Statik fayllarni uzatish ----------
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json' };
 function serveStatic(req, res, pathname) {
-  let filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
+  const filePath = path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname);
   if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
   fs.readFile(filePath, (err, content) => {
     if (err) {
-      fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (e2, c2) => {
+      return fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (e2, c2) => {
         if (e2) { res.writeHead(404); return res.end('Not found'); }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(c2);
+        res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(c2);
       });
-      return;
     }
-    const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
     res.end(content);
   });
 }
+function sendDataImage(res, dataUrl, cacheCtl) {
+  const d = dataUrl && String(dataUrl).match(/^data:(.+?);base64,(.*)$/s);
+  if (!d) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'Content-Type': d[1], 'Cache-Control': cacheCtl });
+  res.end(Buffer.from(d[2], 'base64'));
+}
 
-// ---------- Asosiy server ----------
+// ---------- Server ----------
 const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url, true);
   const pathname = parsed.pathname;
-
-  if (req.method === 'OPTIONS') { return sendJSON(res, 200, {}); }
-
-  if (!pathname.startsWith('/api/')) {
-    return serveStatic(req, res, pathname);
-  }
+  req._q = parsed.query;
+  if (req.method === 'OPTIONS') return sendJSON(res, 200, {});
+  if (!pathname.startsWith('/api/')) return serveStatic(req, res, pathname);
 
   try {
     const db = await loadDB();
+    const me = () => getUserFromReq(req, db);
+    const M = req.method;
+    let m;
 
-    // ---- Viloyatlar ro'yxati (hammaga ochiq) ----
-    if (pathname === '/api/regions' && req.method === 'GET') {
-      return sendJSON(res, 200, { regions: REGIONS });
+    // Mahsulot rasmi (ochiq, keshlanadi)
+    if ((m = pathname.match(/^\/api\/img\/(\d+)$/)) && M === 'GET') {
+      const p = db.products.find(x => x.id === Number(m[1]));
+      return sendDataImage(res, p && p.image, 'public, max-age=31536000');
+    }
+    // Chek rasmi (faqat xaridor, shu buyurtma sotuvchisi yoki admin)
+    if ((m = pathname.match(/^\/api\/receipt\/(\d+)$/)) && M === 'GET') {
+      const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
+      if (!u || !o || !(o.buyerId === u.id || u.role === 'admin' || o.items.some(i => i.sellerId === u.id))) { res.writeHead(403); return res.end(); }
+      return sendDataImage(res, o.receiptImage, 'private, max-age=3600');
     }
 
-    const sellerStoreMatch = pathname.match(/^\/api\/sellers\/(\d+)$/);
-    if (sellerStoreMatch && req.method === 'GET') {
-      const sid = Number(sellerStoreMatch[1]);
+    if (pathname === '/api/regions' && M === 'GET') return sendJSON(res, 200, { regions: REGIONS });
+
+    if ((m = pathname.match(/^\/api\/sellers\/(\d+)$/)) && M === 'GET') {
+      const sid = Number(m[1]);
       const seller = db.users.find(u => u.id === sid && u.role === 'seller');
       if (!seller) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
-      const requester = getUserFromReq(req, db);
-      const favSet = requester ? new Set(requester.favorites || []) : new Set();
-      const restricted = computeSellerDebt(db, sid) > DEBT_LIMIT;
-      const products = restricted ? [] : db.products.filter(p => p.sellerId === sid).map(p => {
-        const prodReviews = db.reviews.filter(r => r.productId === p.id);
-        const avgRating = prodReviews.length ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length) : 0;
-        return { ...p, sellerName: seller.name, avgRating, reviewCount: prodReviews.length, isFavorited: favSet.has(p.id) };
-      });
-      return sendJSON(res, 200, { seller: { id: seller.id, name: seller.name, phone: seller.phone }, products });
+      const rq = me(); const fav = new Set(rq ? rq.favorites || [] : []);
+      const products = computeSellerDebt(db, sid) > DEBT_LIMIT ? [] : db.products.filter(p => p.sellerId === sid).map(p => ({ ...pub(p), sellerName: seller.name, ...ratingOf(db, p.id), isFavorited: fav.has(p.id) }));
+      return sendJSON(res, 200, { seller: { id: seller.id, name: seller.name }, products });
     }
 
-    // ---- Ro'yxatdan o'tish ----
-    if (pathname === '/api/register' && req.method === 'POST') {
+    // ---- Kirish / ro'yxat ----
+    if (pathname === '/api/register' && M === 'POST') {
       const { name, phone, password, role } = await readBody(req);
       if (!name || !phone || !password || !role) return sendJSON(res, 400, { error: "Barcha maydonlarni to'ldiring" });
       if (!['buyer', 'seller'].includes(role)) return sendJSON(res, 400, { error: "Noto'g'ri rol" });
       if (db.users.find(u => u.phone === phone)) return sendJSON(res, 400, { error: "Bu raqam allaqachon ro'yxatdan o'tgan" });
       const { salt, hash } = hashPassword(password);
-      const user = { id: db.nextId.user++, name, phone, role, salt, hash };
+      const user = { id: db.nextId.user++, name, phone, role, salt, hash, paidCommission: 0, favorites: [] };
+      if (role === 'seller') { user.accountNumber = 'SU' + String(user.id).padStart(8, '0'); user.balance = 0; user.txs = []; }
       db.users.push(user);
       await saveDB(db);
-      const token = makeToken();
-      sessions[token] = user.id;
-      return sendJSON(res, 200, { token, user: publicUser(user) });
+      return sendJSON(res, 200, { token: makeToken(user.id), user: publicUser(user) });
     }
-
-    // ---- Kirish ----
-    if (pathname === '/api/login' && req.method === 'POST') {
+    if (pathname === '/api/login' && M === 'POST') {
       const { phone, password } = await readBody(req);
       const user = db.users.find(u => u.phone === phone);
-      if (!user || !verifyPassword(password, user.salt, user.hash)) {
-        return sendJSON(res, 401, { error: "Telefon raqam yoki parol xato" });
-      }
-      const token = makeToken();
-      sessions[token] = user.id;
-      return sendJSON(res, 200, { token, user: publicUser(user) });
+      if (!user || !verifyPassword(password || '', user.salt, user.hash)) return sendJSON(res, 401, { error: "Telefon raqam yoki parol xato" });
+      return sendJSON(res, 200, { token: makeToken(user.id), user: publicUser(user) });
+    }
+    if (pathname === '/api/me' && M === 'GET') {
+      const u = me(); if (!u) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      return sendJSON(res, 200, { user: publicUser(u) });
     }
 
-    // ---- Joriy foydalanuvchi ----
-    if (pathname === '/api/me' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
-      return sendJSON(res, 200, { user: publicUser(user) });
+    // ---- Sotuvchi hisobi va kartasi ----
+    if (pathname === '/api/account' && M === 'GET') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      return sendJSON(res, 200, { accountNumber: u.accountNumber, balance: u.balance || 0, card: u.card || null, transactions: (u.txs || []).slice(-20).reverse() });
+    }
+    if (pathname === '/api/me/card' && M === 'PATCH') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      const { number, holder } = await readBody(req);
+      const digits = String(number || '').replace(/\D/g, '');
+      if (digits.length !== 16) return sendJSON(res, 400, { error: "Karta raqami 16 ta raqam bo'lishi kerak" });
+      if (!holder || !String(holder).trim()) return sendJSON(res, 400, { error: "Ism familiyani kiriting" });
+      u.card = { number: digits.replace(/(.{4})/g, '$1 ').trim(), holder: String(holder).trim() };
+      await saveDB(db);
+      return sendJSON(res, 200, { card: u.card });
     }
 
-    // ---- Mahsulotlar ro'yxati (hammaga ochiq) ----
-    if (pathname === '/api/products' && req.method === 'GET') {
-      const requester = getUserFromReq(req, db);
-      const favSet = requester ? new Set(requester.favorites || []) : new Set();
-      const list = db.products
-        .filter(p => computeSellerDebt(db, p.sellerId) <= DEBT_LIMIT)
-        .map(p => {
-          const seller = db.users.find(u => u.id === p.sellerId);
-          const prodReviews = db.reviews.filter(r => r.productId === p.id);
-          const avgRating = prodReviews.length ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length) : 0;
-          return { ...p, sellerName: seller ? seller.name : "Noma'lum", avgRating, reviewCount: prodReviews.length, isFavorited: favSet.has(p.id) };
-        });
+    // ---- Mahsulotlar ----
+    if (pathname === '/api/products' && M === 'GET') {
+      const rq = me(); const fav = new Set(rq ? rq.favorites || [] : []);
+      const list = db.products.filter(p => computeSellerDebt(db, p.sellerId) <= DEBT_LIMIT).map(p => {
+        const s = db.users.find(u => u.id === p.sellerId);
+        return { ...pub(p), sellerName: s ? s.name : "Noma'lum", ...ratingOf(db, p.id), isFavorited: fav.has(p.id) };
+      });
       return sendJSON(res, 200, { products: list });
     }
-
-    // ---- Mahsulot qo'shish (faqat sotuvchi) ----
-    if (pathname === '/api/products' && req.method === 'POST') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
+    if (pathname === '/api/products' && M === 'POST') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
       const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = await readBody(req);
       if (!name || !cat || !price) return sendJSON(res, 400, { error: "Nom, kategoriya va narxni kiriting" });
       const product = {
-        id: db.nextId.product++, sellerId: user.id, name, cat,
-        price: Number(price), desc: desc || '', icon: CAT_ICON[cat] || 'laptop',
+        id: db.nextId.product++, sellerId: u.id, name, cat, price: Number(price), desc: desc || '', icon: CAT_ICON[cat] || 'laptop',
         stock: stock !== undefined && stock !== '' ? Number(stock) : 999,
-        image: image || null,
+        image: typeof image === 'string' && image.startsWith('data:') ? image : null, imgv: 1,
         deliveryRegions: Array.isArray(deliveryRegions) ? deliveryRegions : ['barchasi'],
         deliveryPrice: deliveryPrice !== undefined && deliveryPrice !== '' ? Number(deliveryPrice) : 0,
         oldPrice: (oldPrice !== undefined && oldPrice !== '' && Number(oldPrice) > Number(price)) ? Number(oldPrice) : null
       };
-      db.products.push(product);
-      await saveDB(db);
-      return sendJSON(res, 200, { product });
+      db.products.push(product); await saveDB(db);
+      return sendJSON(res, 200, { product: pub(product) });
     }
-
-    // ---- O'z mahsulotlarim (sotuvchi) ----
-    if (pathname === '/api/my-products' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      const list = db.products.filter(p => p.sellerId === user.id);
-      return sendJSON(res, 200, { products: list });
+    if (pathname === '/api/my-products' && M === 'GET') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      return sendJSON(res, 200, { products: db.products.filter(p => p.sellerId === u.id).map(pub) });
     }
-
-    // ---- Mahsulotni o'chirish (egasi yoki admin) ----
-    const delMatch = pathname.match(/^\/api\/products\/(\d+)$/);
-    if (delMatch && req.method === 'DELETE') {
-      const user = getUserFromReq(req, db);
-      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
-      const pid = Number(delMatch[1]);
-      const idx = db.products.findIndex(p => p.id === pid);
-      if (idx === -1) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
-      if (db.products[idx].sellerId !== user.id && user.role !== 'admin') return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
-      db.products.splice(idx, 1);
-      await saveDB(db);
+    if ((m = pathname.match(/^\/api\/products\/(\d+)$/)) && M === 'DELETE') {
+      const u = me(); if (!u) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      const i = db.products.findIndex(p => p.id === Number(m[1]));
+      if (i === -1) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
+      if (db.products[i].sellerId !== u.id && u.role !== 'admin') return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
+      db.products.splice(i, 1); await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
+    if ((m = pathname.match(/^\/api\/products\/(\d+)$/)) && M === 'PATCH') {
+      const u = me(); if (!u) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      const p = db.products.find(x => x.id === Number(m[1]));
+      if (!p) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
+      if (p.sellerId !== u.id) return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
+      const b = await readBody(req);
+      if (b.name !== undefined) p.name = b.name;
+      if (b.cat !== undefined) { p.cat = b.cat; p.icon = CAT_ICON[b.cat] || 'laptop'; }
+      if (b.price !== undefined && b.price !== '') p.price = Number(b.price);
+      if (b.desc !== undefined) p.desc = b.desc;
+      if (b.stock !== undefined && b.stock !== '') p.stock = Number(b.stock);
+      if (b.image === null) { p.image = null; p.imgv = (p.imgv || 0) + 1; }
+      else if (typeof b.image === 'string' && b.image.startsWith('data:')) { p.image = b.image; p.imgv = (p.imgv || 0) + 1; }
+      if (Array.isArray(b.deliveryRegions)) p.deliveryRegions = b.deliveryRegions;
+      if (b.deliveryPrice !== undefined && b.deliveryPrice !== '') p.deliveryPrice = Number(b.deliveryPrice);
+      if (b.oldPrice !== undefined) p.oldPrice = (b.oldPrice !== '' && Number(b.oldPrice) > p.price) ? Number(b.oldPrice) : null;
+      await saveDB(db);
+      return sendJSON(res, 200, { product: pub(p) });
+    }
 
-    // ---- Mahsulotni tahrirlash (faqat egasi) ----
-    const editMatch = pathname.match(/^\/api\/products\/(\d+)$/);
-    if (editMatch && req.method === 'PATCH') {
-      const user = getUserFromReq(req, db);
-      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
-      const pid = Number(editMatch[1]);
-      const product = db.products.find(p => p.id === pid);
-      if (!product) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
-      if (product.sellerId !== user.id) return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
-      const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = await readBody(req);
-      if (name !== undefined) product.name = name;
-      if (cat !== undefined) { product.cat = cat; product.icon = CAT_ICON[cat] || 'laptop'; }
-      if (price !== undefined && price !== '') product.price = Number(price);
-      if (desc !== undefined) product.desc = desc;
-      if (stock !== undefined && stock !== '') product.stock = Number(stock);
-      if (image !== undefined) product.image = image;
-      if (Array.isArray(deliveryRegions)) product.deliveryRegions = deliveryRegions;
-      if (deliveryPrice !== undefined && deliveryPrice !== '') product.deliveryPrice = Number(deliveryPrice);
-      if (oldPrice !== undefined) {
-        product.oldPrice = (oldPrice !== '' && Number(oldPrice) > product.price) ? Number(oldPrice) : null;
+    // ---- Sharhlar ----
+    if ((m = pathname.match(/^\/api\/products\/(\d+)\/reviews$/))) {
+      const pid = Number(m[1]);
+      if (M === 'POST') {
+        const u = me(); if (!u || u.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar baho qoldira oladi" });
+        const { rating, comment } = await readBody(req); const r = Number(rating);
+        if (!r || r < 1 || r > 5) return sendJSON(res, 400, { error: "Bahoni 1 dan 5 gacha tanlang" });
+        if (!db.orders.some(o => o.buyerId === u.id && o.items.some(it => it.productId === pid))) return sendJSON(res, 403, { error: "Faqat sotib olgan mahsulotingizga baho qo'ya olasiz" });
+        const old = db.reviews.find(x => x.productId === pid && x.buyerId === u.id);
+        if (old) { old.rating = r; old.comment = comment || ''; old.createdAt = new Date().toISOString(); }
+        else db.reviews.push({ id: db.nextId.review++, productId: pid, buyerId: u.id, buyerName: u.name, rating: r, comment: comment || '', createdAt: new Date().toISOString() });
+        await saveDB(db);
+        return sendJSON(res, 200, { ok: true });
       }
-      await saveDB(db);
-      return sendJSON(res, 200, { product });
+      if (M === 'GET') return sendJSON(res, 200, { reviews: db.reviews.filter(r => r.productId === pid).sort((a, b) => b.id - a.id) });
     }
 
-    // ---- Mahsulotga baho/izoh (xaridor) ----
-    const reviewMatch = pathname.match(/^\/api\/products\/(\d+)\/reviews$/);
-    if (reviewMatch && req.method === 'POST') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar baho qoldira oladi" });
-      const pid = Number(reviewMatch[1]);
-      const { rating, comment } = await readBody(req);
-      const r = Number(rating);
-      if (!r || r < 1 || r > 5) return sendJSON(res, 400, { error: "Bahoni 1 dan 5 gacha tanlang" });
-      const hasOrdered = db.orders.some(o => o.buyerId === user.id && o.items.some(it => it.productId === pid));
-      if (!hasOrdered) return sendJSON(res, 403, { error: "Faqat sotib olgan mahsulotingizga baho qo'ya olasiz" });
-      const already = db.reviews.find(rv => rv.productId === pid && rv.buyerId === user.id);
-      if (already) { already.rating = r; already.comment = comment || ''; already.createdAt = new Date().toISOString(); }
-      else db.reviews.push({ id: db.nextId.review++, productId: pid, buyerId: user.id, buyerName: user.name, rating: r, comment: comment || '', createdAt: new Date().toISOString() });
-      await saveDB(db);
-      return sendJSON(res, 200, { ok: true });
-    }
-    if (reviewMatch && req.method === 'GET') {
-      const pid = Number(reviewMatch[1]);
-      const list = db.reviews.filter(r => r.productId === pid).sort((a, b) => b.id - a.id);
-      return sendJSON(res, 200, { reviews: list });
-    }
-
-    // ---- Sevimlilar (xaridor) ----
-    if (pathname === '/api/favorites/toggle' && req.method === 'POST') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar sevimlilarga qo'sha oladi" });
-      const { productId } = await readBody(req);
-      const pid = Number(productId);
-      if (!user.favorites) user.favorites = [];
-      const idx = user.favorites.indexOf(pid);
-      let favorited;
-      if (idx === -1) { user.favorites.push(pid); favorited = true; }
-      else { user.favorites.splice(idx, 1); favorited = false; }
+    // ---- Sevimlilar ----
+    if (pathname === '/api/favorites/toggle' && M === 'POST') {
+      const u = me(); if (!u || u.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar sevimlilarga qo'sha oladi" });
+      const pid = Number((await readBody(req)).productId);
+      if (!u.favorites) u.favorites = [];
+      const i = u.favorites.indexOf(pid); let favorited;
+      if (i === -1) { u.favorites.push(pid); favorited = true; } else { u.favorites.splice(i, 1); favorited = false; }
       await saveDB(db);
       return sendJSON(res, 200, { favorited });
     }
-    if (pathname === '/api/favorites' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      const favIds = user.favorites || [];
-      const list = db.products.filter(p => favIds.includes(p.id)).map(p => {
-        const seller = db.users.find(u => u.id === p.sellerId);
-        const prodReviews = db.reviews.filter(r => r.productId === p.id);
-        const avgRating = prodReviews.length ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length) : 0;
-        return { ...p, sellerName: seller ? seller.name : "Noma'lum", avgRating, reviewCount: prodReviews.length, isFavorited: true };
+    if (pathname === '/api/favorites' && M === 'GET') {
+      const u = me(); if (!u || u.role !== 'buyer') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      const ids = u.favorites || [];
+      const list = db.products.filter(p => ids.includes(p.id)).map(p => {
+        const s = db.users.find(x => x.id === p.sellerId);
+        return { ...pub(p), sellerName: s ? s.name : "Noma'lum", ...ratingOf(db, p.id), isFavorited: true };
       });
       return sendJSON(res, 200, { products: list });
     }
 
-    // ---- Buyurtma bo'yicha xabar almashish ----
-    const orderMsgMatch = pathname.match(/^\/api\/orders\/(\d+)\/messages$/);
-    if (orderMsgMatch) {
-      const user = getUserFromReq(req, db);
-      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
-      const oid = Number(orderMsgMatch[1]);
-      const order = db.orders.find(o => o.id === oid);
+    // ---- Buyurtma xabarlari ----
+    if ((m = pathname.match(/^\/api\/orders\/(\d+)\/messages$/))) {
+      const u = me(); if (!u) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      const oid = Number(m[1]); const order = db.orders.find(o => o.id === oid);
       if (!order) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
-      const isBuyer = order.buyerId === user.id;
-      const isSellerParty = order.items.some(it => it.sellerId === user.id);
-      if (!isBuyer && !isSellerParty && user.role !== 'admin') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      if (req.method === 'GET') {
-        const list = db.messages.filter(m => m.orderId === oid).sort((a, b) => a.id - b.id);
-        return sendJSON(res, 200, { messages: list });
-      }
-      if (req.method === 'POST') {
+      if (!(order.buyerId === u.id || order.items.some(it => it.sellerId === u.id) || u.role === 'admin')) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      if (M === 'GET') return sendJSON(res, 200, { messages: db.messages.filter(x => x.orderId === oid).sort((a, b) => a.id - b.id) });
+      if (M === 'POST') {
         const { text } = await readBody(req);
         if (!text || !text.trim()) return sendJSON(res, 400, { error: "Xabar matnini kiriting" });
-        const msg = {
-          id: db.nextId.message++, orderId: oid, senderId: user.id, senderRole: user.role,
-          senderName: user.name, text: text.trim(), createdAt: new Date().toISOString()
-        };
-        db.messages.push(msg);
-        await saveDB(db);
+        const msg = { id: db.nextId.message++, orderId: oid, senderId: u.id, senderRole: u.role, senderName: u.name, text: text.trim(), createdAt: new Date().toISOString() };
+        db.messages.push(msg); await saveDB(db);
         return sendJSON(res, 200, { message: msg });
       }
     }
 
-    // ---- Sotuvchi komissiya to'lovini yuborish (chek/skrinshot bilan) ----
-    if (pathname === '/api/payments' && req.method === 'POST') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar to'lov yubora oladi" });
+    // ---- Sotuvchining platformaga komissiya to'lovi (admin tasdiqlaydi) ----
+    if (pathname === '/api/payments' && M === 'POST') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar to'lov yubora oladi" });
       const { amount, receiptImage } = await readBody(req);
       if (!amount || Number(amount) <= 0) return sendJSON(res, 400, { error: "Summani kiriting" });
       if (!receiptImage) return sendJSON(res, 400, { error: "Chek yoki skrinshot rasmini yuklang" });
-      const payment = {
-        id: db.nextId.payment++, sellerId: user.id, sellerName: user.name,
-        amount: Number(amount), receiptImage, status: 'kutilmoqda', adminNote: '',
-        createdAt: new Date().toISOString()
-      };
-      db.payments.push(payment);
-      await saveDB(db);
+      const payment = { id: db.nextId.payment++, sellerId: u.id, sellerName: u.name, amount: Number(amount), receiptImage, status: 'kutilmoqda', adminNote: '', createdAt: new Date().toISOString() };
+      db.payments.push(payment); await saveDB(db);
       return sendJSON(res, 200, { payment });
     }
-
-    // ---- Sotuvchining o'z to'lovlari ----
-    if (pathname === '/api/payments/mine' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      const list = db.payments.filter(p => p.sellerId === user.id).sort((a, b) => b.id - a.id);
-      return sendJSON(res, 200, { payments: list });
+    if (pathname === '/api/payments/mine' && M === 'GET') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      return sendJSON(res, 200, { payments: db.payments.filter(p => p.sellerId === u.id).sort((a, b) => b.id - a.id).map(({ receiptImage, ...r }) => r) });
     }
 
     // ==================== ADMIN ====================
-    if (pathname === '/api/admin/sellers' && req.method === 'GET') {
+    if (pathname.startsWith('/api/admin/')) {
       const admin = requireAdmin(req, db);
       if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const sellers = db.users.filter(u => u.role === 'seller').map(s => {
-        const myItems = db.orders.map(o => o.items.filter(it => it.sellerId === s.id)).flat();
-        const totalSales = myItems.reduce((sum, it) => sum + (it.subtotal || it.price * it.qty), 0);
-        const totalCommission = myItems.reduce((sum, it) => sum + (it.commission || 0), 0);
-        const paid = s.paidCommission || 0;
-        const productCount = db.products.filter(p => p.sellerId === s.id).length;
-        const orderCount = db.orders.filter(o => o.items.some(it => it.sellerId === s.id)).length;
-        return { id: s.id, name: s.name, phone: s.phone, productCount, orderCount, totalSales, totalCommission, paidCommission: paid, debt: totalCommission - paid, restricted: (totalCommission - paid) > DEBT_LIMIT };
-      });
-      return sendJSON(res, 200, { sellers });
-    }
 
-    if (pathname === '/api/admin/buyers' && req.method === 'GET') {
-      const admin = requireAdmin(req, db);
-      if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const buyers = db.users.filter(u => u.role === 'buyer').map(b => {
-        const myOrders = db.orders.filter(o => o.buyerId === b.id);
-        const totalSpent = myOrders.reduce((s, o) => s + o.total, 0);
-        return { id: b.id, name: b.name, phone: b.phone, orderCount: myOrders.length, totalSpent };
-      });
-      return sendJSON(res, 200, { buyers });
-    }
-
-    if (pathname === '/api/admin/products' && req.method === 'GET') {
-      const admin = requireAdmin(req, db);
-      if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const list = db.products.map(p => {
-        const seller = db.users.find(u => u.id === p.sellerId);
-        return { ...p, sellerName: seller ? seller.name : "Noma'lum", sellerPhone: seller ? seller.phone : '' };
-      });
-      return sendJSON(res, 200, { products: list });
-    }
-
-    if (pathname === '/api/admin/orders' && req.method === 'GET') {
-      const admin = requireAdmin(req, db);
-      if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const list = [...db.orders].sort((a, b) => b.id - a.id);
-      return sendJSON(res, 200, { orders: list });
-    }
-
-    const adminOrderMatch = pathname.match(/^\/api\/admin\/orders\/(\d+)$/);
-    if (adminOrderMatch && req.method === 'PATCH') {
-      const admin = requireAdmin(req, db);
-      if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const order = db.orders.find(o => o.id === Number(adminOrderMatch[1]));
-      if (!order) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
-      const { adminNote } = await readBody(req);
-      order.adminNote = adminNote || '';
-      await saveDB(db);
-      return sendJSON(res, 200, { order });
-    }
-
-    if (pathname === '/api/admin/payments' && req.method === 'GET') {
-      const admin = requireAdmin(req, db);
-      if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const list = [...db.payments].sort((a, b) => b.id - a.id);
-      return sendJSON(res, 200, { payments: list });
-    }
-
-    const adminPayMatch = pathname.match(/^\/api\/admin\/payments\/(\d+)$/);
-    if (adminPayMatch && req.method === 'PATCH') {
-      const admin = requireAdmin(req, db);
-      if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
-      const payment = db.payments.find(p => p.id === Number(adminPayMatch[1]));
-      if (!payment) return sendJSON(res, 404, { error: "To'lov topilmadi" });
-      const { status, adminNote } = await readBody(req);
-      if (!['tasdiqlandi', 'rad etildi'].includes(status)) return sendJSON(res, 400, { error: "Noto'g'ri holat" });
-      const wasApproved = payment.status === 'tasdiqlandi';
-      payment.status = status;
-      payment.adminNote = adminNote !== undefined ? adminNote : payment.adminNote;
-      const seller = db.users.find(u => u.id === payment.sellerId);
-      if (status === 'tasdiqlandi' && !wasApproved && seller) {
-        seller.paidCommission = (seller.paidCommission || 0) + payment.amount;
+      if (pathname === '/api/admin/sellers' && M === 'GET') {
+        const sellers = db.users.filter(u => u.role === 'seller').map(s => {
+          const all = sellerItems(db, s.id, false), del = sellerItems(db, s.id, true);
+          const totalCommission = del.reduce((x, it) => x + (it.commission || 0), 0), paid = s.paidCommission || 0;
+          return {
+            id: s.id, name: s.name, phone: s.phone, accountNumber: s.accountNumber, balance: s.balance || 0,
+            productCount: db.products.filter(p => p.sellerId === s.id).length,
+            orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === s.id)).length,
+            totalSales: all.reduce((x, it) => x + (it.subtotal || it.price * it.qty), 0),
+            totalCommission, paidCommission: paid, debt: totalCommission - paid, restricted: (totalCommission - paid) > DEBT_LIMIT
+          };
+        });
+        return sendJSON(res, 200, { sellers });
       }
-      if (status !== 'tasdiqlandi' && wasApproved && seller) {
-        seller.paidCommission = Math.max(0, (seller.paidCommission || 0) - payment.amount);
+      // Sotuvchi hisobiga pul tushirish — faqat admin
+      if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/deposit$/)) && M === 'POST') {
+        const s = db.users.find(u => u.id === Number(m[1]) && u.role === 'seller');
+        if (!s) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
+        const { amount, note } = await readBody(req); const a = Math.round(Number(amount));
+        if (!a || a <= 0 || a > 1e10) return sendJSON(res, 400, { error: "To'g'ri summa kiriting" });
+        s.balance = (s.balance || 0) + a;
+        s.txs.push({ id: Date.now(), amount: a, note: note || "Admin tomonidan tushirildi", createdAt: new Date().toISOString() });
+        settle(db, s);
+        await saveDB(db);
+        return sendJSON(res, 200, { balance: s.balance });
       }
-      await saveDB(db);
-      return sendJSON(res, 200, { payment });
+      if (pathname === '/api/admin/buyers' && M === 'GET') {
+        const buyers = db.users.filter(u => u.role === 'buyer').map(b => {
+          const mo = db.orders.filter(o => o.buyerId === b.id);
+          return { id: b.id, name: b.name, phone: b.phone, orderCount: mo.length, totalSpent: mo.reduce((s, o) => s + o.total, 0) };
+        });
+        return sendJSON(res, 200, { buyers });
+      }
+      if (pathname === '/api/admin/products' && M === 'GET') {
+        return sendJSON(res, 200, { products: db.products.map(p => { const s = db.users.find(u => u.id === p.sellerId); return { ...pub(p), sellerName: s ? s.name : "Noma'lum", sellerPhone: s ? s.phone : '' }; }) });
+      }
+      if (pathname === '/api/admin/orders' && M === 'GET') {
+        return sendJSON(res, 200, { orders: [...db.orders].sort((a, b) => b.id - a.id).map(o => ordOut(o, db)) });
+      }
+      if ((m = pathname.match(/^\/api\/admin\/orders\/(\d+)$/)) && M === 'PATCH') {
+        const o = db.orders.find(x => x.id === Number(m[1]));
+        if (!o) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
+        o.adminNote = (await readBody(req)).adminNote || ''; await saveDB(db);
+        return sendJSON(res, 200, { ok: true });
+      }
+      if (pathname === '/api/admin/payments' && M === 'GET') {
+        return sendJSON(res, 200, { payments: [...db.payments].sort((a, b) => b.id - a.id) });
+      }
+      if ((m = pathname.match(/^\/api\/admin\/payments\/(\d+)$/)) && M === 'PATCH') {
+        const pay = db.payments.find(p => p.id === Number(m[1]));
+        if (!pay) return sendJSON(res, 404, { error: "To'lov topilmadi" });
+        const { status, adminNote } = await readBody(req);
+        if (!['tasdiqlandi', 'rad etildi'].includes(status)) return sendJSON(res, 400, { error: "Noto'g'ri holat" });
+        const was = pay.status === 'tasdiqlandi';
+        pay.status = status; if (adminNote !== undefined) pay.adminNote = adminNote;
+        const s = db.users.find(u => u.id === pay.sellerId);
+        if (s) {
+          if (status === 'tasdiqlandi' && !was) s.paidCommission = (s.paidCommission || 0) + pay.amount;
+          if (status !== 'tasdiqlandi' && was) s.paidCommission = Math.max(0, (s.paidCommission || 0) - pay.amount);
+        }
+        await saveDB(db);
+        return sendJSON(res, 200, { payment: pay });
+      }
     }
 
-    // ---- Buyurtma berish (xaridor) ----
-    if (pathname === '/api/orders' && req.method === 'POST') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar buyurtma bera oladi" });
-      const { items, address, phone, region } = await readBody(req);
+    // ==================== BUYURTMALAR ====================
+    if (pathname === '/api/orders' && M === 'POST') {
+      const u = me(); if (!u || u.role !== 'buyer') return sendJSON(res, 403, { error: "Faqat xaridorlar buyurtma bera oladi" });
+      const { items, address, phone, region, paymentMethod } = await readBody(req);
       if (!items || !items.length) return sendJSON(res, 400, { error: "Savat bo'sh" });
       if (!address) return sendJSON(res, 400, { error: "Manzilni kiriting" });
       if (!region || !REGIONS.includes(region)) return sendJSON(res, 400, { error: "Yetkazib berish viloyatini tanlang" });
-      let total = 0;
-      let deliveryTotal = 0;
+      const method = paymentMethod === 'karta' ? 'karta' : 'naqd';
+      let total = 0, deliveryTotal = 0;
       const orderItems = items.map(it => {
-        const p = db.products.find(pp => pp.id === it.productId);
-        if (!p) throw new Error("Mahsulot topilmadi: " + it.productId);
-        const qty = Number(it.qty) || 1;
-        if ((p.stock || 0) < qty) throw new Error(`"${p.name}" omborda yetarli emas (bor: ${p.stock} dona)`);
-        if (!deliversToRegion(p, region)) throw new Error(`"${p.name}" mahsuloti "${region}" hududiga yetkazilmaydi`);
-        const subtotal = p.price * qty;
-        const commission = Math.round(subtotal * COMMISSION_RATE);
-        const payout = subtotal - commission;
-        const deliveryFee = p.deliveryPrice || 0;
-        total += subtotal;
-        deliveryTotal += deliveryFee;
-        return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout, deliveryFee };
+        const p = db.products.find(x => x.id === it.productId);
+        if (!p) throw new UserErr("Mahsulot topilmadi");
+        const qty = Math.max(1, Math.floor(Number(it.qty) || 1));
+        if ((p.stock || 0) < qty) throw new UserErr(`"${p.name}" omborda yetarli emas (bor: ${p.stock} dona)`);
+        if (!deliversTo(p, region)) throw new UserErr(`"${p.name}" "${region}" hududiga yetkazilmaydi`);
+        if (method === 'karta') { const s = db.users.find(x => x.id === p.sellerId); if (!s || !s.card) throw new UserErr(`"${p.name}" sotuvchisi karta kiritmagan. Naqd to'lovni tanlang`); }
+        const subtotal = p.price * qty, commission = Math.round(subtotal * COMMISSION_RATE), deliveryFee = p.deliveryPrice || 0;
+        total += subtotal; deliveryTotal += deliveryFee;
+        return { productId: p.id, name: p.name, price: p.price, qty, sellerId: p.sellerId, subtotal, commission, payout: subtotal - commission, deliveryFee };
       });
-      // Zaxirani kamaytirish
-      orderItems.forEach(it => {
-        const p = db.products.find(pp => pp.id === it.productId);
-        if (p) p.stock -= it.qty;
-      });
+      orderItems.forEach(it => { const p = db.products.find(x => x.id === it.productId); if (p) p.stock -= it.qty; });
       const order = {
-        id: db.nextId.order++, buyerId: user.id, buyerName: user.name,
-        items: orderItems, total: total + deliveryTotal, itemsTotal: total, deliveryTotal,
-        address, region, phone: phone || user.phone,
-        status: 'yangi', paymentMethod: 'naqd/yetkazishda',
+        id: db.nextId.order++, buyerId: u.id, buyerName: u.name, items: orderItems,
+        total: total + deliveryTotal, itemsTotal: total, deliveryTotal, address, region, phone: phone || u.phone,
+        status: 'yangi', paymentMethod: method, paymentStatus: method === 'karta' ? 'kutilmoqda' : 'naqd',
         createdAt: new Date().toISOString()
       };
-      db.orders.push(order);
-      await saveDB(db);
-      return sendJSON(res, 200, { order });
+      db.orders.push(order); await saveDB(db);
+      return sendJSON(res, 200, { order: ordOut(order, db) });
     }
-
-    // ---- Xaridorning o'z buyurtmalari ----
-    if (pathname === '/api/orders/mine' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
-      const list = db.orders.filter(o => o.buyerId === user.id).sort((a, b) => b.id - a.id);
+    if (pathname === '/api/orders/mine' && M === 'GET') {
+      const u = me(); if (!u) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      return sendJSON(res, 200, { orders: db.orders.filter(o => o.buyerId === u.id).sort((a, b) => b.id - a.id).map(o => ordOut(o, db)) });
+    }
+    if (pathname === '/api/orders/incoming' && M === 'GET') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      const list = db.orders.map(o => ({ ...o, items: o.items.filter(it => it.sellerId === u.id) })).filter(o => o.items.length).sort((a, b) => b.id - a.id).map(o => ordOut(o, db));
       return sendJSON(res, 200, { orders: list });
     }
-
-    // ---- Sotuvchiga kelgan buyurtmalar ----
-    if (pathname === '/api/orders/incoming' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      const list = db.orders
-        .map(o => ({ ...o, items: o.items.filter(it => it.sellerId === user.id) }))
-        .filter(o => o.items.length > 0)
-        .sort((a, b) => b.id - a.id);
-      return sendJSON(res, 200, { orders: list });
-    }
-
-    // ---- Sotuvchi daromadi (jami tushum, komissiya) ----
-    if (pathname === '/api/earnings' && req.method === 'GET') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      let totalSales = 0, totalCommission = 0, totalPayout = 0, orderCount = 0;
-      db.orders.forEach(o => {
-        const mine = o.items.filter(it => it.sellerId === user.id);
-        if (mine.length) {
-          orderCount++;
-          mine.forEach(it => {
-            totalSales += it.subtotal || (it.price * it.qty);
-            totalCommission += it.commission || 0;
-            totalPayout += it.payout || (it.price * it.qty);
-          });
-        }
+    if (pathname === '/api/earnings' && M === 'GET') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      const all = sellerItems(db, u.id, false), del = sellerItems(db, u.id, true);
+      const totalCommission = del.reduce((s, it) => s + (it.commission || 0), 0);
+      const debt = totalCommission - (u.paidCommission || 0);
+      return sendJSON(res, 200, {
+        totalSales: all.reduce((s, it) => s + (it.subtotal || it.price * it.qty), 0), totalCommission,
+        totalPayout: all.reduce((s, it) => s + (it.payout || it.price * it.qty), 0),
+        orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === u.id)).length,
+        commissionRate: COMMISSION_RATE, payoutCard: PAYOUT_CARD, paidCommission: u.paidCommission || 0, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
       });
-      const debt = totalCommission - (user.paidCommission || 0);
-      return sendJSON(res, 200, { totalSales, totalCommission, totalPayout, orderCount, commissionRate: COMMISSION_RATE, payoutCard: PAYOUT_CARD, paidCommission: user.paidCommission || 0, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT });
     }
 
-    // ---- Buyurtma holatini yangilash (sotuvchi) ----
-    const statusMatch = pathname.match(/^\/api\/orders\/(\d+)\/status$/);
-    if (statusMatch && req.method === 'PATCH') {
-      const user = getUserFromReq(req, db);
-      if (!user || user.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      const oid = Number(statusMatch[1]);
-      const order = db.orders.find(o => o.id === oid);
-      if (!order) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
-      const ownsItem = order.items.some(it => it.sellerId === user.id);
-      if (!ownsItem) return sendJSON(res, 403, { error: "Bu sizning buyurtmangiz emas" });
+    // Xaridor chek yuboradi
+    if ((m = pathname.match(/^\/api\/orders\/(\d+)\/receipt$/)) && M === 'POST') {
+      const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
+      if (!u || !o || o.buyerId !== u.id) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      if (o.paymentMethod !== 'karta') return sendJSON(res, 400, { error: "Bu buyurtma naqd to'lovli" });
+      if (!['kutilmoqda', 'rad etildi'].includes(o.paymentStatus)) return sendJSON(res, 400, { error: "Chek allaqachon yuborilgan" });
+      const { image } = await readBody(req);
+      if (!image || !String(image).startsWith('data:')) return sendJSON(res, 400, { error: "Chek rasmini yuklang" });
+      o.receiptImage = image; o.paymentStatus = 'chek yuborildi'; await saveDB(db);
+      return sendJSON(res, 200, { ok: true });
+    }
+    // Sotuvchi to'lovni tasdiqlaydi yoki rad etadi
+    if ((m = pathname.match(/^\/api\/orders\/(\d+)\/payment$/)) && M === 'POST') {
+      const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
+      if (!u || !o || u.role !== 'seller' || !o.items.some(i => i.sellerId === u.id)) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
       const { status } = await readBody(req);
-      order.status = status;
+      if (!['tasdiqlandi', 'rad etildi'].includes(status)) return sendJSON(res, 400, { error: "Noto'g'ri holat" });
+      if (o.paymentStatus !== 'chek yuborildi') return sendJSON(res, 400, { error: "Tasdiqlash uchun chek kerak" });
+      o.paymentStatus = status; await saveDB(db);
+      return sendJSON(res, 200, { ok: true });
+    }
+    // Xaridor mahsulotni oldim deydi — shundan keyin komissiya yechiladi
+    if ((m = pathname.match(/^\/api\/orders\/(\d+)\/received$/)) && M === 'POST') {
+      const u = me(); const o = db.orders.find(x => x.id === Number(m[1]));
+      if (!u || !o || o.buyerId !== u.id) return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      if (o.status !== 'kuryerga topshirildi') return sendJSON(res, 400, { error: "Sotuvchi hali mahsulotni topshirmagan" });
+      if (o.paymentMethod === 'karta' && o.paymentStatus !== 'tasdiqlandi') return sendJSON(res, 400, { error: "To'lov hali tasdiqlanmagan" });
+      o.status = 'yetkazildi'; o.deliveredAt = new Date().toISOString();
+      [...new Set(o.items.map(i => i.sellerId))].forEach(id => { const s = db.users.find(x => x.id === id); if (s) settle(db, s); });
       await saveDB(db);
-      return sendJSON(res, 200, { order });
+      return sendJSON(res, 200, { ok: true });
+    }
+    // Sotuvchi holatni o'zgartiradi ("yetkazildi" ni faqat xaridor qo'yadi)
+    if ((m = pathname.match(/^\/api\/orders\/(\d+)\/status$/)) && M === 'PATCH') {
+      const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
+      const o = db.orders.find(x => x.id === Number(m[1]));
+      if (!o) return sendJSON(res, 404, { error: "Buyurtma topilmadi" });
+      if (!o.items.some(it => it.sellerId === u.id)) return sendJSON(res, 403, { error: "Bu sizning buyurtmangiz emas" });
+      const { status } = await readBody(req);
+      if (o.status === 'yetkazildi') return sendJSON(res, 400, { error: "Yetkazilgan buyurtmani o'zgartirib bo'lmaydi" });
+      if (!['yangi', 'tasdiqlandi', 'kuryerga topshirildi', 'bekor qilindi'].includes(status)) return sendJSON(res, 400, { error: "Yetkazildi holatini xaridor «Oldim» tugmasi bilan tasdiqlaydi" });
+      if (o.paymentMethod === 'karta' && o.paymentStatus !== 'tasdiqlandi' && ['tasdiqlandi', 'kuryerga topshirildi'].includes(status)) return sendJSON(res, 400, { error: "Avval xaridor to'lovini tasdiqlang" });
+      if (status === 'bekor qilindi' && o.status !== 'bekor qilindi') o.items.forEach(it => { const p = db.products.find(x => x.id === it.productId); if (p) p.stock += it.qty; });
+      o.status = status; await saveDB(db);
+      return sendJSON(res, 200, { order: ordOut(o, db) });
     }
 
     return sendJSON(res, 404, { error: "Bunday endpoint yo'q" });
   } catch (e) {
+    if (e instanceof UserErr) return sendJSON(res, 400, { error: e.message });
     console.error(e);
     return sendJSON(res, 500, { error: "Server xatosi: " + e.message });
   }
 });
 
 connectMongo().then(() => {
-  server.listen(PORT, () => {
-    console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`);
-  });
-}).catch(err => {
-  console.error('MongoDB ulanishda xato:', err.message);
-  process.exit(1);
-});
+  server.listen(PORT, () => console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`));
+}).catch(err => { console.error('MongoDB ulanishda xato:', err.message); process.exit(1); });
