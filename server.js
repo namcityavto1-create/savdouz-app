@@ -497,7 +497,7 @@ const server = http.createServer(async (req, res) => {
         totalSales: all.reduce((s, it) => s + (it.subtotal || it.price * it.qty), 0), totalCommission,
         totalPayout: all.reduce((s, it) => s + (it.payout || it.price * it.qty), 0),
         orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === u.id)).length,
-        commissionRate: COMMISSION_RATE, payoutCard: PAYOUT_CARD, paidCommission: u.paidCommission || 0, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
+        commissionRate: COMMISSION_RATE, payoutCard: { number: PAYOUT_CARD.number, name: initials(PAYOUT_CARD.name) }, paidCommission: u.paidCommission || 0, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
       });
     }
 
