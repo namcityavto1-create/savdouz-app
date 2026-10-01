@@ -658,7 +658,8 @@ async function renderAdmin(main){
       <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
       <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
       <div class="ototal" style="color:${s.debt>0?'var(--red)':'var(--ink)'}"><span>Qarzi</span><span>${fmt(Math.max(0, s.debt))}</span></div>
-      <button class="addbtn" style="background:var(--grn);margin-top:10px" data-deposit="${s.id}" data-sname="${esc(s.name)}">💰 Hisobga pul tushirish</button></div>`).join('') : none("Hali sotuvchi yo'q"));
+      <button class="addbtn" style="background:var(--grn);margin-top:10px" data-deposit="${s.id}" data-sname="${esc(s.name)}">💰 Hisobga pul tushirish</button>
+      <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`).join('') : none("Hali sotuvchi yo'q"));
     main.querySelectorAll('[data-deposit]').forEach(b => b.onclick = async () => {
       const raw = prompt(`"${b.dataset.sname}" hisobiga qancha so'm tushiriladi?`);
       if(raw === null) return;
@@ -670,6 +671,11 @@ async function renderAdmin(main){
         await api('/api/admin/sellers/' + b.dataset.deposit + '/deposit', { method:'POST', body:JSON.stringify({ amount, note }) });
         toast(`${fmt(amount)} hisobga tushirildi ✅`); renderTab();
       } catch(e){ toast(e.message); }
+    });
+    main.querySelectorAll('[data-delseller]').forEach(b => b.onclick = async () => {
+      if(!confirm(`"${b.dataset.sname}" va uning barcha mahsulotlari o'chiriladi. Davom etasizmi?`)) return;
+      try { await api('/api/admin/sellers/' + b.dataset.delseller, { method:'DELETE' }); toast("Sotuvchi o'chirildi"); renderTab(); }
+      catch(e){ toast(e.message); }
     });
   } else if(t==='products'){
     const { products } = await api('/api/admin/products');
