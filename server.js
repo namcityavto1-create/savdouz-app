@@ -168,10 +168,10 @@ function serveStatic(req, res, pathname) {
     if (err) {
       return fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (e2, c2) => {
         if (e2) { res.writeHead(404); return res.end('Not found'); }
-        res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' }); res.end(c2);
+        res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(c2);
       });
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
     res.end(content);
   });
 }
@@ -244,7 +244,6 @@ const server = http.createServer(async (req, res) => {
     // ---- Sotuvchi hisobi va kartasi ----
     if (pathname === '/api/account' && M === 'GET') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      { const before = u.balance || 0; settle(db, u); if ((u.balance || 0) !== before) await saveDB(db); }
       return sendJSON(res, 200, { accountNumber: u.accountNumber, balance: u.balance || 0, card: u.card || null, transactions: (u.txs || []).slice(-20).reverse() });
     }
     if (pathname === '/api/me/card' && M === 'PATCH') {
@@ -405,14 +404,19 @@ const server = http.createServer(async (req, res) => {
         });
         return sendJSON(res, 200, { sellers });
       }
-      if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/deposit$/)) && M === 'POST') {
+      // Balansga pul qo'shish va ayirish.
+      //  /deposit  — summa musbat bo'lsa qo'shadi, manfiy (masalan -5000) bo'lsa ayiradi
+      //  /withdraw — summa har doim ayiriladi (musbat son yuboriladi)
+      if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/(deposit|withdraw)$/)) && M === 'POST') {
         const s = db.users.find(u => u.id === Number(m[1]) && u.role === 'seller');
         if (!s) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
-        const { amount, note } = await readBody(req); const a = Math.round(Number(amount));
-        if (!a || a <= 0 || a > 1e10) return sendJSON(res, 400, { error: "To'g'ri summa kiriting" });
+        const { amount, note } = await readBody(req); let a = Math.round(Number(amount));
+        if (m[2] === 'withdraw') a = -Math.abs(a);
+        if (!a || Math.abs(a) > 1e10) return sendJSON(res, 400, { error: "To'g'ri summa kiriting" });
+        if (a < 0 && (s.balance || 0) < -a) return sendJSON(res, 400, { error: "Balansda yetarli mablag' yo'q (bor: " + (s.balance || 0) + " so'm)" });
         s.balance = (s.balance || 0) + a;
-        s.txs.push({ id: Date.now(), amount: a, note: note || "Admin tomonidan tushirildi", createdAt: new Date().toISOString() });
-        settle(db, s);
+        s.txs.push({ id: Date.now(), amount: a, note: note || (a > 0 ? "Admin tomonidan tushirildi" : "Admin tomonidan ayirildi"), createdAt: new Date().toISOString() });
+        if (a > 0) settle(db, s);
         await saveDB(db);
         return sendJSON(res, 200, { balance: s.balance });
       }
@@ -508,7 +512,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/earnings' && M === 'GET') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
-      { const before = u.balance || 0; settle(db, u); if ((u.balance || 0) !== before) await saveDB(db); }
       const all = sellerItems(db, u.id, false), del = sellerItems(db, u.id, true);
       const totalCommission = del.reduce((s, it) => s + (it.commission || 0), 0);
       const debt = totalCommission - (u.paidCommission || 0);
