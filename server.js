@@ -51,6 +51,7 @@ async function loadDB() {
   db.orders.forEach(o => {
     if (!o.paymentMethod || o.paymentMethod === 'naqd/yetkazishda') o.paymentMethod = 'naqd';
     if (!o.paymentStatus) o.paymentStatus = 'naqd';
+    if (o.status !== 'yetkazildi' && o.status !== 'bekor qilindi') o.items.forEach(it => { if (it.charge === undefined) it.charge = true; });
   });
   await ensureAdmin(db);
   await saveDB(db);
@@ -145,12 +146,29 @@ function ordOut(o, db) {
 function sellerItems(db, sid, deliveredOnly) {
   return db.orders.filter(o => !deliveredOnly || o.status === 'yetkazildi').flatMap(o => o.items.filter(it => it.sellerId === sid));
 }
+// To'langan komissiya = admin tasdiqlagan to'lovlar + buyurtmalardan balansdan yechilgan summa
+function commissionPaid(db, sid) {
+  const u = db.users.find(x => x.id === sid);
+  return (u ? u.paidCommission || 0 : 0) + sellerItems(db, sid, true).reduce((s, it) => s + (it.balancePaid || 0), 0);
+}
 function computeSellerDebt(db, sid) {
   const c = sellerItems(db, sid, true).reduce((s, it) => s + (it.commission || 0), 0);
-  const u = db.users.find(x => x.id === sid);
-  return c - (u ? u.paidCommission || 0 : 0);
+  return c - commissionPaid(db, sid);
 }
 function settle(db, s) {
+  if (!s.txs) s.txs = [];
+  // 1) Har bir yetkazilgan buyurtma komissiyasi (1%) birinchi navbatda sotuvchi balansidan yechiladi
+  for (const o of db.orders) {
+    if (o.status !== 'yetkazildi' || (s.balance || 0) <= 0) continue;
+    let took = 0;
+    for (const it of o.items) {
+      if (it.sellerId !== s.id || !it.charge) continue;
+      const t = Math.min(s.balance || 0, (it.commission || 0) - (it.balancePaid || 0));
+      if (t > 0) { s.balance -= t; it.balancePaid = (it.balancePaid || 0) + t; took += t; }
+    }
+    if (took > 0) s.txs.push({ id: Date.now() + o.id, amount: -took, note: 'Buyurtma #' + o.id + ' komissiyasi (1%) yechildi', createdAt: new Date().toISOString() });
+  }
+  // 2) Eski buyurtmalardan qolgan qarz bo'lsa — shuni ham balansdan yechamiz
   const take = Math.min(s.balance || 0, Math.max(0, computeSellerDebt(db, s.id)));
   if (take > 0) {
     s.balance -= take; s.paidCommission = (s.paidCommission || 0) + take;
@@ -499,7 +517,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname === '/api/admin/sellers' && M === 'GET') {
         const sellers = db.users.filter(u => u.role === 'seller').map(s => {
           const all = sellerItems(db, s.id, false), del = sellerItems(db, s.id, true);
-          const totalCommission = del.reduce((x, it) => x + (it.commission || 0), 0), paid = s.paidCommission || 0;
+          const totalCommission = del.reduce((x, it) => x + (it.commission || 0), 0), paid = commissionPaid(db, s.id);
           return {
             id: s.id, name: s.name, phone: s.phone, accountNumber: s.accountNumber, balance: s.balance || 0,
             productCount: db.products.filter(p => p.sellerId === s.id).length,
@@ -595,7 +613,7 @@ const server = http.createServer(async (req, res) => {
         const unit = curPrice(p);
         const subtotal = unit * qty, commission = Math.round(subtotal * COMMISSION_RATE), deliveryFee = p.deliveryPrice || 0;
         total += subtotal; deliveryTotal += deliveryFee;
-        return { productId: p.id, name: p.name, price: unit, qty, sellerId: p.sellerId, subtotal, commission, payout: subtotal - commission, deliveryFee };
+        return { productId: p.id, name: p.name, price: unit, qty, sellerId: p.sellerId, subtotal, commission, payout: subtotal - commission, deliveryFee, charge: true };
       });
       orderItems.forEach(it => { const p = db.products.find(x => x.id === it.productId); if (p) p.stock -= it.qty; });
       const order = {
@@ -620,12 +638,12 @@ const server = http.createServer(async (req, res) => {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
       const all = sellerItems(db, u.id, false), del = sellerItems(db, u.id, true);
       const totalCommission = del.reduce((s, it) => s + (it.commission || 0), 0);
-      const debt = totalCommission - (u.paidCommission || 0);
+      const paid = commissionPaid(db, u.id), debt = totalCommission - paid;
       return sendJSON(res, 200, {
         totalSales: all.reduce((s, it) => s + (it.subtotal || it.price * it.qty), 0), totalCommission,
         totalPayout: all.reduce((s, it) => s + (it.payout || it.price * it.qty), 0),
         orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === u.id)).length,
-        commissionRate: COMMISSION_RATE, payoutCard: { number: PAYOUT_CARD.number, name: initials(PAYOUT_CARD.name) }, paidCommission: u.paidCommission || 0, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
+        commissionRate: COMMISSION_RATE, payoutCard: { number: PAYOUT_CARD.number, name: initials(PAYOUT_CARD.name) }, paidCommission: paid, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
       });
     }
 
