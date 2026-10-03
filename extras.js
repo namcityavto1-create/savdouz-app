@@ -141,7 +141,7 @@ http.createServer = function (handler) {
         try {
           let s = recolor(Buffer.isBuffer(chunk) ? chunk.toString('utf8') : chunk);
           const i = s.lastIndexOf('</body>');
-          s = i === -1 ? s + USD_HTML : s.slice(0, i) + USD_HTML + s.slice(i);
+          // eski dollar qutisi o'chirildi
           arguments[0] = Buffer.from(s);
         } catch (e) { console.error('extras xato:', e.message); }
       }
