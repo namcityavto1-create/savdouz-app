@@ -220,7 +220,7 @@ function renderApp(){
   const label = role()==='admin' ? 'Admin' : role()==='seller' ? 'Sotuvchi' : 'Xaridor';
   $('app').innerHTML = `<header><div class="brandrow"><img class="logo" src="${LOGO}" alt="SavdoUz">
     <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · v3</div></div></div>
-    <button class="logoutbtn" id="logoutBtn">Chiqish</button></header><main id="main"></main><nav id="nav"></nav>`;
+    <div class="hright"><div class="usdbox" id="usdBox"><div class="u1">1$ = ...</div></div><button class="logoutbtn" id="logoutBtn">Chiqish</button></div></header><main id="main"></main><nav id="nav"></nav>`;
   $('logoutBtn').onclick = () => logout(false);
   if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = 'sellers';
   renderNav(); renderTab();
