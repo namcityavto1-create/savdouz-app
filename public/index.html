@@ -215,9 +215,15 @@ async function submitAuth(){
 }
 async function loadUsd(){
   const b = $('usdBox'); if(!b) return;
+async function loadUsd(){
+  const b = $('usdBox'); if(!b) return;
   try {
-    const d = await api('/api/usd'), f = n => Number(n).toLocaleString('ru-RU');
-    b.innerHTML = `<div class="u1">1$ = ${f(d.rate)} so'm</div><div class="u2">Olish ${f(d.buy)} · Sotish ${f(d.sell)}</div>`;
+    const d = await api('/api/kurs');
+    if(![d.rate, d.buy, d.sell].every(Number.isFinite)) throw 0;
+    const f = n => Number(n).toLocaleString('ru-RU');
+    b.innerHTML = `<div class="ch k"><small>1 $ =</small><b>${f(d.rate)}</b></div>
+      <div class="ch o"><small>Olish</small><b>${f(d.buy)}</b></div>
+      <div class="ch s"><small>Sotish</small><b>${f(d.sell)}</b></div>`;
   } catch(e){ b.style.display = 'none'; }
 }
 setInterval(loadUsd, 5 * 60 * 1000);
