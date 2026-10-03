@@ -1,4 +1,5 @@
-// SavdoUz backend v3 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma require('./pwa-patch.js');
+// SavdoUz backend v3 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma
+require('./pwa-patch.js');
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
 const { MongoClient } = require('mongodb');
 
