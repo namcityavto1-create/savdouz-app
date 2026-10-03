@@ -435,6 +435,26 @@ function sendDataImage(res, dataUrl, cacheCtl) {
   res.writeHead(200, { 'Content-Type': d[1], 'Cache-Control': cacheCtl });
   res.end(Buffer.from(d[2], 'base64'));
 }
+let usdCache = { t: 0, data: null };
+async function getUsd() {
+  if (usdCache.data && Date.now() - usdCache.t < 5 * 60 * 1000) return usdCache.data;
+  let data = null;
+  try {
+    const list = await (await fetch('https://nbu.uz/uz/exchange-rates/json/')).json();
+    const d = list.find(x => x.code === 'USD');
+    const buy = Math.round(parseFloat(d.nbu_buy_price)), sell = Math.round(parseFloat(d.nbu_cell_price));
+    if (buy && sell) data = { rate: Math.round((buy + sell) / 2), buy, sell };
+  } catch (e) {}
+  if (!data) {
+    try {
+      const [d] = await (await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/')).json();
+      const rate = Math.round(parseFloat(d.Rate));
+      if (rate) data = { rate, buy: rate - 50, sell: rate + 50 };
+    } catch (e) {}
+  }
+  if (data) usdCache = { t: Date.now(), data };
+  return data || usdCache.data;
+}
 
 // ---------- Server ----------
 const server = http.createServer(async (req, res) => {
@@ -449,6 +469,10 @@ const server = http.createServer(async (req, res) => {
     const me = () => getUserFromReq(req, db);
     const M = req.method;
     let m;
+    if (pathname === '/api/usd' && M === 'GET') {
+      const d = await getUsd();
+      return d ? sendJSON(res, 200, d) : sendJSON(res, 503, { error: 'Kurs olinmadi' });
+    }
 
     // ---- Push obuna ----
     if (pathname === '/api/push/key' && M === 'GET') {
