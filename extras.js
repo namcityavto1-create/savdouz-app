@@ -93,8 +93,7 @@ async function loadUsd() {
 const USD_HTML = '<style>*{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text}</style><div id="usdbox" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:40;background:#fff;color:#0A33B0;border-radius:14px;padding:5px 10px;line-height:1.3;text-align:right;font:800 12px -apple-system,Segoe UI,sans-serif;box-shadow:0 4px 14px -4px rgba(15,75,224,.4);display:none;pointer-events:none;"></div>' +
 '<script>(function(){var b=document.getElementById("usdbox");function f(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," ");}' +
 'function load(){fetch("/api/usd").then(function(r){return r.json();}).then(function(d){if(d&&d.sell){b.innerHTML=d.buy?"$ olish: "+f(d.buy)+"<br>$ sotish: "+f(d.sell):"$ MB: "+f(d.sell);b.style.display="block";}}).catch(function(){});}' +
-'load();setInterval(load,30*60*1000);})();</script>';
-
+'load();setInterval(load,30*60*1000);document.addEventListener("selectstart",function(e){var t=e.target&&e.target.tagName;if(t!=="INPUT"&&t!=="TEXTAREA"&&t!=="SELECT")e.preventDefault();},true);document.addEventListener("contextmenu",function(e){var t=e.target&&e.target.tagName;if(t!=="INPUT"&&t!=="TEXTAREA")e.preventDefault();},true);})();</script>';
 const SW = String.raw`self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
 self.addEventListener('push', function (e) {
