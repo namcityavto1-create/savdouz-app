@@ -224,8 +224,8 @@ async function loadUsd(){
     if(![d.rate, d.buy, d.sell].every(Number.isFinite)) throw 0;
     const f = n => Number(n).toLocaleString('ru-RU');
     b.innerHTML = `<div class="ch k"><small>1 $ =</small><b>${f(d.rate)}</b></div>
-      <div class="ch o"><small>Olish</small><b>${f(d.buy)}</b></div>
-      <div class="ch s"><small>Sotish</small><b>${f(d.sell)}</b></div>`;
+      b.innerHTML = `<div class="ch o"><small>1 $ Olish</small><b>${f(d.buy)} so'm</b></div>
+      <div class="ch s"><small>1 $ Sotish</small><b>${f(d.sell)} so'm</b></div>`;
   } catch(e){ b.style.display = 'none'; }
 }
 setInterval(loadUsd, 5 * 60 * 1000);
