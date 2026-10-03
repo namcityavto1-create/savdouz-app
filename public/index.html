@@ -213,6 +213,14 @@ async function submitAuth(){
     renderApp();
   } catch(e){ err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; }
 }
+async function loadUsd(){
+  const b = $('usdBox'); if(!b) return;
+  try {
+    const d = await api('/api/usd'), f = n => Number(n).toLocaleString('ru-RU');
+    b.innerHTML = `<div class="u1">1$ = ${f(d.rate)} so'm</div><div class="u2">Olish ${f(d.buy)} · Sotish ${f(d.sell)}</div>`;
+  } catch(e){ b.style.display = 'none'; }
+}
+setInterval(loadUsd, 5 * 60 * 1000);
 
 // ---- Asosiy ekran ----
 const role = () => S.user.role;
