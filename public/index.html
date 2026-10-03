@@ -219,8 +219,6 @@ async function submitAuth(){
 }
 async function loadUsd(){
   const b = $('usdBox'); if(!b) return;
-async function loadUsd(){
-  const b = $('usdBox'); if(!b) return;
   try {
     const d = await api('/api/kurs');
     if(![d.rate, d.buy, d.sell].every(Number.isFinite)) throw 0;
