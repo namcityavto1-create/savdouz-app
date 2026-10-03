@@ -1,7 +1,29 @@
 // extras.js — SavdoUz qo'shimchalari: ko'k dizayn, dollar kursi, bildirishnoma rasmi/belgisi
 // server.js da "require('./pwa-patch.js');" qatoridan keyin: require('./extras.js');
 const http = require('http'), https = require('https');
-const BADGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAFaklEQVR42u1cTYscVRQ9t6pFUALpCQiixoUuXAhBogs3zkKDKyHgWgV/QdZunP/hxo0LcSBkYzQGjBICxo+RoGh0Fm6MAxJEZ2TMdFcdF31feBTdPVXV1e/Vxz1Q1MxQ07ffux/n3VvvXcBgMBgMBoPBYDAYDAaDwWAwGIYAKfsgybTG5+ciQpvmiCCZ2Cys6AEkRwBeBDCq8NkZgO9E5ICkmCfUs17R+wbJe6yO30i+YJ6wGGUnhQD2AeRq2XmJKwPwJIBPST4+04Epoa4C3LNVrhTAFMAYwDsWglZXQB2k6j1vkNwQkdyFNUN1BWQlrnwOyRPAQwDOBFJ6LxUgAE6qRY/0Pu+a93m5/n2zau4xBJRdVk4AfAzghFq0LLD0pwCcLjzj7i9p+Mlt2te3bH1Nl59Tbyma6/0uyQ1/eWuokFgds4RM1LJ3APwL4GHPC5zVjwGcIXkNQEoy63WGG3rVRzIhmZL8Ri0+87xgovcts/maHlCG0EVkSvI6gLMe+fo8sEly7HlMLyOxjvdQRP5rpBZU0gNSEclIngdwUZel6Zyl7D8eafcV9wBsisgvJBMRyUMoQESEJB8DcLvAA0PDLQDPAeBxXNBYUqSTLwD2APzsueM8F+3rNdH7FbX6Y9+hNJ2VpiKSAbjuJWHzvK6vlyu9bC8xwLUqwAm8NsCs1y06dgHsaEjOQivAWfzXmg+kPSfbeWO/ISJHZee2UQVU4IE+19W26/xTaB7o49o/AXAHwJdVxp2s6csMjQfuh14R2deciLEUMGQeuFTV6BpXwAB5gGpkfwO47GX80ThgaDzgxrYjIntaemBsBQyJB9xYP6kzp8marWIIPJBiVny7WMfb16KAAfFApt79A4BdzX7zNnjAUHjgfqgtW3wLqYAh8IB7sfRRXS9fpwL6zgO1im/BFDAAHqhVfAvpAX3ngVrFt9AK6CsP1C6+hVZAX3mgdvEtqAIGwAOXVvXsEDuV+8YDKxXfYiigLA8Q5U7exL6meq9VfCtiFEABRR5YtF9IOkLSzmgvF5KxdipgDg+cLSjA7aD7AMD7+nMXNu7eXDX8hPIAxwOL9o06jEXkatcIYdVd0EFc/ph9o84b9gG8CeAA3dg7+q2I/LXqGehQCujjvtFzInLVGVerQ1CBB34C8PwCBXRhierC57SJDxsF/OKOB24s4YGunKBMmvLekAN2cfIz2EnJKB7gDml/AeAPAI8COEKNt0gtCEFsapEQTAHKA4kWr85jduz1VAeN1hnMA13zALhWBSJyU7uovA7gFW8w0hEPSAD8WQit3YF1TQmcByxRwrw6il8TYgQLKyufveoAQ1JIjoqn6PXscdJ3+bEnPy38PiZ50v97zaaBnZDfCj4g+QjJLZJfaV+JuyR/JPkeyWedlfZNflsm/1WSvy/pPXdE8oKGibQv8lsRdkieK/SUyLTDSq4/T7y+E1tNhYPY8ttAuELyFMk9Hex0iQXmaoU5yc1VJyG2/DZZ/1ahm8oyuAn6XDuzJF2V36Yl5/clrM+3wpzkIcnTqyR0seX7SGJMviYwJzBrbyYlv4d7S/YggKfrJpKx5UdXQGFAScD/a5v8OArw3o4dakGrSrlBMOtIcqduISy2/LZ4QCIih5ht1irbSdE9swvg1zrHgVokvzUJ2DNKgBOvu+IiuObhbzWwDI0qv21L0QveMm9amAiXDLnBb7vmgF2X3zZPeLdgbVmh6yJJfqhFMmmqJhNbfmtyAr2/TPIKyYNCaeAWybeLz/dFvrQlHLnNTSSf8NbZewBu+13X1/ESJLb81nDCIusKEXNjyZcWKsLf9EQEfvUXW77BYDAYDAaDwWAwGAwGwxrxPyZYax4Ci+LDAAAAAElFTkSuQmCC', 'base64');
+const zlib = require('zlib');
+// Bildirishnoma uchun shaffof fonda oq savat belgisi (96x96) — kod o'zi chizadi
+function makeBadge() {
+  const N = 96, SS = 3, rows = [];
+  const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
+  const dSeg = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
+  const basket = [[24, 28], [86, 28], [78, 54], [31, 54]], handle = [[10, 20], [22, 20], [32, 60], [78, 60]];
+  const on = (x, y) => inPoly(x, y, basket) || [0, 1, 2].some(i => dSeg(x, y, handle[i], handle[i + 1]) <= 3.5) || Math.hypot(x - 38, y - 75) <= 7 || Math.hypot(x - 70, y - 75) <= 7;
+  for (let y = 0; y < N; y++) {
+    const r = Buffer.alloc(1 + N * 4);
+    for (let x = 0; x < N; x++) {
+      let k = 0; for (let a = 0; a < SS; a++) for (let b = 0; b < SS; b++) if (on(x + (a + 0.5) / SS, y + (b + 0.5) / SS)) k++;
+      r[1 + x * 4] = r[2 + x * 4] = r[3 + x * 4] = 255; r[4 + x * 4] = Math.round(255 * k / (SS * SS));
+    }
+    rows.push(r);
+  }
+  const crcT = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcT[n] = c >>> 0; }
+  const crc = b => { let c = 0xFFFFFFFF; for (const v of b) c = crcT[(c ^ v) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]), c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(N, 0); ihdr.writeUInt32BE(N, 4); ihdr[8] = 8; ihdr[9] = 6;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(Buffer.concat(rows))), chunk('IEND', Buffer.alloc(0))]);
+}
+const BADGE = makeBadge();
 const BLUE = '#0F4BE0';
 
 // ---------- Rang: binafsha/pushti ranglarni logotipdagi ko'kka almashtirish ----------
@@ -56,8 +78,8 @@ async function loadUsd() {
   try { // 1) NBU (O'zMilliybank) — bank sotish kursi
     const a = await getJSON('https://nbu.uz/en/exchange-rates/json/');
     const x = (Array.isArray(a) ? a : []).find(i => String(i.code).toUpperCase() === 'USD');
-    const sell = x && Math.round(parseFloat(x.nbu_cell_price));
-    if (sell > 1000) { usd = { sell, kind: 'sotish', updated: new Date().toISOString() }; usdAt = Date.now(); return usd; }
+    const sell = x && Math.round(parseFloat(x.nbu_cell_price)), buy = x && Math.round(parseFloat(x.nbu_buy_price));
+    if (sell > 1000) { usd = { sell, buy: buy > 1000 ? buy : null, kind: 'bank', updated: new Date().toISOString() }; usdAt = Date.now(); return usd; }
   } catch (e) {}
   try { // 2) Markaziy bank rasmiy kursi (zaxira)
     const a = await getJSON('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/');
@@ -68,9 +90,9 @@ async function loadUsd() {
 }
 
 // ---------- Sahifaga qo'shiladigan dollar kursi ----------
-const USD_HTML = '<div id="usdbox" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:40;background:#fff;color:#0A33B0;border-radius:14px;padding:5px 10px;font:800 12px -apple-system,Segoe UI,sans-serif;box-shadow:0 4px 14px -4px rgba(15,75,224,.4);display:none;pointer-events:none;"></div>' +
+const USD_HTML = '<div id="usdbox" style="position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:40;background:#fff;color:#0A33B0;border-radius:14px;padding:5px 10px;line-height:1.3;text-align:right;font:800 12px -apple-system,Segoe UI,sans-serif;box-shadow:0 4px 14px -4px rgba(15,75,224,.4);display:none;pointer-events:none;"></div>' +
 '<script>(function(){var b=document.getElementById("usdbox");function f(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," ");}' +
-'function load(){fetch("/api/usd").then(function(r){return r.json();}).then(function(d){if(d&&d.sell){b.textContent="$ "+d.kind+": "+f(d.sell);b.style.display="block";}}).catch(function(){});}' +
+'function load(){fetch("/api/usd").then(function(r){return r.json();}).then(function(d){if(d&&d.sell){b.innerHTML=d.buy?"$ olish: "+f(d.buy)+"<br>$ sotish: "+f(d.sell):"$ MB: "+f(d.sell);b.style.display="block";}}).catch(function(){});}' +
 'load();setInterval(load,30*60*1000);})();</script>';
 
 const SW = String.raw`self.addEventListener('install', function () { self.skipWaiting(); });
