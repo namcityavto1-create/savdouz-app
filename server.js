@@ -469,7 +469,7 @@ const server = http.createServer(async (req, res) => {
     const me = () => getUserFromReq(req, db);
     const M = req.method;
     let m;
-    if (pathname === '/api/usd' && M === 'GET') {
+    if (pathname === '/api/kurs' && M === 'GET') {
       const d = await getUsd();
       return d ? sendJSON(res, 200, d) : sendJSON(res, 503, { error: 'Kurs olinmadi' });
     }
