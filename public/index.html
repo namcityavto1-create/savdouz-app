@@ -105,11 +105,15 @@ nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radiu
 .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .25s;z-index:20;max-width:380px;text-align:center;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .warn{background:#FDEDED;color:var(--red);font-size:12px;padding:10px 12px;border-radius:10px;font-weight:600;margin-bottom:12px}
-  .hright{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.brandrow{min-width:0}
-.usdbox{background:rgba(255,255,255,.18);border-radius:11px;padding:5px 9px;color:#fff;line-height:1.25;text-align:center;white-space:nowrap}
-.usdbox .u1{font-size:11px;font-weight:800}
-.usdbox .u2{font-size:9px;opacity:.95;font-weight:600}
+.usdstrip{display:flex;gap:8px;padding:12px 16px 0}
+.usdstrip .ch{flex:1;background:#fff;border-radius:14px;padding:8px 6px;text-align:center;box-shadow:0 3px 12px -6px rgba(21,15,46,.15)}
+.usdstrip .ch small{display:block;font-size:10px;color:var(--mut);font-weight:700;margin-bottom:2px}
+.usdstrip .ch b{font-size:13px;font-weight:800}
+.usdstrip .ch.k{background:linear-gradient(135deg,var(--v),var(--vd))}
+.usdstrip .ch.k small{color:rgba(255,255,255,.8)}
+.usdstrip .ch.k b{color:#fff}
+.usdstrip .ch.o b{color:var(--grn)}
+.usdstrip .ch.s b{color:var(--red)}
 </style>
 </head>
 <body>
