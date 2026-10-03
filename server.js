@@ -771,7 +771,7 @@ const server = http.createServer(async (req, res) => {
         createdAt: new Date().toISOString()
       };
       db.orders.push(order); await saveDB(db);
-      pushNotify(db, orderItems.map(i => i.sellerId), { title: 'Yangi buyurtma!', body: 'Buyurtma #' + order.id + ' — ' + order.total + " so'm", tag: 'order', icon: (p0 => p0 && p0.image ? '/api/img/' + p0.id + '?v=' + (p0.imgv || 0) : '')(db.products.find(x => x.id === orderItems[0].productId)) }); });
+      pushNotify(db, orderItems.map(i => i.sellerId), { title: 'Yangi buyurtma!', body: 'Buyurtma #' + order.id + ' — ' + order.total + " so'm", tag: 'order', icon: (p0 => p0 && p0.image ? '/api/img/' + p0.id + '?v=' + (p0.imgv || 0) : '')(db.products.find(x => x.id === orderItems[0].productId)) });
       return sendJSON(res, 200, { order: ordOut(order, db) });
     }
     if (pathname === '/api/orders/mine' && M === 'GET') {
