@@ -710,7 +710,6 @@ async function renderAdmin(main){
       <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
       <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
       <div class="ototal" style="color:${s.debt>0?'var(--red)':'var(--ink)'}"><span>Qarzi</span><span>${fmt(Math.max(0, s.debt))}</span></div>
-      <button class="addbtn" style="background:var(--grn);margin-top:10px" data-deposit="${s.id}" data-sname="${esc(s.name)}">💰 Hisobga pul tushirish</button>
       <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`).join('') : none("Hali sotuvchi yo'q"));
     main.querySelectorAll('[data-deposit]').forEach(b => b.onclick = async () => {
       const raw = prompt(`"${b.dataset.sname}" hisobiga qancha so'm tushiriladi?`);
