@@ -133,10 +133,21 @@ async function login(col, kind, b) {
 // ---------- Asosiy yo'naltirgich ----------
 async function handle(req, res) {
   const u = new URL(req.url, 'http://x'), P = u.pathname, M = req.method;
+  if (M === 'GET' && (P === '/kuryer.webmanifest' || P === '/hamkor.webmanifest')) {
+    const k = P === '/kuryer.webmanifest', s = k ? '/kuryer' : '/hamkor';
+    res.writeHead(200, { 'Content-Type': 'application/manifest+json' });
+    res.end(JSON.stringify({
+      name: k ? 'SavdoUz Kuryer' : 'SavdoUz Hamkor', short_name: k ? 'Kuryer' : 'Hamkor',
+      start_url: s, scope: s, display: 'standalone', background_color: '#F3F5F2', theme_color: '#0B6B52',
+      icons: [{ src: '/sv-192.png', sizes: '192x192', type: 'image/png' }, { src: '/sv-512.png', sizes: '512x512', type: 'image/png' }, { src: '/sv-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
+    }));
+    return true;
+  }
   if (M === 'GET' && (P === '/kuryer' || P === '/hamkor' || P === '/kuryer-admin')) {
     fs.readFile(path.join(__dirname, 'public', 'courier.html'), (e, d) => {
       if (e) { res.writeHead(404); return res.end('public/courier.html topilmadi'); }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); res.end(d);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(String(d).replace('</head>', `<link rel="manifest" href="/${P === '/hamkor' ? 'hamkor' : 'kuryer'}.webmanifest"></head>`));
     });
     return true;
   }
