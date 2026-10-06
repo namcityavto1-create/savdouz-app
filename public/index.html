@@ -128,7 +128,7 @@ const LOGO = '/logo.png';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n || 0).toLocaleString('ru-RU') + " so'm";
-const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none' });
+const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none', pend:0 });
 let S = { ...fresh(), token: localStorage.getItem('savdouz_token') };
 const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","Kiyim","Poyabzal","Aksessuarlar","Go'zallik","Oziq-ovqat","Uy-ro'zg'or","Mebel","Bolalar","Sport","Avto","Qurilish","Kitob","Boshqa"];
 const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
@@ -192,7 +192,7 @@ function renderAuth(){
       <div class="roletab ${authRole==='buyer'?'active':''}" data-role="buyer">Xaridor</div>
       <div class="roletab ${authRole==='seller'?'active':''}" data-role="seller">Sotuvchi</div></div>
       <div class="field"><label>Ism</label><input id="fname" placeholder="Ismingiz"></div>
-      ${authRole==='seller' ? `<div class="field"><label>Pasport yoki ID karta rasmi</label><input id="fid" type="file" accept="image/*"></div><div class="field"><label>Selfi (o'zingizning rasmingiz)</label><input id="fself" type="file" accept="image/*" capture="user"></div>` : ''}` : ''}
+      ${authRole==='seller' ? `<div class="field"><label>Pasport yoki ID karta rasmi</label><input id="fid" type="file" accept="image/*"></div><div class="field"><label>Selfi (o'zingizning rasmingiz)</label><input id="fself" type="file" accept="image/*" capture="user"></div><div style="font-size:11.5px;color:var(--mut);margin:-4px 0 12px">Admin rasmlaringizni tekshirib, hisobingizni tasdiqlaydi. Tasdiqlangunga qadar mahsulot qo'sha olmaysiz.</div>` : ''}` : ''}
     <div class="field"><label>Telefon raqam</label><input id="fphone" placeholder="+998901234567" inputmode="tel"></div>
     <div class="field"><label>Parol</label><input id="fpass" type="password" placeholder="••••••••"></div>
     <button class="primarybtn" id="submitBtn">${reg ? "Ro'yxatdan o'tish" : "Kirish"}</button>
@@ -243,7 +243,7 @@ const role = () => S.user.role;
 function renderApp(){
   const label = role()==='admin' ? 'Admin' : role()==='seller' ? 'Sotuvchi' : 'Xaridor';
   $('app').innerHTML = `<header><div class="brandrow"><img class="logo" src="${LOGO}" alt="SavdoUz">
-    <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · v3</div></div></div>
+    <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · v4</div></div></div>
   <button class="logoutbtn" id="logoutBtn">Chiqish</button></header><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
   $('logoutBtn').onclick = () => logout(false);
   loadUsd();
@@ -252,7 +252,7 @@ function renderApp(){
 }
 function renderNav(){
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
-  const items = role()==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]]
+  const items = role()==='admin' ? [['sellers','🏪','Sotuvchilar' + (S.pend ? ' (' + S.pend + ')' : '')],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]]
     : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['orders','📦','Buyurtmalar'],['add','➕',"Qo'shish"],['pay','💰',"To'lov"],['account','💼','Hisobim']]
     : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']];
   const active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
@@ -373,6 +373,8 @@ async function renderTab(silent){
 async function renderTabInner(main){
   const seller = role()==='seller';
   if(role()==='admin') return renderAdmin(main);
+  // Tasdiqlanmagan sotuvchi hech qaysi bo'limni ishlata olmaydi
+  if(seller && (S.user.sellerStatus || 'faol') !== 'faol') return sellerPending(main);
   if(S.tab==='detail') return renderDetail(main);
   if(S.tab==='store') return renderStore(main);
   if(S.tab==='home') return seller ? sellerHome(main) : buyerHome(main);
@@ -384,6 +386,31 @@ async function renderTabInner(main){
   if(S.tab==='pay' && seller) return sellerPayments(main);
   S.tab = 'home'; renderNav(); return renderTab();
 }
+
+// ---- Sotuvchi tasdiqlanishini kutish ----
+async function refreshMe(manual){
+  try {
+    const { user } = await api('/api/me');
+    const was = S.user.sellerStatus;
+    S.user = user;
+    if(user.sellerStatus !== was){
+      if(user.sellerStatus === 'faol') toast('Hisobingiz tasdiqlandi ✅');
+      renderApp();
+    } else if(manual) toast(user.sellerStatus === 'faol' ? 'Hisobingiz faol' : 'Hali tasdiqlanmagan');
+  } catch(e){ if(manual) toast(e.message); }
+}
+function sellerPending(main){
+  const rej = S.user.sellerStatus === 'rad etildi';
+  main.innerHTML = `<div class="empty" style="padding-top:50px">${rej
+    ? "❌<br><br><b>Hisobingiz rad etilgan yoki bloklangan</b><br>Admin bilan bog'laning."
+    : "⏳<br><br><b>Arizangiz ko'rib chiqilmoqda</b><br>Admin pasport va selfingizni tekshirgach, mahsulot qo'sha olasiz.<br>Tasdiqlansa shu yerda xabar chiqadi."}<br><br>
+    <button class="addbtn" style="width:auto;padding:10px 20px" id="chkBtn">Tekshirish</button></div>`;
+  $('chkBtn').onclick = () => refreshMe(true);
+}
+setInterval(() => {
+  if(!S.user || S.user.role !== 'seller' || (S.user.sellerStatus || 'faol') === 'faol' || document.hidden) return;
+  refreshMe(false);
+}, 10000);
 
 async function renderStore(main){
   if(!S.sellerId){ goBack(); return; }
@@ -705,13 +732,19 @@ async function sellerPayments(main){
 }
 
 // ---- Admin ----
+const SST = { faol: ['#E6F4EA', 'var(--grn)', 'Tasdiqlangan'], kutilmoqda: ['#FFF1E6', 'var(--or)', 'Kutilmoqda'], 'rad etildi': ['#FDEDED', 'var(--red)', 'Rad etilgan'] };
 async function renderAdmin(main){
   const t = S.tab;
   const none = m => `<div class="empty">${m}</div>`;
   if(t==='sellers'){
     const { sellers } = await api('/api/admin/sellers');
-    main.innerHTML = `<div class="sectitle">Sotuvchilar (${sellers.length})</div>` + (sellers.length ? sellers.map(s => `<div class="oitem">
-      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Cheklangan</span>' : ''}</span><span>${esc(s.phone)}</span></div>
+    // Tasdiqlashni kutayotganlar eng tepada
+    sellers.sort((a, b) => (a.sellerStatus === 'kutilmoqda' ? 0 : 1) - (b.sellerStatus === 'kutilmoqda' ? 0 : 1));
+    const pc = sellers.filter(s => s.sellerStatus === 'kutilmoqda').length;
+    if(S.pend !== pc){ S.pend = pc; renderNav(); }
+    main.innerHTML = `<div class="sectitle">Sotuvchilar (${sellers.length})</div>` + (sellers.length ? sellers.map(s => { const c = SST[s.sellerStatus] || SST.faol; return `<div class="oitem">
+      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Qarz limiti</span>' : ''}</span><span>${esc(s.phone)}</span></div>
+      <div class="oline"><span>Holati</span><span class="status" style="background:${c[0]};color:${c[1]}">${c[2]}</span></div>
       <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
       <div class="oline"><span>Hujjatlar</span><span>${s.hasDocs ? `<a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank">Pasport/ID</a> · <a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank">Selfi</a>` : 'yuklanmagan'}</span></div>
       <div class="oline"><span>Balans</span><span>${fmt(s.balance)}</span></div>
@@ -719,18 +752,16 @@ async function renderAdmin(main){
       <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
       <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
       <div class="ototal" style="color:${s.debt>0?'var(--red)':'var(--ink)'}"><span>Qarzi</span><span>${fmt(Math.max(0, s.debt))}</span></div>
-      <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`).join('') : none("Hali sotuvchi yo'q"));
-    main.querySelectorAll('[data-deposit]').forEach(b => b.onclick = async () => {
-      const raw = prompt(`"${b.dataset.sname}" hisobiga qancha so'm tushiriladi?`);
-      if(raw === null) return;
-      const amount = Number(String(raw).replace(/\s/g, ''));
-      if(!amount || amount <= 0){ toast("To'g'ri summa kiriting"); return; }
-      const note = prompt('Izoh (ixtiyoriy):') || '';
-      if(!confirm(`${b.dataset.sname} hisobiga ${fmt(amount)} tushirilsinmi?`)) return;
-      try {
-        await api('/api/admin/sellers/' + b.dataset.deposit + '/deposit', { method:'POST', body:JSON.stringify({ amount, note }) });
-        toast(`${fmt(amount)} hisobga tushirildi ✅`); renderTab();
-      } catch(e){ toast(e.message); }
+      <div style="display:flex;gap:6px;margin-top:8px">
+        ${s.sellerStatus !== 'faol' ? `<button class="addbtn" style="background:var(--grn)" data-sst="${s.id}" data-st="faol" data-sname="${esc(s.name)}">Tasdiqlash</button>` : ''}
+        ${s.sellerStatus !== 'rad etildi' ? `<button class="addbtn" style="background:var(--or)" data-sst="${s.id}" data-st="rad etildi" data-sname="${esc(s.name)}">${s.sellerStatus === 'faol' ? 'Bloklash' : 'Rad etish'}</button>` : ''}
+      </div>
+      <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; }).join('') : none("Hali sotuvchi yo'q"));
+    main.querySelectorAll('[data-sst]').forEach(b => b.onclick = async () => {
+      const ok = b.dataset.st === 'faol' ? `"${b.dataset.sname}" ni tasdiqlaysizmi? Rasmlarni tekshirdingizmi?` : `"${b.dataset.sname}" ni ${b.textContent.toLowerCase()}ni tasdiqlaysizmi? Mahsulotlari ko'rinmay qoladi.`;
+      if(!confirm(ok)) return;
+      try { await api('/api/admin/sellers/' + b.dataset.sst + '/status', { method:'POST', body:JSON.stringify({ status:b.dataset.st }) }); toast('Bajarildi ✅'); renderTab(); }
+      catch(e){ toast(e.message); }
     });
     main.querySelectorAll('[data-delseller]').forEach(b => b.onclick = async () => {
       if(!confirm(`"${b.dataset.sname}" va uning barcha mahsulotlari o'chiriladi. Davom etasizmi?`)) return;
@@ -811,12 +842,12 @@ function beep(kind){
     if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
   } catch(e){}
 }
-let _snd = { key:null, ord:null, bal:null, pay:null };
+let _snd = { key:null, ord:null, bal:null, pay:null, pend:null };
 const _maxId = a => (a || []).reduce((m, x) => x.id > m ? x.id : m, 0);
 setInterval(async () => {
-  if(!S.user || !S.token){ _snd = { key:null, ord:null, bal:null, pay:null }; return; }
+  if(!S.user || !S.token){ _snd = { key:null, ord:null, bal:null, pay:null, pend:null }; return; }
   const key = S.token + ':' + S.user.role;
-  if(_snd.key !== key) _snd = { key, ord:null, bal:null, pay:null };
+  if(_snd.key !== key) _snd = { key, ord:null, bal:null, pay:null, pend:null };
   try {
     if(S.user.role === 'seller'){
       const o = await api('/api/orders/incoming'); const m = _maxId(o.orders);
@@ -829,6 +860,11 @@ setInterval(async () => {
       const p = await api('/api/admin/payments'); const m = _maxId(p.payments);
       if(_snd.pay !== null && m > _snd.pay) beep('money');
       _snd.pay = m;
+      // Yangi sotuvchi tasdiqlashni kutsa ovoz chiqadi va "Sotuvchilar" belgisi yangilanadi
+      const pd = await api('/api/admin/pending');
+      if(_snd.pend !== null && pd.count > _snd.pend) beep('order');
+      _snd.pend = pd.count;
+      if(S.pend !== pd.count){ S.pend = pd.count; if($('nav')) renderNav(); }
     }
   } catch(e){}
 }, 8000);
