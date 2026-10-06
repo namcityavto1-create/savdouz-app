@@ -94,7 +94,7 @@ function authView() {
   let f = '';
   if (reg) {
     f += `<label>${MODE === 'partner' ? "Do'kon / kafe nomi" : 'Ism familiya'}</label><input id="f_name">`;
-    if (MODE === 'partner') f += `<label>Turi</label><select id="f_type"><option value="dokon">Do'kon</option><option value="kafe">Kafe / restoran</option></select><label>Manzil</label><input id="f_addr">`;
+    if (MODE === 'partner') f += `<label>Turi</label><select id="f_type"><option value="dokon">Do'kon</option><option value="kafe">Kafe / restoran</option></select><label>Manzil</label><input id="f_addr"><label>Pasport rasmi</label><input id="f_pass" type="file" accept="image/*"><label>Selfi (o'zingizning rasmingiz)</label><input id="f_self" type="file" accept="image/*" capture="user">`;
     else f += `<label>Transport</label><select id="f_tr"><option>Piyoda</option><option>Velosiped</option><option>Skuter</option><option>Avtomobil</option></select><label>Pasport rasmi</label><input id="f_pass" type="file" accept="image/*"><label>Selfi (o'zingizning rasmingiz)</label><input id="f_self" type="file" accept="image/*" capture="user">`;
   }
   f += `<label>Telefon raqam</label><input id="f_phone" inputmode="tel" placeholder="+998901234567"><label>Parol</label><input id="f_pw" type="password">`;
@@ -198,6 +198,7 @@ const pOrd = o => `<div class="card"><div class="top"><b>№${o.id} · ${esc(o.c
   ${['oldi', 'yetkazildi', 'javob_yoq'].includes(o.status) && !o.sellerPaid ? `<button class="btn ghost" data-act="pPaid" data-id="${o.id}">Pul oldim (mahsulot puli)</button>` : ''}
   ${o.status === 'yangi' || o.status === 'qabul' ? `<button class="btn ghost" data-act="pCancel" data-id="${o.id}">Bekor qilish</button>` : ''}</div>`;
 function pView() {
+  if (ME.status && ME.status !== 'faol') return `<h1>${TITLE}</h1><div class="card">${ME.status === 'kutilmoqda' ? "Arizangiz ko'rib chiqilmoqda. Admin tasdiqlagach ishlay olasiz." : 'Hisobingiz faol emas (' + esc(ME.status) + "). Admin bilan bog'laning."}</div><p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
   if (!ME.lat && TAB !== 'wallet') TAB = 'profile';
   let h = '';
   if (TAB === 'wallet') h = walletView();
@@ -213,7 +214,7 @@ function pView() {
 
 // ---------- ADMIN ----------
 function aView() {
-  const T = [['cour', 'Kuryerlar'], ['top', "To'ldirish"], ['wd', 'Yechish'], ['ord', 'Buyurtma'], ['new', 'Kiritish']];
+  const T = [['cour', 'Kuryerlar'], ['par', 'Hamkorlar'], ['top', "To'ldirish"], ['wd', 'Yechish'], ['ord', 'Buyurtma'], ['new', 'Kiritish']];
   if (!T.some(x => x[0] === TAB)) TAB = 'cour';
   let h = `<h1>Kuryer admin</h1>`;
   const A = AD, tk = encodeURIComponent(TOKEN);
@@ -221,6 +222,10 @@ function aView() {
     <a href="/api/c/admin/img/couriers/${c.id}/passport?t=${tk}" target="_blank">Pasport</a> · <a href="/api/c/admin/img/couriers/${c.id}/selfie?t=${tk}" target="_blank">Selfi</a></div>
     ${c.status === 'faol' ? `<button class="btn sm bad" data-act="cAct" data-id="${c.id}" data-a="block">Bloklash</button>` : `<button class="btn sm" data-act="cAct" data-id="${c.id}" data-a="${c.status === 'bloklangan' ? 'unblock' : 'approve'}">Tasdiqlash</button>`}
     ${c.status === 'kutilmoqda' ? `<button class="btn sm bad" data-act="cAct" data-id="${c.id}" data-a="reject">Rad etish</button>` : ''}</div>`).join('') || '<div class="note">Kuryer yo\'q</div>';
+  if (TAB === 'par') h += A.partners.map(p => `<div class="card"><div class="top"><b>${esc(p.name)}</b><span class="st">${esc(p.status)}</span></div><div class="note">${esc(p.phone)} · ${esc(p.address)} · balans ${fmt(p.balance)}<br>
+    <a href="/api/c/admin/img/partners/${p.id}/passport?t=${tk}" target="_blank">Pasport</a> · <a href="/api/c/admin/img/partners/${p.id}/selfie?t=${tk}" target="_blank">Selfi</a></div>
+    ${p.status === 'faol' ? `<button class="btn sm bad" data-act="pAct" data-id="${p.id}" data-a="block">Bloklash</button>` : `<button class="btn sm" data-act="pAct" data-id="${p.id}" data-a="${p.status === 'bloklangan' ? 'unblock' : 'approve'}">Tasdiqlash</button>`}
+    ${p.status === 'kutilmoqda' ? `<button class="btn sm bad" data-act="pAct" data-id="${p.id}" data-a="reject">Rad etish</button>` : ''}</div>`).join('') || '<div class="note">Hamkor yo\'q</div>';
   if (TAB === 'top') h += A.topups.map(t => `<div class="card"><div class="top"><b>${t.role === 'c' ? 'Kuryer' : 'Hamkor'}: ${esc(t.userName)}</b><span class="st">${esc(t.status)}</span></div><div class="note">${fmt(t.amount)} · kod ${esc(t.code)} · ${new Date(t.createdAt).toLocaleString('uz')}${t.hasReceipt ? ` · <a href="/api/c/admin/img/topups/${t._id}/receipt?t=${tk}" target="_blank">Chek</a>` : ''}</div>
     ${t.status === 'kutilmoqda' ? `<button class="btn sm" data-act="tAct" data-id="${t._id}" data-a="approve">Tasdiqlash</button><button class="btn sm bad" data-act="tAct" data-id="${t._id}" data-a="reject">Rad etish</button>` : ''}</div>`).join('') || '<div class="note">Yo\'q</div>';
   if (TAB === 'wd') h += A.withdrawals.map(x => `<div class="card"><div class="top"><b>${esc(x.partnerName)}</b><span class="st">${esc(x.status)}</span></div><div class="note">Kartaga o'tkazing: <b>${fmt(x.amount)}</b><br>Karta: ${esc(x.card)} (komissiya ${fmt(x.fee)})</div>
@@ -284,7 +289,7 @@ const ACT = {
         d = await r.json(); if (!r.ok) throw new Error(d.error || 'Xato'); if (d.user.role !== 'admin') throw new Error('Faqat admin kira oladi');
       } else if (AUTH === 'reg') {
         const body = { name: $('f_name').value, phone, password };
-        if (MODE === 'partner') { body.type = $('f_type').value; body.address = $('f_addr').value; }
+        if (MODE === 'partner') { body.type = $('f_type').value; body.address = $('f_addr').value; body.passport = await readImage($('f_pass').files[0]); body.selfie = await readImage($('f_self').files[0]); }
         else { body.transport = $('f_tr').value; body.passport = await readImage($('f_pass').files[0]); body.selfie = await readImage($('f_self').files[0]); }
         d = await api('/' + MODE + '/register', 'POST', body);
       } else d = await api('/' + MODE + '/login', 'POST', { phone, password });
@@ -327,6 +332,7 @@ const ACT = {
     go('/partner/profile', { address: $('p_addr').value, lat: p.lat, lng: p.lng }, 'Saqlandi').then(() => { TAB = 'home'; render(); });
   },
   cAct(d) { go('/admin/courier/' + d.id, { action: d.a }, 'Bajarildi'); },
+  pAct(d) { go('/admin/partner/' + d.id, { action: d.a }, 'Bajarildi'); },
   tAct(d) { go('/admin/topup/' + d.id, { action: d.a }, 'Bajarildi'); },
   wAct(d) { go('/admin/withdraw/' + d.id, { action: d.a }, 'Bajarildi'); }
 };
