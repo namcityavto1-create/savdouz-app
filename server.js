@@ -1,4 +1,4 @@
-// SavdoUz backend v3 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma
+// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
@@ -85,6 +85,8 @@ async function loadDB() {
       if (!u.accountNumber) u.accountNumber = 'SU' + String(u.id).padStart(8, '0');
       if (u.balance === undefined) u.balance = 0;
       if (!u.txs) u.txs = [];
+      // Eski sotuvchilar avtomatik tasdiqlangan hisoblanadi (to'xtab qolmasin)
+      if (!u.sellerStatus) u.sellerStatus = 'faol';
     }
   });
   db.products.forEach(p => {
@@ -157,7 +159,14 @@ function readBody(req) {
     req.on('end', () => { if (!data) return resolve({}); try { resolve(JSON.parse(data)); } catch (e) { reject(new UserErr("Noto'g'ri so'rov")); } });
   });
 }
-const publicUser = u => ({ id: u.id, name: u.name, phone: u.phone, role: u.role });
+// Sotuvchi holati: 'kutilmoqda' (admin tasdiqlamagan), 'faol' (tasdiqlangan), 'rad etildi' (rad/blok)
+const sellerStatusOf = u => u.sellerStatus || 'faol';
+const publicUser = u => {
+  const r = { id: u.id, name: u.name, phone: u.phone, role: u.role };
+  if (u.role === 'seller') r.sellerStatus = sellerStatusOf(u);
+  return r;
+};
+const isSellerActive = (db, sid) => { const s = db.users.find(u => u.id === sid && u.role === 'seller'); return !!s && sellerStatusOf(s) === 'faol'; };
 
 // ---- Hafta chegirmasi: 7 kundan keyin o'zi tugaydi (vaqt tekshiriladi, qo'shimcha ish kerak emas) ----
 const saleActive = p => p.salePrice > 0 && p.saleEndsAt && Date.now() < new Date(p.saleEndsAt).getTime();
@@ -508,7 +517,8 @@ const server = http.createServer(async (req, res) => {
       const seller = db.users.find(u => u.id === sid && u.role === 'seller');
       if (!seller) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
       const rq = me(); const fav = new Set(rq ? rq.favorites || [] : []);
-      const products = computeSellerDebt(db, sid) > DEBT_LIMIT ? [] : db.products.filter(p => p.sellerId === sid).map(p => ({ ...pub(p), sellerName: seller.name, ...ratingOf(db, p.id), isFavorited: fav.has(p.id) }));
+      const hidden = sellerStatusOf(seller) !== 'faol' || computeSellerDebt(db, sid) > DEBT_LIMIT;
+      const products = hidden ? [] : db.products.filter(p => p.sellerId === sid).map(p => ({ ...pub(p), sellerName: seller.name, ...ratingOf(db, p.id), isFavorited: fav.has(p.id) }));
       return sendJSON(res, 200, { seller: { id: seller.id, name: seller.name }, products });
     }
 
@@ -521,10 +531,14 @@ const server = http.createServer(async (req, res) => {
       if (db.users.find(u => u.phone === phone)) return sendJSON(res, 400, { error: "Bu raqam allaqachon ro'yxatdan o'tgan" });
       const { salt, hash } = hashPassword(password);
       const user = { id: db.nextId.user++, name, phone, role, salt, hash, paidCommission: 0, favorites: [] };
-      if (role === 'seller') { user.accountNumber = 'SU' + String(user.id).padStart(8, '0'); user.balance = 0; user.txs = []; }
+      if (role === 'seller') {
+        user.accountNumber = 'SU' + String(user.id).padStart(8, '0'); user.balance = 0; user.txs = [];
+        user.sellerStatus = 'kutilmoqda'; // admin tasdiqlamaguncha mahsulot qo'sha olmaydi
+      }
       db.users.push(user);
       if (role === 'seller') await mongoClient.db('savdouz').collection('sellerdocs').replaceOne({ _id: user.id }, { _id: user.id, idDoc, selfie, createdAt: new Date().toISOString() }, { upsert: true });
       await saveDB(db);
+      if (role === 'seller') pushAdmins(db, { title: 'Yangi sotuvchi', body: user.name + ' tasdiqlashni kutmoqda', tag: 'seller' });
       return sendJSON(res, 200, { token: makeToken(user.id), user: publicUser(user) });
     }
     if (pathname === '/api/login' && M === 'POST') {
@@ -557,7 +571,7 @@ const server = http.createServer(async (req, res) => {
     // ---- Mahsulotlar ----
     if (pathname === '/api/products' && M === 'GET') {
       const rq = me(); const fav = new Set(rq ? rq.favorites || [] : []);
-      const list = db.products.filter(p => computeSellerDebt(db, p.sellerId) <= DEBT_LIMIT).map(p => {
+      const list = db.products.filter(p => isSellerActive(db, p.sellerId) && computeSellerDebt(db, p.sellerId) <= DEBT_LIMIT).map(p => {
         const s = db.users.find(u => u.id === p.sellerId);
         return { ...pub(p), sellerName: s ? s.name : "Noma'lum", ...ratingOf(db, p.id), isFavorited: fav.has(p.id) };
       });
@@ -565,6 +579,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/products' && M === 'POST') {
       const u = me(); if (!u || u.role !== 'seller') return sendJSON(res, 403, { error: "Faqat sotuvchilar mahsulot qo'sha oladi" });
+      if (sellerStatusOf(u) !== 'faol') return sendJSON(res, 403, { error: sellerStatusOf(u) === 'kutilmoqda' ? "Hisobingiz hali admin tomonidan tasdiqlanmagan" : "Hisobingiz rad etilgan yoki bloklangan" });
       const body = await readBody(req);
       const { name, cat, price, desc, stock, image, deliveryRegions, deliveryPrice, oldPrice } = body;
       if (!name || !cat || !price) return sendJSON(res, 400, { error: "Nom, kategoriya va narxni kiriting" });
@@ -644,7 +659,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/favorites' && M === 'GET') {
       const u = me(); if (!u || u.role !== 'buyer') return sendJSON(res, 403, { error: "Ruxsat yo'q" });
       const ids = u.favorites || [];
-      const list = db.products.filter(p => ids.includes(p.id)).map(p => {
+      const list = db.products.filter(p => ids.includes(p.id) && isSellerActive(db, p.sellerId)).map(p => {
         const s = db.users.find(x => x.id === p.sellerId);
         return { ...pub(p), sellerName: s ? s.name : "Noma'lum", ...ratingOf(db, p.id), isFavorited: true };
       });
@@ -688,13 +703,18 @@ const server = http.createServer(async (req, res) => {
       const admin = requireAdmin(req, db);
       if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
 
+      // Tasdiqlashni kutayotgan sotuvchilar soni (admin ekranida belgi va ovoz uchun)
+      if (pathname === '/api/admin/pending' && M === 'GET') {
+        const list = db.users.filter(u => u.role === 'seller' && sellerStatusOf(u) === 'kutilmoqda').map(u => ({ id: u.id, name: u.name }));
+        return sendJSON(res, 200, { count: list.length, sellers: list });
+      }
       if (pathname === '/api/admin/sellers' && M === 'GET') {
         const docIds = new Set((await mongoClient.db('savdouz').collection('sellerdocs').find({}, { projection: { _id: 1 } }).toArray()).map(x => x._id));
         const sellers = db.users.filter(u => u.role === 'seller').map(s => {
           const all = sellerItems(db, s.id, false), del = sellerItems(db, s.id, true);
           const totalCommission = del.reduce((x, it) => x + (it.commission || 0), 0), paid = commissionPaid(db, s.id);
           return {
-            hasDocs: docIds.has(s.id), id: s.id, name: s.name, phone: s.phone, accountNumber: s.accountNumber, balance: s.balance || 0,
+            hasDocs: docIds.has(s.id), sellerStatus: sellerStatusOf(s), id: s.id, name: s.name, phone: s.phone, accountNumber: s.accountNumber, balance: s.balance || 0,
             productCount: db.products.filter(p => p.sellerId === s.id).length,
             orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === s.id)).length,
             totalSales: all.reduce((x, it) => x + (it.subtotal || it.price * it.qty), 0),
@@ -707,6 +727,17 @@ const server = http.createServer(async (req, res) => {
       if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/doc\/(id|selfie)$/)) && M === 'GET') {
         const d = await mongoClient.db('savdouz').collection('sellerdocs').findOne({ _id: Number(m[1]) });
         return sendDataImage(res, d && (m[2] === 'id' ? d.idDoc : d.selfie), 'private, max-age=3600');
+      }
+      // Sotuvchini tasdiqlash / rad etish / bloklash
+      if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/status$/)) && M === 'POST') {
+        const s = db.users.find(u => u.id === Number(m[1]) && u.role === 'seller');
+        if (!s) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
+        const { status } = await readBody(req);
+        if (!['faol', 'rad etildi', 'kutilmoqda'].includes(status)) return sendJSON(res, 400, { error: "Noto'g'ri holat" });
+        s.sellerStatus = status;
+        await saveDB(db);
+        if (status === 'faol') pushNotify(db, [s.id], { title: 'Hisobingiz tasdiqlandi', body: "Endi mahsulot qo'shishingiz mumkin", tag: 'approved' });
+        return sendJSON(res, 200, { ok: true, status });
       }
       // Balansga pul qo'shish va ayirish.
       //  /deposit  — summa musbat bo'lsa qo'shadi, manfiy (masalan -5000) bo'lsa ayiradi
@@ -788,6 +819,7 @@ const server = http.createServer(async (req, res) => {
       const orderItems = items.map(it => {
         const p = db.products.find(x => x.id === it.productId);
         if (!p) throw new UserErr("Mahsulot topilmadi");
+        if (!isSellerActive(db, p.sellerId)) throw new UserErr(`"${p.name}" hozir sotuvda emas`);
         const qty = Math.max(1, Math.floor(Number(it.qty) || 1));
         if ((p.stock || 0) < qty) throw new UserErr(`"${p.name}" omborda yetarli emas (bor: ${p.stock} dona)`);
         if (!deliversTo(p, region)) throw new UserErr(`"${p.name}" "${region}" hududiga yetkazilmaydi`);
