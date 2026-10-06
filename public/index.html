@@ -191,7 +191,8 @@ function renderAuth(){
     ${reg ? `<div class="roletabs">
       <div class="roletab ${authRole==='buyer'?'active':''}" data-role="buyer">Xaridor</div>
       <div class="roletab ${authRole==='seller'?'active':''}" data-role="seller">Sotuvchi</div></div>
-      <div class="field"><label>Ism</label><input id="fname" placeholder="Ismingiz"></div>` : ''}
+      <div class="field"><label>Ism</label><input id="fname" placeholder="Ismingiz"></div>
+      ${authRole==='seller' ? `<div class="field"><label>Pasport yoki ID karta rasmi</label><input id="fid" type="file" accept="image/*"></div><div class="field"><label>Selfi (o'zingizning rasmingiz)</label><input id="fself" type="file" accept="image/*" capture="user"></div>` : ''}` : ''}
     <div class="field"><label>Telefon raqam</label><input id="fphone" placeholder="+998901234567" inputmode="tel"></div>
     <div class="field"><label>Parol</label><input id="fpass" type="password" placeholder="••••••••"></div>
     <button class="primarybtn" id="submitBtn">${reg ? "Ro'yxatdan o'tish" : "Kirish"}</button>
@@ -212,7 +213,13 @@ async function submitAuth(){
     else {
       const name = $('fname').value.trim();
       if(!name) throw new Error('Ismingizni kiriting');
-      d = await api('/api/register', { method:'POST', body:JSON.stringify({ name, phone, password, role:authRole }) });
+      const body = { name, phone, password, role:authRole };
+      if(authRole === 'seller'){
+        const f1 = $('fid').files[0], f2 = $('fself').files[0];
+        if(!f1 || !f2) throw new Error('Pasport yoki ID karta va selfi rasmini yuklang');
+        body.idDoc = await readImage(f1); body.selfie = await readImage(f2);
+      }
+      d = await api('/api/register', { method:'POST', body:JSON.stringify(body) });
     }
     S.token = d.token; S.user = d.user; S.tab = 'home';
     localStorage.setItem('savdouz_token', S.token);
@@ -705,7 +712,9 @@ async function renderAdmin(main){
     const { sellers } = await api('/api/admin/sellers');
     main.innerHTML = `<div class="sectitle">Sotuvchilar (${sellers.length})</div>` + (sellers.length ? sellers.map(s => `<div class="oitem">
       <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Cheklangan</span>' : ''}</span><span>${esc(s.phone)}</span></div>
-      <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div><div class="oline"><span>Balans</span><span>${fmt(s.balance)}</span></div>
+      <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
+      <div class="oline"><span>Hujjatlar</span><span>${s.hasDocs ? `<a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank">Pasport/ID</a> · <a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank">Selfi</a>` : 'yuklanmagan'}</span></div>
+      <div class="oline"><span>Balans</span><span>${fmt(s.balance)}</span></div>
       <div class="oline"><span>Mahsulotlar</span><span>${s.productCount} ta</span></div><div class="oline"><span>Buyurtmalar</span><span>${s.orderCount} ta</span></div>
       <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
       <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
