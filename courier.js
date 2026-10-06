@@ -89,7 +89,7 @@ const pubC = c => ({
   online: isOn(c), workUntil: isOn(c) ? c.workUntil : null, restrictedUntil: isRestricted(c) ? c.restrictedUntil : null,
   rate: rateOf(c), done: c.doneCount || 0, createdAt: c.createdAt
 });
-const pubP = p => ({ id: p._id, name: p.name, phone: p.phone, type: p.type, address: p.address, lat: p.lat, lng: p.lng, balance: p.balance || 0, held: p.held || 0, card: p.card || '' });
+const pubP = p => ({ id: p._id, name: p.name, phone: p.phone, type: p.type, address: p.address, lat: p.lat, lng: p.lng, balance: p.balance || 0, held: p.held || 0, card: p.card || '', status: p.status || 'faol' });
 const ordC = o => ({
   id: o._id, status: o.status, partner: o.partnerName, type: o.partnerType, ready: o.ready, productSum: o.productSum, fee: o.fee, km: o.km,
   arrivedAt: o.arrivedAt || null, callCount: o.callCount || 0,
@@ -104,6 +104,7 @@ const ordP = o => ({
 });
 
 async function createOrder(p, b, by) {
+  if ((p.status || 'faol') !== 'faol') throw new E('Hisobingiz hali tasdiqlanmagan');
   const name = String(b.name || '').trim(), phone = normPhone(b.phone), address = String(b.address || '').trim();
   if (!name || !phone || !address) throw new E("Ism, telefon va manzilni to'ldiring");
   if (!p.lat || !p.lng) throw new E("Avval do'kon joylashuvini xaritada belgilang (Profil)");
@@ -186,9 +187,10 @@ async function handle(req, res) {
     if (name.length < 2) throw new E("Do'kon yoki kafe nomini yozing");
     if (!phone) throw new E("Telefon raqam noto'g'ri");
     if (pw.length < 6) throw new E("Parol kamida 6 ta belgi bo'lsin");
+    if (!String(b.passport || '').startsWith('data:') || !String(b.selfie || '').startsWith('data:')) throw new E('Pasport va selfi rasmini yuklang');
     const h = hashPw(pw), id = await nextId('partner');
     try {
-      await C('partners').insertOne({ _id: id, name, phone, type: b.type === 'kafe' ? 'kafe' : 'dokon', address: String(b.address || '').trim(), salt: h.salt, hash: h.hash, balance: 0, held: 0, createdAt: iso() });
+      await C('partners').insertOne({ _id: id, name, phone, type: b.type === 'kafe' ? 'kafe' : 'dokon', address: String(b.address || '').trim(), salt: h.salt, hash: h.hash, passport: b.passport, selfie: b.selfie, status: 'kutilmoqda', balance: 0, held: 0, createdAt: iso() });
     } catch (e) { if (e.code === 11000) throw new E("Bu raqam allaqachon ro'yxatdan o'tgan"); throw e; }
     return ok({ token: tok('p', id) });
   }
@@ -373,7 +375,7 @@ async function handle(req, res) {
   if (R('GET', /^\/admin\/data$/)) {
     need('a');
     const cs = await C('couriers').find({}, { projection: { passport: 0, selfie: 0, salt: 0, hash: 0 } }).sort({ _id: -1 }).limit(200).toArray();
-    const ps = await C('partners').find({}, { projection: { salt: 0, hash: 0 } }).sort({ _id: -1 }).limit(200).toArray();
+    const ps = await C('partners').find({}, { projection: { salt: 0, hash: 0, passport: 0, selfie: 0 } }).sort({ _id: -1 }).limit(200).toArray();
     const tp = await C('topups').find({}, { projection: { receipt: 0 } }).sort({ _id: -1 }).limit(60).toArray();
     const hasR = new Set((await C('topups').find({ receipt: { $ne: null } }, { projection: { _id: 1 } }).sort({ _id: -1 }).limit(60).toArray()).map(x => x._id));
     const wd = await C('withdrawals').find({}).sort({ _id: -1 }).limit(40).toArray();
@@ -383,7 +385,7 @@ async function handle(req, res) {
       orders: od.map(o => Object.assign(ordP(o), { partner: o.partnerName, courierName: o.courierName || '-' }))
     });
   }
-  if (R('GET', /^\/admin\/img\/(couriers|topups)\/(\d+)\/(passport|selfie|receipt)$/)) {
+  if (R('GET', /^\/admin\/img\/(couriers|topups|partners)\/(\d+)\/(passport|selfie|receipt)$/)) {
     need('a');
     const d = await C(m[1]).findOne({ _id: Number(m[2]) }, { projection: { [m[3]]: 1 } });
     const mt = d && d[m[3]] && String(d[m[3]]).match(/^data:(.+?);base64,(.*)$/s);
@@ -397,6 +399,13 @@ async function handle(req, res) {
     if (!st) throw new E("Noto'g'ri amal");
     const set = { status: st }; if (st !== 'faol') set.workUntil = null;
     await C('couriers').updateOne({ _id: Number(m[1]) }, { $set: set });
+    return ok();
+  }
+  if (R('POST', /^\/admin\/partner\/(\d+)$/)) {
+    need('a');
+    const st = { approve: 'faol', reject: 'rad etildi', block: 'bloklangan', unblock: 'faol' }[b.action];
+    if (!st) throw new E("Noto'g'ri amal");
+    await C('partners').updateOne({ _id: Number(m[1]) }, { $set: { status: st } });
     return ok();
   }
   if (R('POST', /^\/admin\/topup\/(\d+)$/)) {
