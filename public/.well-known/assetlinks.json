@@ -1,8 +1,18 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "uz.savdouz.app",
-    "sha256_cert_fingerprints": ["BD:28:DA:02:E2:3D:09:64:85:13:F2:17:D4:16:A0:7A:98:94:E9:CC:85:AC:03:BF:04:34:8D:A1:F0:B4:E7:3E"]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "uz.savdouz.app",
+      "sha256_cert_fingerprints": ["BD:28:DA:02:E2:3D:09:64:85:13:F2:17:D4:16:A0:7A:98:94:E9:CC:85:AC:03:BF:04:34:8D:A1:F0:B4:E7:3E"]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "uz.savdouz.kuryer",
+      "sha256_cert_fingerprints": ["41:EF:70:C2:26:3E:97:35:55:E3:B4:2C:DA:51:41:64:81:E9:41:E7:03:46:BE:94:7D:25:AC:56:9C:70:79:78"]
+    }
   }
-}]
+]
