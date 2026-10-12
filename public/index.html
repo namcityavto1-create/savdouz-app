@@ -116,6 +116,23 @@ nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radiu
 .usdstrip .ch.k b{color:#fff}
 .usdstrip .ch.o b{color:var(--grn)}
 .usdstrip .ch.s b{color:var(--red)}
+/* ---- Profil (xaridor) ---- */
+.profhero{position:relative;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--v),var(--vd));border-radius:22px;padding:20px 18px;color:#fff;margin-bottom:14px}
+.profav{flex:0 0 62px;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+.profname{font-size:18px;font-weight:800;line-height:1.2;word-break:break-word}
+.profphone{font-size:12.5px;opacity:.9;margin-top:3px}
+.profgear{position:absolute;top:12px;right:12px;width:36px;height:36px;border:none;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;font-size:17px;line-height:36px;padding:0}
+.menu{background:var(--card);border-radius:20px;margin-bottom:12px;overflow:hidden;box-shadow:0 3px 12px -6px rgba(21,15,46,.09)}
+.mrow{display:flex;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink);text-decoration:none}
+.mrow:last-child{border-bottom:none}
+.mico{flex:0 0 26px;text-align:center;font-size:19px}
+.mgrow{flex:1;min-width:0}
+.mval{color:var(--mut);font-size:13px;font-weight:600}
+.marr{color:var(--mut);font-size:20px;line-height:1}
+.appver{text-align:center;font-size:12px;color:var(--mut);margin:16px 0 8px}
+.qa{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09)}
+.qa b{display:block;font-size:13.5px;margin-bottom:5px}
+.qa span{font-size:12.5px;color:var(--mut);line-height:1.5}
 </style>
 </head>
 <body>
@@ -133,6 +150,10 @@ let S = { ...fresh(), token: localStorage.getItem('savdouz_token') };
 const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","Kiyim","Poyabzal","Aksessuarlar","Go'zallik","Oziq-ovqat","Uy-ro'zg'or","Mebel","Bolalar","Sport","Avto","Qurilish","Kitob","Boshqa"];
 const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
+const APP_VERSION = 'v4';
+const CONTACT_PHONE = '+998774071234';
+const CONTACT_TG = 'https://t.me/SavdoUz_uzBot';
+const PROFILE_TABS = ['profile','settings','notifs','help','contact'];
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2200); }
 
@@ -156,6 +177,8 @@ async function api(path, o = {}){
 function logout(expired){
   localStorage.removeItem('savdouz_token');
   S = fresh();
+  // Orqaga tugmasi uchun qo'shilgan tarix yozuvini olib tashlaymiz
+  if(guard){ guard = false; try { history.back(); } catch(e){} }
   if(expired) toast("Sessiya tugadi, qaytadan kiring");
   renderAuth();
 }
@@ -242,20 +265,24 @@ setInterval(loadUsd, 5 * 60 * 1000);
 const role = () => S.user.role;
 function renderApp(){
   const label = role()==='admin' ? 'Admin' : role()==='seller' ? 'Sotuvchi' : 'Xaridor';
+  // Xaridorda "Chiqish" tugmasi Profil ichida; sotuvchi va adminda tepada qoladi
+  const hideOut = role()==='buyer' ? ' style="display:none"' : '';
   $('app').innerHTML = `<header><div class="brandrow"><img class="logo" src="${LOGO}" alt="SavdoUz">
-    <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · v4</div></div></div>
-  <button class="logoutbtn" id="logoutBtn">Chiqish</button></header><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
+    <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · ${APP_VERSION}</div></div></div>
+  <button class="logoutbtn" id="logoutBtn"${hideOut}>Chiqish</button></header><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
   $('logoutBtn').onclick = () => logout(false);
   loadUsd();
   if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = 'sellers';
   renderNav(); renderTab();
+  pushGuard();
 }
 function renderNav(){
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
   const items = role()==='admin' ? [['sellers','🏪','Sotuvchilar' + (S.pend ? ' (' + S.pend + ')' : '')],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]]
     : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['orders','📦','Buyurtmalar'],['add','➕',"Qo'shish"],['pay','💰',"To'lov"],['account','💼','Hisobim']]
-    : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['orders','📦','Buyurtmalarim']];
-  const active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
+    : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['profile','👤','Profil']];
+  let active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
+  if(role()==='buyer' && (active==='orders' || PROFILE_TABS.includes(active))) active = 'profile';
   $('nav').innerHTML = items.map(([k,i,l]) => `<div class="navitem ${active===k?'active':''}" data-tab="${k}"><div class="navicon">${i}</div>${l}${k==='cart'&&cnt>0?`<span class="badge">${cnt}</span>`:''}</div>`).join('');
   $('nav').querySelectorAll('.navitem').forEach(n => n.onclick = () => { S.tab = n.dataset.tab; S.img = null; S.edit = null; S.sel = null; renderNav(); renderTab(); });
 }
@@ -380,6 +407,11 @@ async function renderTabInner(main){
   if(S.tab==='home') return seller ? sellerHome(main) : buyerHome(main);
   if(S.tab==='favorites' && !seller) return buyerFavs(main);
   if(S.tab==='cart' && !seller) return buyerCart(main);
+  if(S.tab==='profile' && !seller) return buyerProfile(main);
+  if(S.tab==='settings' && !seller) return buyerSettings(main);
+  if(S.tab==='notifs' && !seller) return buyerNotifs(main);
+  if(S.tab==='help' && !seller) return buyerHelp(main);
+  if(S.tab==='contact' && !seller) return buyerContact(main);
   if(S.tab==='orders') return seller ? sellerOrders(main) : buyerOrders(main);
   if(S.tab==='add' && seller) return sellerAdd(main);
   if(S.tab==='account' && seller) return sellerAccount(main);
@@ -494,7 +526,7 @@ async function buyerCart(main){
     <div class="sumrow"><span>Yetkazib berish</span><span id="dDisp">—</span></div>
     <div class="sumrow total"><span>Jami</span><span id="gDisp">${fmt(total)}</span></div>
     <div class="field" style="margin-top:10px"><label>To'lov usuli</label><select id="pm"><option value="naqd">💵 Naqd (yetkazishda)</option><option value="karta">💳 Karta orqali (sotuvchi kartasiga)</option></select></div>
-    <div id="pmHint" style="font-size:11px;color:var(--mut);margin:-6px 0 8px;display:none">Buyurtmadan keyin «Buyurtmalarim» bo'limida sotuvchi kartasi ko'rinadi va chekni yuklaysiz.</div>
+    <div id="pmHint" style="font-size:11px;color:var(--mut);margin:-6px 0 8px;display:none">Buyurtmadan keyin Profil → «Buyurtmalarim» bo'limida sotuvchi kartasi ko'rinadi va chekni yuklaysiz.</div>
     <button class="checkout" id="checkoutBtn">Buyurtma berish</button></div>`;
   main.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const p = products.find(x => x.id == b.dataset.inc); if(p && S.cart[p.id] >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; } S.cart[b.dataset.inc]++; renderTab(); renderNav(); });
   main.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { S.cart[b.dataset.dec] = Math.max(0, S.cart[b.dataset.dec] - 1); renderTab(); renderNav(); });
@@ -525,10 +557,85 @@ async function buyerCart(main){
   };
 }
 
+// ---- Profil (xaridor) ----
+const subBack = (main, title) => {
+  main.insertAdjacentHTML('afterbegin', `<button class="backbtn" id="subBack">← Orqaga</button><div class="sectitle">${title}</div>`);
+  $('subBack').onclick = () => { S.tab = 'profile'; renderNav(); renderTab(); };
+};
+function buyerProfile(main){
+  const u = S.user, ini = esc((u.name || '?').trim().charAt(0).toUpperCase());
+  main.innerHTML = `<div class="profhero"><div class="profav">${ini}</div>
+      <div><div class="profname">${esc(u.name)}</div><div class="profphone">${esc(u.phone)}</div></div>
+      <button class="profgear" data-go="settings" aria-label="Sozlamalar">⚙️</button></div>
+    <div class="menu">
+      <div class="mrow" data-go="orders"><span class="mico">📦</span><span class="mgrow">Buyurtmalarim</span><span class="marr">›</span></div>
+      <div class="mrow" data-go="favorites"><span class="mico">❤️</span><span class="mgrow">Sevimlilar</span><span class="marr">›</span></div>
+      <div class="mrow" data-go="notifs"><span class="mico">🔔</span><span class="mgrow">Bildirishnomalar</span><span class="marr">›</span></div>
+      <div class="mrow" data-go="settings"><span class="mico">⚙️</span><span class="mgrow">Sozlamalar</span><span class="marr">›</span></div>
+    </div>
+    <div class="menu">
+      <div class="mrow" data-go="lang"><span class="mico">🌐</span><span class="mgrow">Ilova tili</span><span class="mval">O'zbekcha</span><span class="marr">›</span></div>
+      <div class="mrow" data-go="sell"><span class="mico">🏪</span><span class="mgrow">Sotuvchi bo'lish</span><span class="marr">›</span></div>
+    </div>
+    <div class="menu">
+      <div class="mrow" data-go="help"><span class="mico">❓</span><span class="mgrow">Ma'lumotnoma</span><span class="marr">›</span></div>
+      <div class="mrow" data-go="contact"><span class="mico">✉️</span><span class="mgrow">Biz bilan bog'lanish</span><span class="marr">›</span></div>
+    </div>
+    <div class="appver">Ilova versiyasi: ${APP_VERSION}</div>
+    <button class="primarybtn" id="profLogout">Chiqish</button>`;
+  main.querySelectorAll('[data-go]').forEach(r => r.onclick = () => {
+    const to = r.dataset.go;
+    if(to === 'lang'){ toast("Hozircha faqat o'zbek tili mavjud"); return; }
+    if(to === 'sell'){
+      if(confirm("Sotuvchi hisobi alohida ochiladi. Hozirgi hisobdan chiqib, sotuvchi sifatida ro'yxatdan o'tasizmi?")){ authMode = 'register'; authRole = 'seller'; logout(false); }
+      return;
+    }
+    S.prev = 'profile'; S.tab = to; renderNav(); renderTab();
+  });
+  $('profLogout').onclick = () => { if(confirm('Hisobdan chiqasizmi?')) logout(false); };
+}
+function buyerSettings(main){
+  const addr = localStorage.getItem('savdouz_addr') || '', reg = localStorage.getItem('savdouz_region') || '';
+  main.innerHTML = `<div class="summary">
+      <div class="sumrow"><span>Ism</span><span style="color:var(--ink);font-weight:700">${esc(S.user.name)}</span></div>
+      <div class="sumrow"><span>Telefon</span><span style="color:var(--ink);font-weight:700">${esc(S.user.phone)}</span></div>
+      <div class="sumrow"><span>Ilova versiyasi</span><span style="color:var(--ink);font-weight:700">${APP_VERSION}</span></div></div>
+    <div class="summary"><div style="font-size:13px;font-weight:800;margin-bottom:6px">Saqlangan manzil</div>
+      <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px">${addr || reg ? esc((reg ? reg + ', ' : '') + addr) : "Hozircha saqlangan manzil yo'q"}</div>
+      ${addr || reg ? '<button class="addbtn" style="background:var(--red)" id="clrAddr">Manzilni o\'chirish</button>' : ''}</div>`;
+  subBack(main, 'Sozlamalar');
+  const c = $('clrAddr');
+  if(c) c.onclick = () => { localStorage.removeItem('savdouz_addr'); localStorage.removeItem('savdouz_region'); toast("Manzil o'chirildi"); renderTab(); };
+}
+async function buyerNotifs(main){
+  const { orders } = await api('/api/orders/mine');
+  const TXT = { 'yangi':'Buyurtmangiz qabul qilindi', 'tasdiqlandi':'Sotuvchi buyurtmangizni tasdiqladi', 'kuryerga topshirildi':'Buyurtmangiz kuryerga topshirildi', 'yetkazildi':'Buyurtmangiz yetkazildi', 'bekor qilindi':'Buyurtmangiz bekor qilindi' };
+  main.innerHTML = orders.length ? orders.slice(0, 30).map(o => `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${new Date(o.createdAt).toLocaleDateString('uz')} · ${fmt(o.total)} · ${payLabel(o)}</span></div>`).join('') : '<div class="empty">🔔<br><br>Hozircha bildirishnoma yo\'q</div>';
+  subBack(main, 'Bildirishnomalar');
+}
+function buyerHelp(main){
+  main.innerHTML = [
+    ["Qanday buyurtma beraman?", "Mahsulotni savatga qo'shing, Savat bo'limida viloyat va manzilni kiriting, so'ng «Buyurtma berish» tugmasini bosing."],
+    ["To'lovni qanday qilaman?", "Naqd to'lov mahsulotni olganingizda amalga oshadi. Karta orqali to'lasangiz, Profil → Buyurtmalarim bo'limida sotuvchi kartasi ko'rinadi. Pulni o'tkazib, chek rasmini shu yerda yuklaysiz."],
+    ["Buyurtma holatini qayerda ko'raman?", "Profil → Buyurtmalarim va Bildirishnomalar bo'limlarida."],
+    ["Mahsulotni olganimni qanday tasdiqlayman?", "Sotuvchi buyurtmani kuryerga topshirgach, Buyurtmalarim bo'limida «Mahsulotni oldim» tugmasi paydo bo'ladi."],
+    ["Yetkazib berish narxi qancha?", "Narx har bir mahsulot kartasida ko'rsatilgan. Savatda viloyatni tanlasangiz, jami narx hisoblanadi."],
+    ["Baho va sharh qoldirsam bo'ladimi?", "Ha. Sotib olgan mahsulotingiz uchun Buyurtmalarim bo'limida yulduzcha bosib baho qo'ying."]
+  ].map(([q, a]) => `<div class="qa"><b>${esc(q)}</b><span>${esc(a)}</span></div>`).join('');
+  subBack(main, "Ma'lumotnoma");
+}
+function buyerContact(main){
+  main.innerHTML = `<div class="menu">
+      <a class="mrow" href="tel:${CONTACT_PHONE}"><span class="mico">📞</span><span class="mgrow">Qo'ng'iroq qilish</span><span class="mval">${CONTACT_PHONE}</span></a>
+      <a class="mrow" href="${CONTACT_TG}" target="_blank" rel="noopener"><span class="mico">💬</span><span class="mgrow">Telegram bot</span><span class="mval">@SavdoUz_uzBot</span></a>
+    </div>`;
+  subBack(main, "Biz bilan bog'lanish");
+}
+
 async function buyerOrders(main){
   const { orders } = await api('/api/orders/mine');
-  if(!orders.length){ main.innerHTML = '<div class="empty">📦<br><br>Hali buyurtmalar yo\'q</div>'; return; }
-  main.innerHTML = '<div class="sectitle">Buyurtmalarim</div>' + orders.map(o => {
+  if(!orders.length){ main.innerHTML = '<div class="empty">📦<br><br>Hali buyurtmalar yo\'q</div>'; subBack(main, 'Buyurtmalarim'); return; }
+  main.innerHTML = orders.map(o => {
     const needRcpt = o.paymentMethod==='karta' && ['kutilmoqda','rad etildi'].includes(o.paymentStatus) && o.status!=='bekor qilindi';
     const canRecv = o.status==='kuryerga topshirildi' && (o.paymentMethod!=='karta' || o.paymentStatus==='tasdiqlandi');
     return `<div class="oitem">
@@ -546,6 +653,7 @@ async function buyerOrders(main){
     ${o.hasReceipt && !needRcpt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
     ${canRecv ? `<button class="checkout" style="margin-top:10px" data-recv="${o.id}">✅ Mahsulotni oldim</button>` : ''}
     ${chatBtn(o.id)}</div>`; }).join('');
+  subBack(main, 'Buyurtmalarim');
   main.querySelectorAll('.rate-row').forEach(row => {
     const st = row.querySelectorAll('.starbtn');
     st.forEach(s => s.onclick = async () => {
@@ -822,6 +930,44 @@ setInterval(() => {
   if(document.querySelector('[data-chatbox][style*="block"]')) return;
   renderTab(true);
 }, 12000);
+
+// ---- Telefondagi "Orqaga" tugmasi ----
+// Ilova ichida bosilsa: ochiq sahifadan bir qadam orqaga qaytadi.
+// Bosh sahifada birinchi bosish ogohlantiradi, 2 soniya ichida ikkinchi bosish ilovani yopadi.
+let guard = false, exitArmed = false, exitTimer = null;
+const homeTab = () => (S.user && role()==='admin') ? 'sellers' : 'home';
+function parentTab(){
+  const t = S.tab;
+  if(t==='detail' || t==='store') return S.prev && S.prev!==t ? S.prev : homeTab();
+  if(['settings','notifs','help','contact'].includes(t)) return 'profile';
+  if(t==='orders' && S.user && role()==='buyer') return 'profile';
+  return homeTab();
+}
+function pushGuard(){
+  if(guard || !S.user) return;
+  // Brauzer foydalanuvchi bosmasdan qo'shilgan yozuvni o'tkazib yuboradi, shuning uchun faqat bosishdan keyin qo'shamiz
+  if(navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+  try { history.pushState({ sv:1 }, ''); guard = true; } catch(e){}
+}
+document.addEventListener('click', () => { exitArmed = false; clearTimeout(exitTimer); pushGuard(); }, true);
+window.addEventListener('popstate', () => {
+  guard = false;
+  if(!S.user) return;
+  if(S.tab !== homeTab()){
+    const from = S.tab;
+    S.tab = parentTab();
+    if(from==='detail' || from==='store') S.sel = null;
+    S.img = null; S.edit = null;
+    renderNav(); renderTab(); pushGuard();
+    return;
+  }
+  // Bosh sahifada: ikkinchi marta bosilsa tizim ilovani yopadi
+  if(exitArmed) return;
+  exitArmed = true;
+  toast('Chiqish uchun yana bir marta bosing');
+  clearTimeout(exitTimer);
+  exitTimer = setTimeout(() => { exitArmed = false; pushGuard(); }, 2200);
+});
 
 // ---- Ovozli bildirishnoma ----
 let _ac = null;
