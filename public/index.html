@@ -302,16 +302,21 @@ async function loadUsd(){
 }
 setInterval(loadUsd, 5 * 60 * 1000);
 
-// ---- Ob-havo va shom namozi vaqti ----
+// ---- Ob-havo va 5 vaqt namoz (eng yaqin namozgacha qolgan vaqt) ----
 async function loadInfo(){
   const b = $('infoBox'); if(!b) return;
   try {
     const [w, n] = await Promise.all([api('/api/weather'), api('/api/namoz')]);
-    const now = new Date(), [h, m] = String(n.shom).split(':').map(Number);
-    const diff = h*60 + m - (now.getHours()*60 + now.getMinutes());
-    const left = diff > 0 ? `${Math.floor(diff/60)} soat ${diff%60} daq` : "Vaqt o'tdi";
+    const NAMES = [['bomdod','Bomdod'],['peshin','Peshin'],['asr','Asr'],['shom','Shom'],['xufton','Xufton']];
+    const now = new Date(), cur = now.getHours()*60 + now.getMinutes();
+    const mins = k => { const [h, m] = String(n[k]).split(':').map(Number); return h*60 + m; };
+    let next = NAMES.find(([k]) => mins(k) > cur), diff;
+    if(next) diff = mins(next[0]) - cur;
+    else { next = NAMES[0]; diff = mins('bomdod') + 1440 - cur; } // xufton o'tgan: ertangi bomdod
+    const hh = Math.floor(diff/60), mm = diff % 60;
+    const left = (hh ? hh + ' soat ' : '') + mm + ' daq';
     b.innerHTML = `<div class="ch"><small>Namangan</small><b>${esc(w.temp)}°C</b><small>${esc(w.desc)}</small></div>
-      <div class="ch"><small>Shom namozi</small><b>${esc(n.shom)}</b><small>${left}</small></div>`;
+      <div class="ch"><small>${next[1]} namozi</small><b>${esc(n[next[0]])}</b><small>${left} qoldi</small></div>`;
     b.style.display = '';
   } catch(e){ b.style.display = 'none'; }
 }
