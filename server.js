@@ -1,4 +1,4 @@
-// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi
+// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner)
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
@@ -21,6 +21,16 @@ const WEEK = 7 * 864e5;
 const CAT_ICON = { "Telefon": "phone", "Kompyuter": "laptop", "Elektronika": "laptop", "Maishiy texnika": "laptop", "Kiyim": "shirt", "Poyabzal": "shirt", "Aksessuarlar": "shirt", "Go'zallik": "shirt", "Oziq-ovqat": "sofa", "Uy-ro'zg'or": "sofa", "Mebel": "sofa", "Bolalar": "shirt", "Sport": "shirt", "Avto": "car", "Qurilish": "car", "Kitob": "laptop", "Boshqa": "laptop" };
 const REGIONS = ["Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan", "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand", "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"];
 class UserErr extends Error {}
+
+// ---------- Reklama (banner) ----------
+// Reklamalar asosiy "state" hujjatidan alohida, "ads" kolleksiyasida saqlanadi (har biri alohida hujjat).
+const adsCol = () => mongoClient.db('savdouz').collection('ads');
+const AD_ID = '([a-f0-9]{12})';
+const AD_IMG_RE = /^data:image\/(jpeg|png|webp);base64,/;
+const AD_LINK_RE = /^(https?:\/\/|tg:\/\/)\S+$/i;
+const AD_MAX_IMG = 1600000; // taxminan 1.2 MB
+const adImgUrl = a => '/api/ad-img/' + a._id + '?v=' + (a.v || 0);
+const adExpiry = d => { const k = Math.min(3650, Math.floor(Number(d))); return k > 0 ? new Date(Date.now() + k * 864e5).toISOString() : null; };
 
 // ---------- Push-bildirishnoma (ilova yopiq bo'lsa ham telefon ovozi bilan xabar) ----------
 let webpush = null;
@@ -500,6 +510,27 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true });
     }
 
+    // ---- Reklama (ochiq): faol bannerlar, rasm, ko'rish/bosish hisobi ----
+    if (pathname === '/api/ads' && M === 'GET') {
+      const n = new Date().toISOString();
+      const list = await adsCol().find({
+        active: true,
+        $and: [
+          { $or: [{ startsAt: null }, { startsAt: { $lte: n } }] },
+          { $or: [{ expiresAt: null }, { expiresAt: { $gt: n } }] }
+        ]
+      }, { projection: { image: 0 } }).sort({ order: 1, createdAt: -1 }).limit(8).toArray();
+      return sendJSON(res, 200, { ads: list.map(a => ({ id: a._id, title: a.title || '', link: a.link || '', image: adImgUrl(a) })) });
+    }
+    if ((m = pathname.match(new RegExp('^/api/ad-img/' + AD_ID + '$'))) && M === 'GET') {
+      const a = await adsCol().findOne({ _id: m[1] }, { projection: { image: 1 } });
+      return sendDataImage(res, a && a.image, 'public, max-age=86400');
+    }
+    if ((m = pathname.match(new RegExp('^/api/ads/' + AD_ID + '/(view|click)$'))) && M === 'POST') {
+      await adsCol().updateOne({ _id: m[1] }, { $inc: { [m[2] === 'view' ? 'views' : 'clicks']: 1 } });
+      return sendJSON(res, 200, { ok: true });
+    }
+
     if ((m = pathname.match(/^\/api\/img\/(\d+)$/)) && M === 'GET') {
       const p = db.products.find(x => x.id === Number(m[1]));
       return sendDataImage(res, p && p.image, 'public, max-age=31536000');
@@ -708,6 +739,46 @@ const server = http.createServer(async (req, res) => {
         const list = db.users.filter(u => u.role === 'seller' && sellerStatusOf(u) === 'kutilmoqda').map(u => ({ id: u.id, name: u.name }));
         return sendJSON(res, 200, { count: list.length, sellers: list });
       }
+
+      // ---- Reklama boshqaruvi (faqat admin) ----
+      if (pathname === '/api/admin/ads' && M === 'GET') {
+        const n = new Date().toISOString();
+        const list = await adsCol().find({}, { projection: { image: 0 } }).sort({ createdAt: -1 }).toArray();
+        return sendJSON(res, 200, { ads: list.map(a => ({
+          id: a._id, title: a.title || '', link: a.link || '', active: !!a.active, order: a.order || 0,
+          expiresAt: a.expiresAt || null, expired: !!a.expiresAt && a.expiresAt <= n,
+          views: a.views || 0, clicks: a.clicks || 0, image: adImgUrl(a)
+        })) });
+      }
+      if (pathname === '/api/admin/ads' && M === 'POST') {
+        const { title, link, image, days, order } = await readBody(req);
+        if (typeof image !== 'string' || !AD_IMG_RE.test(image)) return sendJSON(res, 400, { error: "Reklama rasmini yuklang (jpg, png yoki webp)" });
+        if (image.length > AD_MAX_IMG) return sendJSON(res, 400, { error: "Rasm juda katta. Kichikroq rasm tanlang" });
+        const lk = String(link || '').trim();
+        if (lk && !AD_LINK_RE.test(lk)) return sendJSON(res, 400, { error: "Havola http:// yoki https:// bilan boshlanishi kerak" });
+        const now = new Date().toISOString();
+        const ad = {
+          _id: crypto.randomBytes(6).toString('hex'), title: String(title || '').trim().slice(0, 80), link: lk, image,
+          active: true, order: Number(order) || 0, startsAt: now, expiresAt: adExpiry(days),
+          views: 0, clicks: 0, v: 1, createdAt: now
+        };
+        await adsCol().insertOne(ad);
+        return sendJSON(res, 200, { ok: true, id: ad._id });
+      }
+      if ((m = pathname.match(new RegExp('^/api/admin/ads/' + AD_ID + '$'))) && (M === 'PATCH' || M === 'DELETE')) {
+        if (M === 'DELETE') {
+          const r = await adsCol().deleteOne({ _id: m[1] });
+          return r.deletedCount ? sendJSON(res, 200, { ok: true }) : sendJSON(res, 404, { error: "Reklama topilmadi" });
+        }
+        const b = await readBody(req); const set = {};
+        if (b.active !== undefined) set.active = !!b.active;
+        if (b.order !== undefined) set.order = Number(b.order) || 0;
+        if (b.days !== undefined) set.expiresAt = adExpiry(b.days);
+        if (!Object.keys(set).length) return sendJSON(res, 400, { error: "O'zgartirish uchun maydon yo'q" });
+        const r = await adsCol().updateOne({ _id: m[1] }, { $set: set });
+        return r.matchedCount ? sendJSON(res, 200, { ok: true }) : sendJSON(res, 404, { error: "Reklama topilmadi" });
+      }
+
       if (pathname === '/api/admin/sellers' && M === 'GET') {
         const docIds = new Set((await mongoClient.db('savdouz').collection('sellerdocs').find({}, { projection: { _id: 1 } }).toArray()).map(x => x._id));
         const sellers = db.users.filter(u => u.role === 'seller').map(s => {
