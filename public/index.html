@@ -59,8 +59,24 @@ main{flex:1;padding:16px 16px 92px}
 .lowstock{color:var(--or);font-weight:700}
 .salebadge{position:absolute;bottom:7px;left:7px;background:var(--v);color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px;z-index:2}
 .weekbox{background:var(--v);border-radius:22px;padding:14px;margin-bottom:14px}
-.hscroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
-.hscroll .pcard{flex:0 0 160px}
+.hscroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.hscroll .pcard{flex:0 0 160px;scroll-snap-align:start}
+.hscroll.wrap{flex-wrap:wrap;overflow:visible}
+.hscroll.wrap .pcard{flex:0 0 calc(50% - 6px)}
+.seeall{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:12px;padding:6px 12px;font-size:11.5px;font-weight:700}
+/* ---- Reklama (banner) ---- */
+.adwrap{margin-bottom:14px}
+.adtrack{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:20px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.adtrack::-webkit-scrollbar{display:none}
+.adslide{flex:0 0 100%;scroll-snap-align:center;position:relative;aspect-ratio:3/1;background:var(--vl);cursor:pointer}
+.adslide img{width:100%;height:100%;object-fit:cover;display:block}
+.adtag{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.45);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px}
+.addots{display:flex;justify-content:center;gap:5px;margin-top:7px}
+.addots i{width:6px;height:6px;border-radius:50%;background:#D7CCFB;transition:all .2s}
+.addots i.on{background:var(--v);width:16px;border-radius:4px}
+.adslot{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1.5px dashed #D7CCFB;border-radius:20px;padding:14px 16px;margin-bottom:14px;font-size:12.5px;font-weight:700;color:var(--vd)}
+.adslot small{display:block;font-weight:500;color:var(--mut);font-size:11px;margin-top:2px}
+.adslot button{flex:0 0 auto;background:var(--v);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-size:12px;font-weight:800}
 .chatwrap{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .chatmsg{max-width:78%;padding:9px 13px;border-radius:14px;font-size:12.5px;line-height:1.4;word-break:break-word}
 .chatmsg.mine{align-self:flex-end;background:var(--v);color:#fff;border-bottom-right-radius:4px}
@@ -116,7 +132,7 @@ nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radiu
 .usdstrip .ch.k b{color:#fff}
 .usdstrip .ch.o b{color:var(--grn)}
 .usdstrip .ch.s b{color:var(--red)}
-/* ---- Profil (xaridor) ---- */
+/* ---- Profil (xaridor, sotuvchi, admin) ---- */
 .profhero{position:relative;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--v),var(--vd));border-radius:22px;padding:20px 18px;color:#fff;margin-bottom:14px}
 .profav{flex:0 0 62px;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
 .profname{font-size:18px;font-weight:800;line-height:1.2;word-break:break-word}
@@ -151,9 +167,12 @@ const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","
 const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
 const APP_VERSION = 'v4';
-const CONTACT_PHONE = '+998774071234';
-const CONTACT_TG = 'https://t.me/SavdoUz_uzBot';
-const PROFILE_TABS = ['profile','settings','notifs','help','contact'];
+// Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
+const CONTACT_TG = 'https://t.me/Savol_24bot';
+const CONTACT_BOT = '@Savol_24bot';
+// Profil ichidagi sahifalar (barcha rollar uchun)
+const COMMON_PROFILE = ['profile','settings','notifs','help','contact'];
+const PROFILE_TABS = [...COMMON_PROFILE, 'account', 'ads'];
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2200); }
 
@@ -196,6 +215,27 @@ function readImage(file){
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
         cv.getContext('2d').drawImage(im, 0, 0, w, h);
         ok(cv.toDataURL('image/jpeg', .72));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+// Reklama rasmi: kengroq (1000 px) va sifati yaxshiroq
+function readAdImage(file){
+  return new Promise((ok, no) => {
+    const r = new FileReader();
+    r.onerror = () => no(new Error("Rasmni o'qib bo'lmadi"));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => no(new Error("Rasm formati noto'g'ri"));
+      im.onload = () => {
+        let w = im.width, h = im.height;
+        if(w > 1000){ h = Math.round(h * 1000 / w); w = 1000; }
+        if(h > 600){ w = Math.round(w * 600 / h); h = 600; }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        ok(cv.toDataURL('image/jpeg', .8));
       };
       im.src = r.result;
     };
@@ -265,11 +305,10 @@ setInterval(loadUsd, 5 * 60 * 1000);
 const role = () => S.user.role;
 function renderApp(){
   const label = role()==='admin' ? 'Admin' : role()==='seller' ? 'Sotuvchi' : 'Xaridor';
-  // Xaridorda "Chiqish" tugmasi Profil ichida; sotuvchi va adminda tepada qoladi
-  const hideOut = role()==='buyer' ? ' style="display:none"' : '';
+  // "Chiqish" tugmasi barcha rollarda Profil ichida (tepadagi tugma yashirin)
   $('app').innerHTML = `<header><div class="brandrow"><img class="logo" src="${LOGO}" alt="SavdoUz">
     <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · ${APP_VERSION}</div></div></div>
-  <button class="logoutbtn" id="logoutBtn"${hideOut}>Chiqish</button></header><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
+  <button class="logoutbtn" id="logoutBtn" style="display:none">Chiqish</button></header><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
   $('logoutBtn').onclick = () => logout(false);
   loadUsd();
   if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = 'sellers';
@@ -278,12 +317,14 @@ function renderApp(){
 }
 function renderNav(){
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
-  const items = role()==='admin' ? [['sellers','🏪','Sotuvchilar' + (S.pend ? ' (' + S.pend + ')' : '')],['products','📦','Mahsulotlar'],['buyers','👤','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"]]
-    : role()==='seller' ? [['home','🏠','Mahsulotlarim'],['orders','📦','Buyurtmalar'],['add','➕',"Qo'shish"],['pay','💰',"To'lov"],['account','💼','Hisobim']]
+  const r = role();
+  const items = r==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','🛍️','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"],['profile','👤','Profil']]
+    : r==='seller' ? [['home','🏠','Mahsulotlarim'],['orders','📦','Buyurtmalar'],['add','➕',"Qo'shish"],['pay','💰',"To'lov"],['profile','👤','Profil']]
     : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['profile','👤','Profil']];
   let active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
-  if(role()==='buyer' && (active==='orders' || PROFILE_TABS.includes(active))) active = 'profile';
-  $('nav').innerHTML = items.map(([k,i,l]) => `<div class="navitem ${active===k?'active':''}" data-tab="${k}"><div class="navicon">${i}</div>${l}${k==='cart'&&cnt>0?`<span class="badge">${cnt}</span>`:''}</div>`).join('');
+  if(PROFILE_TABS.includes(active) || (r==='buyer' && active==='orders')) active = 'profile';
+  const bdg = k => k==='cart' ? cnt : k==='sellers' ? (S.pend || 0) : 0;
+  $('nav').innerHTML = items.map(([k,i,l]) => `<div class="navitem ${active===k?'active':''}" data-tab="${k}"><div class="navicon">${i}</div>${l}${bdg(k)>0?`<span class="badge">${bdg(k)}</span>`:''}</div>`).join('');
   $('nav').querySelectorAll('.navitem').forEach(n => n.onclick = () => { S.tab = n.dataset.tab; S.img = null; S.edit = null; S.sel = null; renderNav(); renderTab(); });
 }
 
@@ -399,6 +440,8 @@ async function renderTab(silent){
 
 async function renderTabInner(main){
   const seller = role()==='seller';
+  // Profil bo'limlari barcha rollar uchun (tasdiqlanmagan sotuvchi ham chiqib keta olishi uchun)
+  if(COMMON_PROFILE.includes(S.tab)) return renderProfilePage(main);
   if(role()==='admin') return renderAdmin(main);
   // Tasdiqlanmagan sotuvchi hech qaysi bo'limni ishlata olmaydi
   if(seller && (S.user.sellerStatus || 'faol') !== 'faol') return sellerPending(main);
@@ -407,11 +450,6 @@ async function renderTabInner(main){
   if(S.tab==='home') return seller ? sellerHome(main) : buyerHome(main);
   if(S.tab==='favorites' && !seller) return buyerFavs(main);
   if(S.tab==='cart' && !seller) return buyerCart(main);
-  if(S.tab==='profile' && !seller) return buyerProfile(main);
-  if(S.tab==='settings' && !seller) return buyerSettings(main);
-  if(S.tab==='notifs' && !seller) return buyerNotifs(main);
-  if(S.tab==='help' && !seller) return buyerHelp(main);
-  if(S.tab==='contact' && !seller) return buyerContact(main);
   if(S.tab==='orders') return seller ? sellerOrders(main) : buyerOrders(main);
   if(S.tab==='add' && seller) return sellerAdd(main);
   if(S.tab==='account' && seller) return sellerAccount(main);
@@ -477,12 +515,57 @@ async function renderDetail(main){
   $('detailAdd').onclick = () => addToCart(p);
 }
 
+// ---- Reklama banneri (xaridor bosh sahifasida) ----
+let adsCache = { t:0, data:null }, adTimer = null;
+const adViewed = {};
+async function loadAds(){
+  const box = $('adBox'); if(!box) return;
+  clearInterval(adTimer);
+  let ads = null;
+  try {
+    if(adsCache.data && Date.now() - adsCache.t < 60000) ads = adsCache.data;
+    else { ads = (await api('/api/ads')).ads || []; adsCache = { t:Date.now(), data:ads }; }
+  } catch(e){ ads = null; }
+  const b = $('adBox'); if(!b) return;
+  if(ads === null){ b.innerHTML = ''; return; }
+  if(!ads.length){
+    b.innerHTML = `<div class="adslot"><div>📢 Bu yerda sizning reklamangiz bo'lishi mumkin<small>Reklama joylash uchun biz bilan bog'laning</small></div><button id="adContact">Bog'lanish</button></div>`;
+    $('adContact').onclick = () => window.open(CONTACT_TG, '_blank');
+    return;
+  }
+  b.innerHTML = `<div class="adwrap"><div class="adtrack" id="adTrack">${ads.map((a, i) => `<div class="adslide" data-i="${i}"><img src="${esc(a.image)}" alt="${esc(a.title)}"><span class="adtag">Reklama</span></div>`).join('')}</div>${ads.length > 1 ? `<div class="addots" id="adDots">${ads.map((a, i) => `<i class="${i===0?'on':''}"></i>`).join('')}</div>` : ''}</div>`;
+  const tr = $('adTrack'), n = ads.length;
+  let cur = 0, resume = null;
+  const mark = i => {
+    cur = i;
+    document.querySelectorAll('#adDots i').forEach((d, k) => d.classList.toggle('on', k === i));
+    const a = ads[i];
+    if(a && !adViewed[a.id]){ adViewed[a.id] = 1; api('/api/ads/' + a.id + '/view', { method:'POST' }).catch(() => {}); }
+  };
+  const go = i => { const k = (i + n) % n; tr.scrollTo({ left:k * tr.clientWidth, behavior:'smooth' }); };
+  const start = () => {
+    clearInterval(adTimer);
+    if(n > 1) adTimer = setInterval(() => { if(!$('adTrack')){ clearInterval(adTimer); return; } if(!document.hidden) go(cur + 1); }, 5000);
+  };
+  tr.addEventListener('scroll', () => { const i = Math.round(tr.scrollLeft / (tr.clientWidth || 1)); if(i !== cur && i >= 0 && i < n) mark(i); });
+  tr.addEventListener('touchstart', () => { clearInterval(adTimer); clearTimeout(resume); }, { passive:true });
+  tr.addEventListener('touchend', () => { clearTimeout(resume); resume = setTimeout(start, 6000); }, { passive:true });
+  tr.addEventListener('click', e => {
+    const s = e.target.closest('.adslide'); if(!s) return;
+    const a = ads[Number(s.dataset.i)]; if(!a) return;
+    api('/api/ads/' + a.id + '/click', { method:'POST' }).catch(() => {});
+    if(a.link) window.open(a.link, '_blank');
+  });
+  mark(0); start();
+}
+
 async function buyerHome(main){
   const { products } = await api('/api/products');
   const weekly = products.filter(p => p.onSale);
   main.innerHTML = `<div class="banner"><div class="btitle">Xush kelibsiz, ${esc(S.user.name)}! 👋</div><div class="bsub">SavdoUz'da minglab mahsulot — ishonchli sotuvchilardan</div></div>
     <div class="searchbar"><span class="sicon">🔍</span><input id="searchInput" placeholder="Mahsulot qidirish..." value="${esc(S.search)}"></div>
-    ${weekly.length ? `<div id="weekly" class="weekbox"><div class="sectitle" style="color:#fff;margin-bottom:10px">🔥 Hafta chegirmalari</div><div class="hscroll">${weekly.map(p => card(p, true)).join('')}</div></div>` : ''}
+    <div id="adBox"></div>
+    ${weekly.length ? `<div id="weekly" class="weekbox"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px"><div class="sectitle" style="color:#fff;margin:0">🔥 Hafta chegirmalari (${weekly.length})</div>${weekly.length > 2 ? '<button class="seeall" id="weekAll">Hammasi ›</button>' : ''}</div><div class="hscroll" id="weekScroll">${weekly.map(p => card(p, true)).join('')}</div></div>` : ''}
     <div class="cats">${CATS.map(c => `<div class="cat ${c===S.cat?'active':''}" data-cat="${esc(c)}">${esc(c)}</div>`).join('')}</div>
     <div class="sortrow">${[['none','Odatiy'],['priceAsc','Arzon→Qimmat'],['priceDesc','Qimmat→Arzon'],['rating','Reyting']].map(([k,l]) => `<div class="sortchip ${S.sort===k?'active':''}" data-sort="${k}">${l}</div>`).join('')}</div>
     <div class="grid" id="plist"></div>`;
@@ -499,9 +582,12 @@ async function buyerHome(main){
     if($('weekly')){ $('weekly').style.display = (q || S.cat!=='Barchasi') ? 'none' : 'block'; wire($('weekly'), products); }
   };
   draw();
+  const wa = $('weekAll');
+  if(wa) wa.onclick = () => { const on = $('weekScroll').classList.toggle('wrap'); wa.textContent = on ? "‹ Yig'ish" : 'Hammasi ›'; };
   main.querySelectorAll('.cat').forEach(c => c.onclick = () => { S.cat = c.dataset.cat; renderTab(); });
   main.querySelectorAll('[data-sort]').forEach(c => c.onclick = () => { S.sort = c.dataset.sort; renderTab(); });
   let tm; $('searchInput').oninput = e => { clearTimeout(tm); const v = e.target.value; tm = setTimeout(() => { S.search = v; draw(); }, 250); };
+  loadAds();
 }
 
 async function buyerFavs(main){
@@ -557,78 +643,134 @@ async function buyerCart(main){
   };
 }
 
-// ---- Profil (xaridor) ----
+// ---- Profil (xaridor, sotuvchi va admin uchun) ----
 const subBack = (main, title) => {
   main.insertAdjacentHTML('afterbegin', `<button class="backbtn" id="subBack">← Orqaga</button><div class="sectitle">${title}</div>`);
   $('subBack').onclick = () => { S.tab = 'profile'; renderNav(); renderTab(); };
 };
-function buyerProfile(main){
-  const u = S.user, ini = esc((u.name || '?').trim().charAt(0).toUpperCase());
+async function renderProfilePage(main){
+  const t = S.tab;
+  if(t==='profile') return renderProfile(main);
+  if(t==='settings') return renderSettings(main);
+  if(t==='notifs') return renderNotifs(main);
+  if(t==='help') return renderHelp(main);
+  return renderContact(main);
+}
+function profileGroups(){
+  const r = role();
+  const lang = ['lang','🌐','Ilova tili',"O'zbekcha"];
+  const info = [['help','❓',"Ma'lumotnoma"],['contact','✉️',"Biz bilan bog'lanish"]];
+  if(r==='buyer') return [
+    [['orders','📦','Buyurtmalarim'],['favorites','❤️','Sevimlilar'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [lang, ['sell','🏪',"Sotuvchi bo'lish"]],
+    info
+  ];
+  if(r==='seller') return [
+    [['account','💼','Mening hisobim'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [lang],
+    info
+  ];
+  return [
+    [['ads','📢','Reklamalar'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [lang],
+    info
+  ];
+}
+function renderProfile(main){
+  const u = S.user, r = role(), ini = esc((u.name || '?').trim().charAt(0).toUpperCase());
+  const ST = { faol:'tasdiqlangan', kutilmoqda:'tasdiqlanish kutilmoqda', 'rad etildi':'rad etilgan' };
+  const rl = r==='admin' ? 'Administrator' : r==='seller' ? 'Sotuvchi · ' + (ST[u.sellerStatus || 'faol'] || '') : '';
   main.innerHTML = `<div class="profhero"><div class="profav">${ini}</div>
-      <div><div class="profname">${esc(u.name)}</div><div class="profphone">${esc(u.phone)}</div></div>
+      <div><div class="profname">${esc(u.name)}</div><div class="profphone">${esc(u.phone)}</div>${rl ? `<div class="profphone">${rl}</div>` : ''}</div>
       <button class="profgear" data-go="settings" aria-label="Sozlamalar">⚙️</button></div>
-    <div class="menu">
-      <div class="mrow" data-go="orders"><span class="mico">📦</span><span class="mgrow">Buyurtmalarim</span><span class="marr">›</span></div>
-      <div class="mrow" data-go="favorites"><span class="mico">❤️</span><span class="mgrow">Sevimlilar</span><span class="marr">›</span></div>
-      <div class="mrow" data-go="notifs"><span class="mico">🔔</span><span class="mgrow">Bildirishnomalar</span><span class="marr">›</span></div>
-      <div class="mrow" data-go="settings"><span class="mico">⚙️</span><span class="mgrow">Sozlamalar</span><span class="marr">›</span></div>
-    </div>
-    <div class="menu">
-      <div class="mrow" data-go="lang"><span class="mico">🌐</span><span class="mgrow">Ilova tili</span><span class="mval">O'zbekcha</span><span class="marr">›</span></div>
-      <div class="mrow" data-go="sell"><span class="mico">🏪</span><span class="mgrow">Sotuvchi bo'lish</span><span class="marr">›</span></div>
-    </div>
-    <div class="menu">
-      <div class="mrow" data-go="help"><span class="mico">❓</span><span class="mgrow">Ma'lumotnoma</span><span class="marr">›</span></div>
-      <div class="mrow" data-go="contact"><span class="mico">✉️</span><span class="mgrow">Biz bilan bog'lanish</span><span class="marr">›</span></div>
-    </div>
+    ${profileGroups().map(g => `<div class="menu">${g.map(([k, i, l, v]) => `<div class="mrow" data-go="${k}"><span class="mico">${i}</span><span class="mgrow">${l}</span>${v ? `<span class="mval">${v}</span>` : ''}<span class="marr">›</span></div>`).join('')}</div>`).join('')}
     <div class="appver">Ilova versiyasi: ${APP_VERSION}</div>
     <button class="primarybtn" id="profLogout">Chiqish</button>`;
-  main.querySelectorAll('[data-go]').forEach(r => r.onclick = () => {
-    const to = r.dataset.go;
+  main.querySelectorAll('[data-go]').forEach(row => row.onclick = () => {
+    const to = row.dataset.go;
     if(to === 'lang'){ toast("Hozircha faqat o'zbek tili mavjud"); return; }
     if(to === 'sell'){
       if(confirm("Sotuvchi hisobi alohida ochiladi. Hozirgi hisobdan chiqib, sotuvchi sifatida ro'yxatdan o'tasizmi?")){ authMode = 'register'; authRole = 'seller'; logout(false); }
       return;
     }
+    if(to === 'account' && (u.sellerStatus || 'faol') !== 'faol'){ toast('Hisobingiz hali tasdiqlanmagan'); return; }
     S.prev = 'profile'; S.tab = to; renderNav(); renderTab();
   });
   $('profLogout').onclick = () => { if(confirm('Hisobdan chiqasizmi?')) logout(false); };
 }
-function buyerSettings(main){
-  const addr = localStorage.getItem('savdouz_addr') || '', reg = localStorage.getItem('savdouz_region') || '';
-  main.innerHTML = `<div class="summary">
-      <div class="sumrow"><span>Ism</span><span style="color:var(--ink);font-weight:700">${esc(S.user.name)}</span></div>
-      <div class="sumrow"><span>Telefon</span><span style="color:var(--ink);font-weight:700">${esc(S.user.phone)}</span></div>
-      <div class="sumrow"><span>Ilova versiyasi</span><span style="color:var(--ink);font-weight:700">${APP_VERSION}</span></div></div>
-    <div class="summary"><div style="font-size:13px;font-weight:800;margin-bottom:6px">Saqlangan manzil</div>
+function renderSettings(main){
+  const u = S.user, r = role();
+  const ST = { faol:'Tasdiqlangan', kutilmoqda:'Kutilmoqda', 'rad etildi':'Rad etilgan' };
+  const rows = [['Ism', esc(u.name)], ['Telefon', esc(u.phone)], ['Rol', r==='buyer' ? 'Xaridor' : r==='seller' ? 'Sotuvchi' : 'Admin']];
+  if(r==='seller') rows.push(['Holat', ST[u.sellerStatus || 'faol'] || '']);
+  rows.push(['Ilova versiyasi', APP_VERSION]);
+  let html = `<div class="summary">${rows.map(([k, v]) => `<div class="sumrow"><span>${k}</span><span style="color:var(--ink);font-weight:700">${v}</span></div>`).join('')}</div>`;
+  if(r==='buyer'){
+    const addr = localStorage.getItem('savdouz_addr') || '', reg = localStorage.getItem('savdouz_region') || '';
+    html += `<div class="summary"><div style="font-size:13px;font-weight:800;margin-bottom:6px">Saqlangan manzil</div>
       <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px">${addr || reg ? esc((reg ? reg + ', ' : '') + addr) : "Hozircha saqlangan manzil yo'q"}</div>
       ${addr || reg ? '<button class="addbtn" style="background:var(--red)" id="clrAddr">Manzilni o\'chirish</button>' : ''}</div>`;
+  }
+  main.innerHTML = html;
   subBack(main, 'Sozlamalar');
   const c = $('clrAddr');
   if(c) c.onclick = () => { localStorage.removeItem('savdouz_addr'); localStorage.removeItem('savdouz_region'); toast("Manzil o'chirildi"); renderTab(); };
 }
-async function buyerNotifs(main){
-  const { orders } = await api('/api/orders/mine');
-  const TXT = { 'yangi':'Buyurtmangiz qabul qilindi', 'tasdiqlandi':'Sotuvchi buyurtmangizni tasdiqladi', 'kuryerga topshirildi':'Buyurtmangiz kuryerga topshirildi', 'yetkazildi':'Buyurtmangiz yetkazildi', 'bekor qilindi':'Buyurtmangiz bekor qilindi' };
-  main.innerHTML = orders.length ? orders.slice(0, 30).map(o => `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${new Date(o.createdAt).toLocaleDateString('uz')} · ${fmt(o.total)} · ${payLabel(o)}</span></div>`).join('') : '<div class="empty">🔔<br><br>Hozircha bildirishnoma yo\'q</div>';
+async function renderNotifs(main){
+  const r = role(), none = '<div class="empty">🔔<br><br>Hozircha bildirishnoma yo\'q</div>';
+  const date = s => new Date(s).toLocaleDateString('uz');
+  if(r==='buyer'){
+    const { orders } = await api('/api/orders/mine');
+    const TXT = { 'yangi':'Buyurtmangiz qabul qilindi', 'tasdiqlandi':'Sotuvchi buyurtmangizni tasdiqladi', 'kuryerga topshirildi':'Buyurtmangiz kuryerga topshirildi', 'yetkazildi':'Buyurtmangiz yetkazildi', 'bekor qilindi':'Buyurtmangiz bekor qilindi' };
+    main.innerHTML = orders.length ? orders.slice(0, 30).map(o => `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${date(o.createdAt)} · ${fmt(o.total)} · ${payLabel(o)}</span></div>`).join('') : none;
+  } else if(r==='seller'){
+    const { orders } = await api('/api/orders/incoming');
+    const TXT = { 'yangi':'Yangi buyurtma', 'tasdiqlandi':'Buyurtmani tasdiqladingiz', 'kuryerga topshirildi':'Kuryerga topshirildi', 'yetkazildi':'Buyurtma yetkazildi', 'bekor qilindi':'Buyurtma bekor qilindi' };
+    main.innerHTML = orders.length ? orders.slice(0, 30).map(o => { const sum = (o.items || []).reduce((s, i) => s + (i.subtotal || i.price * i.qty), 0); return `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${date(o.createdAt)} · ${fmt(sum)} · ${payLabel(o)}</span></div>`; }).join('') : none;
+  } else {
+    const [pd, pay] = await Promise.all([api('/api/admin/pending'), api('/api/admin/payments')]);
+    const wait = (pay.payments || []).filter(p => p.status === 'kutilmoqda');
+    let html = '';
+    if(pd.count > 0) html += `<div class="qa" data-go="sellers" style="cursor:pointer"><b>🏪 ${pd.count} ta sotuvchi tasdiqlashni kutmoqda</b><span>${esc((pd.sellers || []).map(s => s.name).join(', '))}</span></div>`;
+    if(wait.length) html += `<div class="qa" data-go="payments" style="cursor:pointer"><b>💳 ${wait.length} ta to'lov tekshirishni kutmoqda</b><span>Jami: ${fmt(wait.reduce((s, p) => s + p.amount, 0))}</span></div>`;
+    main.innerHTML = html || none;
+    main.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { S.tab = el.dataset.go; renderNav(); renderTab(); });
+  }
   subBack(main, 'Bildirishnomalar');
 }
-function buyerHelp(main){
-  main.innerHTML = [
+function renderHelp(main){
+  const r = role();
+  const BUYER = [
     ["Qanday buyurtma beraman?", "Mahsulotni savatga qo'shing, Savat bo'limida viloyat va manzilni kiriting, so'ng «Buyurtma berish» tugmasini bosing."],
     ["To'lovni qanday qilaman?", "Naqd to'lov mahsulotni olganingizda amalga oshadi. Karta orqali to'lasangiz, Profil → Buyurtmalarim bo'limida sotuvchi kartasi ko'rinadi. Pulni o'tkazib, chek rasmini shu yerda yuklaysiz."],
     ["Buyurtma holatini qayerda ko'raman?", "Profil → Buyurtmalarim va Bildirishnomalar bo'limlarida."],
     ["Mahsulotni olganimni qanday tasdiqlayman?", "Sotuvchi buyurtmani kuryerga topshirgach, Buyurtmalarim bo'limida «Mahsulotni oldim» tugmasi paydo bo'ladi."],
     ["Yetkazib berish narxi qancha?", "Narx har bir mahsulot kartasida ko'rsatilgan. Savatda viloyatni tanlasangiz, jami narx hisoblanadi."],
     ["Baho va sharh qoldirsam bo'ladimi?", "Ha. Sotib olgan mahsulotingiz uchun Buyurtmalarim bo'limida yulduzcha bosib baho qo'ying."]
-  ].map(([q, a]) => `<div class="qa"><b>${esc(q)}</b><span>${esc(a)}</span></div>`).join('');
+  ];
+  const SELLER = [
+    ["Mahsulotni qanday qo'shaman?", "«Qo'shish» bo'limida rasm, nom, narx va sonini kiriting. Hisobingiz admin tomonidan tasdiqlangan bo'lishi kerak."],
+    ["Hafta chegirmasi nima?", "Mahsulot tahrirlashda «Hafta chegirmasi»ni yoqib, chegirma narxini kiriting. U 7 kun ko'rinadi, keyin narx o'zi asl holiga qaytadi."],
+    ["Komissiya qancha?", "Har bir yetkazilgan buyurtmadan 1% komissiya olinadi. «To'lov» bo'limida jami komissiya va qarzingiz ko'rinadi."],
+    ["Qarz limiti nima?", "Qarzingiz 10 000 so'mdan oshsa, mahsulotlaringiz xaridorlarga ko'rinmay qoladi. To'lov qilib chek yuborsangiz, admin tasdiqlagach qayta ochiladi."],
+    ["Karta orqali to'lovni qanday olaman?", "Profil → Mening hisobim bo'limida karta raqamingizni saqlang. Xaridor shu kartaga o'tkazadi va chek yuboradi, siz «Tasdiqlash» tugmasini bosasiz."],
+    ["Buyurtmani qachon yetkazildi deyman?", "Siz buyurtmani kuryerga topshirasiz. «Yetkazildi» holatini xaridor «Mahsulotni oldim» tugmasi bilan o'zi tasdiqlaydi."]
+  ];
+  const ADMIN = [
+    ["Sotuvchini qanday tasdiqlayman?", "Sotuvchilar bo'limida Pasport/ID va Selfi rasmlarini ochib tekshiring, so'ng «Tasdiqlash» yoki «Rad etish» tugmasini bosing."],
+    ["To'lovni qanday tasdiqlayman?", "To'lovlar bo'limida chek rasmini ko'ring va «Tasdiqlash» bosing. Tasdiqlangan summa sotuvchi qarzidan ayriladi."],
+    ["Sotuvchi balansini qanday o'zgartiraman?", "Ekrandagi qizil «±» tugmasini bosing, sotuvchini tanlab summani qo'shing yoki ayiring."],
+    ["Reklamani qanday qo'shaman?", "Profil → Reklamalar bo'limida rasm (1200×400), havola va muddatni kiriting. Reklama xaridorlar bosh sahifasida aylanib turadi."],
+    ["Reklamani qanday to'xtataman?", "Reklamalar ro'yxatida «O'chirib qo'yish» yoki «Butunlay o'chirish» tugmasini bosing."]
+  ];
+  main.innerHTML = (r==='admin' ? ADMIN : r==='seller' ? SELLER : BUYER).map(([q, a]) => `<div class="qa"><b>${esc(q)}</b><span>${esc(a)}</span></div>`).join('');
   subBack(main, "Ma'lumotnoma");
 }
-function buyerContact(main){
+function renderContact(main){
   main.innerHTML = `<div class="menu">
-      <a class="mrow" href="tel:${CONTACT_PHONE}"><span class="mico">📞</span><span class="mgrow">Qo'ng'iroq qilish</span><span class="mval">${CONTACT_PHONE}</span></a>
-      <a class="mrow" href="${CONTACT_TG}" target="_blank" rel="noopener"><span class="mico">💬</span><span class="mgrow">Telegram bot</span><span class="mval">@SavdoUz_uzBot</span></a>
-    </div>`;
+      <a class="mrow" href="${CONTACT_TG}" target="_blank" rel="noopener"><span class="mico">💬</span><span class="mgrow">Telegram bot<span class="mval" style="display:block">${CONTACT_BOT}</span></span><span class="marr">›</span></a>
+    </div>
+    <div class="qa"><span>Savol, taklif yoki muammoingizni to'g'ridan-to'g'ri Telegram orqali shu botga yozing.</span></div>`;
   subBack(main, "Biz bilan bog'lanish");
 }
 
@@ -710,7 +852,8 @@ function wireCard(main){
 
 async function sellerAccount(main){
   const acc = await api('/api/account');
-  main.innerHTML = '<div class="sectitle">Mening hisobim</div>' + accountHtml(acc);
+  main.innerHTML = accountHtml(acc);
+  subBack(main, 'Mening hisobim');
   wireCard(main);
 }
 
@@ -839,11 +982,63 @@ async function sellerPayments(main){
   };
 }
 
+// ---- Admin: reklama boshqaruvi ----
+async function adsAdmin(main){
+  const { ads } = await api('/api/admin/ads');
+  let img = null;
+  const stOf = a => a.expired ? ['Muddati tugagan', '#FDEDED', 'var(--red)'] : !a.active ? ["O'chiq", 'var(--vl)', 'var(--mut)'] : ['Faol', '#E6F4EA', 'var(--grn)'];
+  main.innerHTML = `<div class="addform">
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px">Yangi reklama</div>
+      <div class="field"><label>Rasm (1200×400 piksel, 3:1)</label><div class="imgpreview" id="adPrev" style="height:110px"><span>Rasm tanlanmagan</span></div><input id="adFile" type="file" accept="image/*"></div>
+      <div class="field"><label>Sarlavha (faqat o'zingiz uchun)</label><input id="adTitle" placeholder="Masalan: Faberlic aksiyasi"></div>
+      <div class="field"><label>Bosilganda ochiladigan havola (ixtiyoriy)</label><input id="adLink" placeholder="https://t.me/..." inputmode="url"></div>
+      <div class="field"><label>Necha kun turadi (bo'sh bo'lsa cheksiz)</label><input id="adDays" type="number" inputmode="numeric" placeholder="7"></div>
+      <div class="field"><label>Tartib raqami (kichigi birinchi chiqadi)</label><input id="adOrder" type="number" inputmode="numeric" value="0"></div>
+      <button class="primarybtn" id="adSave">Reklamani qo'shish</button></div>
+    ${ads.length ? ads.map(a => { const st = stOf(a), ctr = a.views ? (a.clicks / a.views * 100).toFixed(1) + '%' : '—'; return `<div class="oitem">
+      <img src="${esc(a.image)}" alt="" style="width:100%;aspect-ratio:3/1;object-fit:cover;border-radius:12px;margin-bottom:8px;background:var(--vl)">
+      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(a.title || 'Sarlavhasiz')}</span><span class="status" style="background:${st[1]};color:${st[2]}">${st[0]}</span></div>
+      <div class="oline"><span>Ko'rishlar / bosishlar</span><span>${a.views} / ${a.clicks} (${ctr})</span></div>
+      <div class="oline"><span>Tugash sanasi</span><span>${a.expiresAt ? new Date(a.expiresAt).toLocaleDateString('uz') : 'cheksiz'}</span></div>
+      ${a.link ? `<div class="oline"><span>Havola</span><span style="word-break:break-all;text-align:right">${esc(a.link)}</span></div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="addbtn" style="background:${a.active ? 'var(--or)' : 'var(--grn)'}" data-adtoggle="${a.id}" data-on="${a.active ? 1 : 0}">${a.active ? "O'chirib qo'yish" : 'Yoqish'}</button><button class="addbtn" style="background:var(--vd)" data-addays="${a.id}">Muddat</button></div>
+      <button class="addbtn" style="background:var(--red);margin-top:6px" data-addel="${a.id}">🗑 Butunlay o'chirish</button></div>`; }).join('') : '<div class="empty" style="padding:30px 20px">Hali reklama yo\'q</div>'}`;
+  subBack(main, `Reklamalar (${ads.length})`);
+  $('adFile').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try { toast('Rasm tayyorlanmoqda...'); img = await readAdImage(f); $('adPrev').innerHTML = `<img src="${img}">`; }
+    catch(err){ toast("Rasmni yuklab bo'lmadi: " + err.message); }
+  };
+  $('adSave').onclick = async () => {
+    if(!img){ toast('Reklama rasmini yuklang'); return; }
+    $('adSave').disabled = true;
+    try {
+      await api('/api/admin/ads', { method:'POST', body:JSON.stringify({ title:$('adTitle').value.trim(), link:$('adLink').value.trim(), image:img, days:$('adDays').value, order:$('adOrder').value }) });
+      adsCache.t = 0; toast("Reklama qo'shildi ✅"); renderTab();
+    } catch(e){ toast(e.message); $('adSave').disabled = false; }
+  };
+  const act = async (method, id, body, msg) => {
+    try { await api('/api/admin/ads/' + id, { method, body: body ? JSON.stringify(body) : undefined }); adsCache.t = 0; toast(msg); renderTab(); }
+    catch(e){ toast(e.message); }
+  };
+  main.querySelectorAll('[data-adtoggle]').forEach(b => b.onclick = () => act('PATCH', b.dataset.adtoggle, { active: b.dataset.on !== '1' }, 'Bajarildi ✅'));
+  main.querySelectorAll('[data-addays]').forEach(b => b.onclick = () => {
+    const d = prompt("Bugundan boshlab necha kun turadi? (0 yoki bo'sh = cheksiz)");
+    if(d === null) return;
+    act('PATCH', b.dataset.addays, { days: d }, 'Muddat yangilandi ✅');
+  });
+  main.querySelectorAll('[data-addel]').forEach(b => b.onclick = () => {
+    if(!confirm("Reklama butunlay o'chiriladi. Davom etasizmi?")) return;
+    act('DELETE', b.dataset.addel, null, "Reklama o'chirildi");
+  });
+}
+
 // ---- Admin ----
 const SST = { faol: ['#E6F4EA', 'var(--grn)', 'Tasdiqlangan'], kutilmoqda: ['#FFF1E6', 'var(--or)', 'Kutilmoqda'], 'rad etildi': ['#FDEDED', 'var(--red)', 'Rad etilgan'] };
 async function renderAdmin(main){
   const t = S.tab;
   const none = m => `<div class="empty">${m}</div>`;
+  if(t==='ads') return adsAdmin(main);
   if(t==='sellers'){
     const { sellers } = await api('/api/admin/sellers');
     // Tasdiqlashni kutayotganlar eng tepada
@@ -939,7 +1134,7 @@ const homeTab = () => (S.user && role()==='admin') ? 'sellers' : 'home';
 function parentTab(){
   const t = S.tab;
   if(t==='detail' || t==='store') return S.prev && S.prev!==t ? S.prev : homeTab();
-  if(['settings','notifs','help','contact'].includes(t)) return 'profile';
+  if(['settings','notifs','help','contact','account','ads'].includes(t)) return 'profile';
   if(t==='orders' && S.user && role()==='buyer') return 'profile';
   return homeTab();
 }
