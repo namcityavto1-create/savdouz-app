@@ -476,6 +476,16 @@ async function getUsd() {
   return data || usdCache.data;
 }
 
+// ---------- Ob-havo va namoz vaqti (keshlanadi) ----------
+const infoCache = {};
+async function cachedInfo(key, ms, fn) {
+  const c = infoCache[key];
+  if (c && Date.now() - c.t < ms) return c.data;
+  try { const data = await fn(); if (data) infoCache[key] = { t: Date.now(), data }; return data; }
+  catch (e) { return c ? c.data : null; }
+}
+const wDesc = c => c === 0 ? 'Ochiq' : c <= 3 ? 'Bulutli' : c <= 48 ? 'Tuman' : c <= 67 ? "Yomg'ir" : c <= 82 ? 'Jala' : c <= 86 ? 'Qor' : 'Momaqaldiroq';
+
 // ---------- Server ----------
 const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url, true);
@@ -492,6 +502,21 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/kurs' && M === 'GET') {
       const d = await getUsd();
       return d ? sendJSON(res, 200, d) : sendJSON(res, 503, { error: 'Kurs olinmadi' });
+    }
+    if (pathname === '/api/weather' && M === 'GET') {
+      const d = await cachedInfo('weather', 15 * 60 * 1000, async () => {
+        const r = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.9983&longitude=71.6726&current=temperature_2m,weather_code&timezone=Asia%2FTashkent')).json();
+        return { temp: Math.round(r.current.temperature_2m), desc: wDesc(r.current.weather_code) };
+      });
+      return d ? sendJSON(res, 200, d) : sendJSON(res, 503, { error: 'Ob-havo olinmadi' });
+    }
+    if (pathname === '/api/namoz' && M === 'GET') {
+      const d = await cachedInfo('namoz:' + new Date().toISOString().slice(0, 10), 60 * 60 * 1000, async () => {
+        const r = await (await fetch('https://api.aladhan.com/v1/timingsByCity?city=Namangan&country=Uzbekistan&method=3')).json();
+        const t = r.data.timings, f = s => String(s).slice(0, 5);
+        return { bomdod: f(t.Fajr), peshin: f(t.Dhuhr), asr: f(t.Asr), shom: f(t.Maghrib), xufton: f(t.Isha) };
+      });
+      return d ? sendJSON(res, 200, d) : sendJSON(res, 503, { error: 'Namoz vaqti olinmadi' });
     }
 
     // ---- Push obuna ----
