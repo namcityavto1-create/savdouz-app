@@ -129,6 +129,7 @@ nav{position:fixed;bottom:12px;left:12px;right:12px;background:#fff;border-radiu
 .usdstrip .ch b{font-size:13px;font-weight:800}
 .usdstrip .ch.k{background:linear-gradient(135deg,var(--v),var(--vd))}
 .usdstrip .ch.k small{color:rgba(255,255,255,.8)}
+.usdstrip .ch small+small{margin:2px 0 0}
 .usdstrip .ch.k b{color:#fff}
 .usdstrip .ch.o b{color:var(--grn)}
 .usdstrip .ch.s b{color:var(--red)}
@@ -301,6 +302,21 @@ async function loadUsd(){
 }
 setInterval(loadUsd, 5 * 60 * 1000);
 
+// ---- Ob-havo va shom namozi vaqti ----
+async function loadInfo(){
+  const b = $('infoBox'); if(!b) return;
+  try {
+    const [w, n] = await Promise.all([api('/api/weather'), api('/api/namoz')]);
+    const now = new Date(), [h, m] = String(n.shom).split(':').map(Number);
+    const diff = h*60 + m - (now.getHours()*60 + now.getMinutes());
+    const left = diff > 0 ? `${Math.floor(diff/60)} soat ${diff%60} daq` : "Vaqt o'tdi";
+    b.innerHTML = `<div class="ch"><small>Namangan</small><b>${esc(w.temp)}°C</b><small>${esc(w.desc)}</small></div>
+      <div class="ch"><small>Shom namozi</small><b>${esc(n.shom)}</b><small>${left}</small></div>`;
+    b.style.display = '';
+  } catch(e){ b.style.display = 'none'; }
+}
+setInterval(loadInfo, 60 * 1000);
+
 // ---- Asosiy ekran ----
 const role = () => S.user.role;
 function renderApp(){
@@ -308,9 +324,9 @@ function renderApp(){
   // "Chiqish" tugmasi barcha rollarda Profil ichida (tepadagi tugma yashirin)
   $('app').innerHTML = `<header><div class="brandrow"><img class="logo" src="${LOGO}" alt="SavdoUz">
     <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · ${APP_VERSION}</div></div></div>
-  <button class="logoutbtn" id="logoutBtn" style="display:none">Chiqish</button></header><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
+  <button class="logoutbtn" id="logoutBtn" style="display:none">Chiqish</button></header><div class="usdstrip" id="infoBox"></div><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
   $('logoutBtn').onclick = () => logout(false);
-  loadUsd();
+  loadUsd(); loadInfo();
   if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = 'sellers';
   renderNav(); renderTab();
   pushGuard();
