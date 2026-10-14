@@ -68,15 +68,17 @@ main{flex:1;padding:16px 16px 92px}
 .hscroll.wrap .pcard{flex:0 0 calc(50% - 6px)}
 .seeall{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:12px;padding:6px 12px;font-size:11.5px;font-weight:700}
 /* ---- Reklama (banner) ---- */
-.adwrap{margin-bottom:14px}
-.adtrack{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:20px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.adwrap{margin-bottom:16px}
+.adtrack{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:22px;scrollbar-width:none;-webkit-overflow-scrolling:touch;box-shadow:0 12px 28px -12px rgba(21,15,46,.45)}
 .adtrack::-webkit-scrollbar{display:none}
-.adslide{flex:0 0 100%;scroll-snap-align:center;position:relative;aspect-ratio:3/1;background:var(--vl);cursor:pointer}
-.adslide img{width:100%;height:100%;object-fit:cover;display:block}
-.adtag{position:absolute;top:6px;right:8px;background:rgba(0,0,0,.45);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px}
-.addots{display:flex;justify-content:center;gap:5px;margin-top:7px}
-.addots i{width:6px;height:6px;border-radius:50%;background:#D7CCFB;transition:all .2s}
-.addots i.on{background:var(--v);width:16px;border-radius:4px}
+.adslide{flex:0 0 100%;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center;background:#0c0820;cursor:pointer;overflow:hidden;min-height:110px}
+.adbg{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(24px) brightness(.65) saturate(1.2);transform:scale(1.1)}
+.adslide img{position:relative;z-index:1;display:block;width:100%;height:auto;max-height:270px;object-fit:contain}
+.adtag{position:absolute;top:10px;right:10px;z-index:2;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-size:10px;font-weight:700;letter-spacing:.3px;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.25)}
+.adcta{position:absolute;bottom:10px;right:10px;z-index:2;background:linear-gradient(135deg,var(--v),var(--vd));color:#fff;font-size:12px;font-weight:800;padding:8px 14px;border-radius:20px;box-shadow:0 6px 14px -4px rgba(0,0,0,.5)}
+.addots{display:flex;justify-content:center;gap:5px;margin-top:9px}
+.addots i{width:6px;height:6px;border-radius:50%;background:#D7CCFB;transition:all .25s}
+.addots i.on{background:var(--v);width:20px;border-radius:4px}
 .adslot{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1.5px dashed #D7CCFB;border-radius:20px;padding:14px 16px;margin-bottom:14px;font-size:12.5px;font-weight:700;color:var(--vt)}
 .adslot small{display:block;font-weight:500;color:var(--mut);font-size:11px;margin-top:2px}
 .adslot button{flex:0 0 auto;background:var(--v);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-size:12px;font-weight:800}
@@ -117,6 +119,7 @@ main{flex:1;padding:16px 16px 92px}
 select.statusSel{margin-top:9px;font-size:12px;padding:9px 11px}
 .imgpreview{width:100%;height:140px;border-radius:15px;background:var(--vl);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1.5px dashed #D7CCFB}
 .imgpreview img{width:100%;height:100%;object-fit:cover}
+#adPrev img{object-fit:contain;background:#0c0820}
 .imgpreview span{font-size:12px;color:var(--mut)}
 nav{position:fixed;bottom:12px;left:12px;right:12px;background:var(--card);border-radius:22px;max-width:396px;margin:0 auto;display:flex;box-shadow:0 10px 30px -8px rgba(21,15,46,.25);padding:4px}
 .navitem{flex:1;min-width:0;text-align:center;padding:9px 0 7px;font-size:10px;color:var(--mut);cursor:pointer;border-radius:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -595,7 +598,7 @@ async function loadAds(){
     $('adContact').onclick = () => window.open(CONTACT_TG, '_blank');
     return;
   }
-  b.innerHTML = `<div class="adwrap"><div class="adtrack" id="adTrack">${ads.map((a, i) => `<div class="adslide" data-i="${i}"><img src="${esc(a.image)}" alt="${esc(a.title)}"><span class="adtag">Reklama</span></div>`).join('')}</div>${ads.length > 1 ? `<div class="addots" id="adDots">${ads.map((a, i) => `<i class="${i===0?'on':''}"></i>`).join('')}</div>` : ''}</div>`;
+  b.innerHTML = `<div class="adwrap"><div class="adtrack" id="adTrack">${ads.map((a, i) => `<div class="adslide" data-i="${i}"><div class="adbg" style="background-image:url('${esc(a.image)}')"></div><img src="${esc(a.image)}" alt="${esc(a.title)}"><span class="adtag">Reklama</span>${a.link ? '<span class="adcta">Batafsil ›</span>' : ''}</div>`).join('')}</div>${ads.length > 1 ? `<div class="addots" id="adDots">${ads.map((a, i) => `<i class="${i===0?'on':''}"></i>`).join('')}</div>` : ''}</div>`;
   const tr = $('adTrack'), n = ads.length;
   let cur = 0, resume = null;
   const mark = i => {
@@ -826,7 +829,7 @@ function renderHelp(main){
     ["Sotuvchini qanday tasdiqlayman?", "Sotuvchilar bo'limida Pasport/ID va Selfi rasmlarini ochib tekshiring, so'ng «Tasdiqlash» yoki «Rad etish» tugmasini bosing."],
     ["To'lovni qanday tasdiqlayman?", "To'lovlar bo'limida chek rasmini ko'ring va «Tasdiqlash» bosing. Tasdiqlangan summa sotuvchi qarzidan ayriladi."],
     ["Sotuvchi balansini qanday o'zgartiraman?", "Ekrandagi qizil «±» tugmasini bosing, sotuvchini tanlab summani qo'shing yoki ayiring."],
-    ["Reklamani qanday qo'shaman?", "Profil → Reklamalar bo'limida rasm (1200×400), havola va muddatni kiriting. Reklama xaridorlar bosh sahifasida aylanib turadi."],
+    ["Reklamani qanday qo'shaman?", "Profil → Reklamalar bo'limida rasm, havola va muddatni kiriting. Reklama xaridorlar bosh sahifasida aylanib turadi."],
     ["Reklamani qanday to'xtataman?", "Reklamalar ro'yxatida «O'chirib qo'yish» yoki «Butunlay o'chirish» tugmasini bosing."]
   ];
   main.innerHTML = (r==='admin' ? ADMIN : r==='seller' ? SELLER : BUYER).map(([q, a]) => `<div class="qa"><b>${esc(q)}</b><span>${esc(a)}</span></div>`).join('');
@@ -1056,14 +1059,14 @@ async function adsAdmin(main){
   const stOf = a => a.expired ? ['Muddati tugagan', '#FDEDED', 'var(--red)'] : !a.active ? ["O'chiq", 'var(--vl)', 'var(--mut)'] : ['Faol', '#E6F4EA', 'var(--grn)'];
   main.innerHTML = `<div class="addform">
       <div style="font-size:14px;font-weight:800;margin-bottom:10px">Yangi reklama</div>
-      <div class="field"><label>Rasm (1200×400 piksel, 3:1)</label><div class="imgpreview" id="adPrev" style="height:110px"><span>Rasm tanlanmagan</span></div><input id="adFile" type="file" accept="image/*"></div>
+      <div class="field"><label>Rasm (tavsiya: 1200×400, istalgan o'lcham to'liq ko'rinadi)</label><div class="imgpreview" id="adPrev" style="height:110px"><span>Rasm tanlanmagan</span></div><input id="adFile" type="file" accept="image/*"></div>
       <div class="field"><label>Sarlavha (faqat o'zingiz uchun)</label><input id="adTitle" placeholder="Masalan: Faberlic aksiyasi"></div>
       <div class="field"><label>Bosilganda ochiladigan havola (ixtiyoriy)</label><input id="adLink" placeholder="https://t.me/..." inputmode="url"></div>
       <div class="field"><label>Necha kun turadi (bo'sh bo'lsa cheksiz)</label><input id="adDays" type="number" inputmode="numeric" placeholder="7"></div>
       <div class="field"><label>Tartib raqami (kichigi birinchi chiqadi)</label><input id="adOrder" type="number" inputmode="numeric" value="0"></div>
       <button class="primarybtn" id="adSave">Reklamani qo'shish</button></div>
     ${ads.length ? ads.map(a => { const st = stOf(a), ctr = a.views ? (a.clicks / a.views * 100).toFixed(1) + '%' : '—'; return `<div class="oitem">
-      <img src="${esc(a.image)}" alt="" style="width:100%;aspect-ratio:3/1;object-fit:cover;border-radius:12px;margin-bottom:8px;background:var(--vl)">
+      <img src="${esc(a.image)}" alt="" style="width:100%;height:auto;max-height:260px;object-fit:contain;border-radius:12px;margin-bottom:8px;background:#0c0820">
       <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(a.title || 'Sarlavhasiz')}</span><span class="status" style="background:${st[1]};color:${st[2]}">${st[0]}</span></div>
       <div class="oline"><span>Ko'rishlar / bosishlar</span><span>${a.views} / ${a.clicks} (${ctr})</span></div>
       <div class="oline"><span>Tugash sanasi</span><span>${a.expiresAt ? new Date(a.expiresAt).toLocaleDateString('uz') : 'cheksiz'}</span></div>
@@ -1250,45 +1253,15 @@ function beep(kind){
     if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
   } catch(e){}
 }
-let _snd = { key:null, ord:null, bal:null, pay:null, pend:null };
-const _maxId = a => (a || []).reduce((m, x) => x.id > m ? x.id : m, 0);
-setInterval(async () => {
-  if(!S.user || !S.token){ _snd = { key:null, ord:null, bal:null, pay:null, pend:null }; return; }
-  const key = S.token + ':' + S.user.role;
-  if(_snd.key !== key) _snd = { key, ord:null, bal:null, pay:null, pend:null };
-  try {
-    if(S.user.role === 'seller'){
-      const o = await api('/api/orders/incoming'); const m = _maxId(o.orders);
-      if(_snd.ord !== null && m > _snd.ord) beep('order');
-      _snd.ord = m;
-      const a = await api('/api/account'); const b = a.balance || 0;
-      if(_snd.bal !== null && b > _snd.bal) beep('money');
-      _snd.bal = b;
-    } else if(S.user.role === 'admin'){
-      const p = await api('/api/admin/payments'); const m = _maxId(p.payments);
-      if(_snd.pay !== null && m > _snd.pay) beep('money');
-      _snd.pay = m;
-      // Yangi sotuvchi tasdiqlashni kutsa ovoz chiqadi va "Sotuvchilar" belgisi yangilanadi
-      const pd = await api('/api/admin/pending');
-      if(_snd.pend !== null && pd.count > _snd.pend) beep('order');
-      _snd.pend = pd.count;
-      if(S.pend !== pd.count){ S.pend = pd.count; if($('nav')) renderNav(); }
-    }
-  } catch(e){}
-}, 8000);
 
 // ---- Ishga tushirish ----
-(async function init(){
-  if(!S.token) return renderAuth();
-  $('app').innerHTML = '<div class="empty" style="margin:auto">Yuklanmoqda...</div>';
-  try { const { user } = await api('/api/me'); S.user = user; renderApp(); }
-  catch(e){
-    if(!S.token) return;
-    $('app').innerHTML = `<div class="empty err" style="margin:auto">⚠️ ${esc(e.message)}<br><br><button class="addbtn" style="width:auto;padding:10px 20px" id="retryInit">Qayta urinish</button> <button class="addbtn" style="width:auto;padding:10px 20px;background:var(--mut)" id="outInit">Chiqish</button></div>`;
-    $('retryInit').onclick = init; $('outInit').onclick = () => logout(false);
+(async () => {
+  if(S.token){
+    try { const { user } = await api('/api/me'); S.user = user; renderApp(); return; }
+    catch(e){ if(!S.token) return; }
   }
+  renderAuth();
 })();
 </script>
-<script src="/docs.js"></script>
 </body>
 </html>
