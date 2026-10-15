@@ -240,6 +240,7 @@ async function api(path, o = {}){
 function logout(expired){
   localStorage.removeItem('savdouz_token');
   localStorage.removeItem('savdouz_cart');
+  try { sessionStorage.removeItem('savdouz_view'); } catch(e){}
   S = fresh();
   // Orqaga tugmasi uchun qo'shilgan tarix yozuvini olib tashlaymiz
   if(guard){ guard = false; try { history.back(); } catch(e){} }
@@ -329,7 +330,7 @@ async function submitAuth(){
       }
       d = await api('/api/register', { method:'POST', body:JSON.stringify(body) });
     }
-    S.token = d.token; S.user = d.user; S.tab = 'home';
+    S.token = d.token; S.user = d.user; S.tab = 'home'; try { sessionStorage.removeItem('savdouz_view'); } catch(e){}
     localStorage.setItem('savdouz_token', S.token);
     renderApp();
   } catch(e){ err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; }
@@ -523,10 +524,28 @@ async function loadChat(id, box){
 }
 
 // ---- Sahifalar ----
+// Sahifani yangilaganda (pastga tortganda) shu bo'limda va shu joyda qolish uchun holat saqlanadi
+let pendingScroll = null;
+function saveView(){
+  try {
+    if(!S.user) return;
+    sessionStorage.setItem('savdouz_view', JSON.stringify({ uid:S.user.id, tab:S.tab, prev:S.prev, sellerId:S.sellerId, selId:S.sel ? S.sel.id : null, cat:S.cat, search:S.search, sort:S.sort, y:window.scrollY || 0 }));
+  } catch(e){}
+}
+let _scT = null;
+window.addEventListener('scroll', () => { clearTimeout(_scT); _scT = setTimeout(saveView, 150); }, { passive:true });
+window.addEventListener('pagehide', saveView);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') saveView(); });
+function restoreScroll(){
+  if(pendingScroll === null) return;
+  const y = pendingScroll; pendingScroll = null;
+  [0, 150, 500, 1000].forEach(ms => setTimeout(() => window.scrollTo(0, y), ms));
+}
 async function renderTab(silent){
   const main = $('main'); if(!main) return;
+  if(silent !== true && pendingScroll === null) saveView();
   if(silent !== true) main.innerHTML = (S.user && S.user.role==='buyer' && ['home','favorites','store'].includes(S.tab)) ? SKEL : '<div class="empty">Yuklanmoqda...</div>';
-  try { await renderTabInner(main); }
+  try { await renderTabInner(main); restoreScroll(); if(silent !== true) saveView(); }
   catch(e){
     main.innerHTML = `<div class="empty err">⚠️ ${esc(e.message)}<br><br><button class="addbtn" style="width:auto;padding:10px 20px" id="retryBtn">Qayta urinish</button></div>`;
     const r = $('retryBtn'); if(r) r.onclick = () => renderTab();
@@ -1268,7 +1287,25 @@ window.addEventListener('popstate', () => {
 // ---- Ilovani ishga tushirish ----
 (async function init(){
   if(S.token){
-    try { const { user } = await api('/api/me'); S.user = user; renderApp(); return; }
+    try {
+      const { user } = await api('/api/me'); S.user = user;
+      try {
+        const v = JSON.parse(sessionStorage.getItem('savdouz_view') || 'null');
+        if(v && v.uid === user.id && v.tab){
+          S.tab = v.tab; S.prev = v.prev || 'home'; S.sellerId = v.sellerId || null;
+          if(v.cat) S.cat = v.cat; if(v.search) S.search = v.search; if(v.sort) S.sort = v.sort;
+          if(v.tab === 'detail'){
+            const list = (await api('/api/products')).products || [];
+            S.sel = list.find(p => p.id === v.selId) || null;
+            if(!S.sel){ S.tab = S.prev && S.prev !== 'detail' ? S.prev : 'home'; }
+          }
+          if(v.tab === 'store' && !S.sellerId) S.tab = 'home';
+          if(v.tab === 'add') S.tab = 'home';
+          pendingScroll = Number(v.y) || 0;
+        }
+      } catch(e){ pendingScroll = null; }
+      renderApp(); return;
+    }
     catch(e){ S.token = null; }
   }
   renderAuth();
