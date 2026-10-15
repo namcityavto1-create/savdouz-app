@@ -117,6 +117,34 @@ async function loadDB() {
 }
 async function saveDB(db) { await stateCollection.replaceOne({ _id: 'main' }, db, { upsert: true }); }
 
+// ---------- 3 kundan eski chek rasmlari va pul tarixini avtomatik o'chirish ----------
+// Pasport/ID va selfi ("sellerdocs") hech qachon o'chirilmaydi.
+const KEEP_MS = 3 * 864e5;
+async function cleanupOld() {
+  try {
+    const db = await loadDB();
+    const lim = Date.now() - KEEP_MS;
+    const old = t => t && new Date(t).getTime() < lim;
+    let n = 0;
+    // Xaridor cheklari (tekshirilmagan chek qoldiriladi)
+    for (const o of db.orders) {
+      if (o.receiptImage && o.paymentStatus !== 'chek yuborildi' && old(o.receiptAt || o.createdAt)) { delete o.receiptImage; n++; }
+    }
+    // Sotuvchining komissiya to'lovi cheklari (admin ko'rib chiqmaganlari qoldiriladi)
+    for (const p of db.payments) {
+      if (p.receiptImage && p.status !== 'kutilmoqda' && old(p.createdAt)) { p.receiptImage = null; n++; }
+    }
+    // Balansga tushirilgan/yechilgan pullar tarixi (balans o'zi o'zgarmaydi)
+    for (const u of db.users) {
+      if (u.txs && u.txs.length) {
+        const keep = u.txs.filter(t => !old(t.createdAt));
+        if (keep.length !== u.txs.length) { n += u.txs.length - keep.length; u.txs = keep; }
+      }
+    }
+    if (n) { await saveDB(db); console.log('Avto-tozalash: ' + n + " ta eski yozuv/rasm o'chirildi"); }
+  } catch (e) { console.error('Tozalash xatosi:', e.message); }
+}
+
 // ---------- Parol va token ----------
 function hashPassword(password, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
@@ -965,7 +993,7 @@ const server = http.createServer(async (req, res) => {
       if (!['kutilmoqda', 'rad etildi'].includes(o.paymentStatus)) return sendJSON(res, 400, { error: "Chek allaqachon yuborilgan" });
       const { image } = await readBody(req);
       if (!image || !String(image).startsWith('data:')) return sendJSON(res, 400, { error: "Chek rasmini yuklang" });
-      o.receiptImage = image; o.paymentStatus = 'chek yuborildi'; await saveDB(db);
+      o.receiptImage = image; o.receiptAt = new Date().toISOString(); o.paymentStatus = 'chek yuborildi'; await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
     if ((m = pathname.match(/^\/api\/orders\/(\d+)\/payment$/)) && M === 'POST') {
@@ -1011,4 +1039,6 @@ const server = http.createServer(async (req, res) => {
 
 connectMongo().then(() => {
   server.listen(PORT, () => console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`));
+  cleanupOld();
+  setInterval(cleanupOld, 60 * 60 * 1000); // har soatda tekshiradi
 }).catch(err => { console.error('MongoDB ulanishda xato:', err.message); process.exit(1); });
