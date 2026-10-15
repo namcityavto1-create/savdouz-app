@@ -195,6 +195,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fmt = n => Number(n || 0).toLocaleString('ru-RU') + " so'm";
 const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none', pend:0 });
 let S = { ...fresh(), token: localStorage.getItem('savdouz_token') };
+// Savatni telefonda saqlash: sahifa yangilansa yoki ilova yopilsa ham yo'qolmaydi
+try { const c = JSON.parse(localStorage.getItem('savdouz_cart') || '{}'); if(c && typeof c === 'object' && !Array.isArray(c)) S.cart = c; } catch(e){}
+const saveCart = () => { try { localStorage.setItem('savdouz_cart', JSON.stringify(S.cart || {})); } catch(e){} };
 const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","Kiyim","Poyabzal","Aksessuarlar","Go'zallik","Oziq-ovqat","Uy-ro'zg'or","Mebel","Bolalar","Sport","Avto","Qurilish","Kitob","Boshqa"];
 const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
 const CI = { 'Barchasi':'✨','Telefon':'📱','Kompyuter':'💻','Elektronika':'🔌','Maishiy texnika':'🧺','Kiyim':'👕','Poyabzal':'👟','Aksessuarlar':'👜',"Go'zallik":'💄','Oziq-ovqat':'🍎',"Uy-ro'zg'or":'🏠','Mebel':'🛋️','Bolalar':'🧸','Sport':'⚽','Avto':'🚗','Qurilish':'🧱','Kitob':'📚','Boshqa':'📦' };
@@ -236,6 +239,7 @@ async function api(path, o = {}){
 }
 function logout(expired){
   localStorage.removeItem('savdouz_token');
+  localStorage.removeItem('savdouz_cart');
   S = fresh();
   // Orqaga tugmasi uchun qo'shilgan tarix yozuvini olib tashlaymiz
   if(guard){ guard = false; try { history.back(); } catch(e){} }
@@ -378,6 +382,7 @@ function renderApp(){
   pushGuard();
 }
 function renderNav(){
+  saveCart();
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
   const r = role();
   const items = r==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','🛍️','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"],['profile','👤','Profil']]
