@@ -544,7 +544,7 @@ function restoreScroll(){
 async function renderTab(silent){
   const main = $('main'); if(!main) return;
   if(silent !== true && pendingScroll === null) saveView();
-  if(silent !== true) main.innerHTML = (S.user && S.user.role==='buyer' && ['home','favorites','store'].includes(S.tab)) ? SKEL : '<div class="empty">Yuklanmoqda...</div>';
+  if(silent !== true && pendingScroll === null) main.innerHTML = (S.user && S.user.role==='buyer' && ['home','favorites','store'].includes(S.tab)) ? SKEL : '<div class="empty">Yuklanmoqda...</div>';
   try { await renderTabInner(main); restoreScroll(); if(silent !== true) saveView(); }
   catch(e){
     main.innerHTML = `<div class="empty err">⚠️ ${esc(e.message)}<br><br><button class="addbtn" style="width:auto;padding:10px 20px" id="retryBtn">Qayta urinish</button></div>`;
