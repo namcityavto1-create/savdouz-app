@@ -689,6 +689,10 @@ async function buyerFavs(main){
 
 async function buyerCart(main){
   const { products } = await api('/api/products');
+  drawCart(main, products);
+}
+function drawCart(main, products, draft){
+  const redraw = () => { const d = { region:$('region').value, addr:$('addr').value, pm:$('pm').value }; renderNav(); drawCart(main, products, d); };
   const ids = Object.keys(S.cart).filter(id => S.cart[id] > 0 && products.some(p => p.id == id));
   if(!ids.length){ main.innerHTML = '<div class="empty"><div class="eico">🛒</div>Savatingiz bo\'sh<br><br><button class="addbtn" style="width:auto;padding:10px 20px" id="goShop">Xarid qilish</button></div>'; $('goShop').onclick = () => { S.tab = 'home'; renderNav(); renderTab(); }; return; }
   let total = 0;
@@ -705,8 +709,8 @@ async function buyerCart(main){
     <div class="field" style="margin-top:10px"><label>To'lov usuli</label><select id="pm"><option value="naqd">💵 Naqd (yetkazishda)</option><option value="karta">💳 Karta orqali (sotuvchi kartasiga)</option></select></div>
     <div id="pmHint" style="font-size:11px;color:var(--mut);margin:-6px 0 8px;display:none">Buyurtmadan keyin Profil → «Buyurtmalarim» bo'limida sotuvchi kartasi ko'rinadi va chekni yuklaysiz.</div>
     <button class="checkout" id="checkoutBtn">Buyurtma berish</button></div>`;
-  main.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const p = products.find(x => x.id == b.dataset.inc); if(p && S.cart[p.id] >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; } S.cart[b.dataset.inc]++; renderTab(); renderNav(); });
-  main.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { S.cart[b.dataset.dec] = Math.max(0, S.cart[b.dataset.dec] - 1); renderTab(); renderNav(); });
+  main.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const p = products.find(x => x.id == b.dataset.inc); if(p && S.cart[p.id] >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; } S.cart[b.dataset.inc]++; redraw(); });
+  main.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { S.cart[b.dataset.dec] = Math.max(0, S.cart[b.dataset.dec] - 1); redraw(); });
   const calc = () => {
     const r = $('region').value, w = $('regionWarning');
     if(!r){ $('dDisp').textContent = '—'; $('gDisp').textContent = fmt(total); w.style.display = 'none'; return null; }
@@ -719,6 +723,7 @@ async function buyerCart(main){
   };
   $('region').onchange = calc; if(reg) calc();
   $('pm').onchange = () => { $('pmHint').style.display = $('pm').value==='karta' ? 'block' : 'none'; };
+  if(draft){ $('region').value = draft.region; $('addr').value = draft.addr; $('pm').value = draft.pm; $('pmHint').style.display = draft.pm==='karta' ? 'block' : 'none'; calc(); }
   $('checkoutBtn').onclick = async () => {
     const address = $('addr').value.trim(), region = $('region').value, paymentMethod = $('pm').value;
     if(!region){ toast('Viloyatni tanlang'); return; }
