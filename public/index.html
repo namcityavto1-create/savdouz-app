@@ -425,13 +425,38 @@ function card(p, buyer){
     <div style="font-size:10.5px;margin-bottom:6px" class="${low?'lowstock':''}">${p.stock>0 ? (low ? `⚡ Faqat ${p.stock} dona qoldi!` : `Omborda: ${p.stock} dona`) : '<span style="color:var(--red)">Tugagan</span>'}</div>
     <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled'}>${p.stock>0 ? "Savatga qo'shish" : 'Tugagan'}</button></div></div>`;
 }
-function addToCart(p){
+function flyToCart(src, done){
+  const target = $('nav').querySelector('[data-tab="cart"] .navicon');
+  const holder = src && (src.closest('.pcard') || src.closest('#main') || document).querySelector('.pimg img, .pimg, .detailimg img, .detailimg');
+  if(!target || !holder){ done(); return; }
+  const a = (holder.tagName === 'IMG' ? holder : holder.querySelector('img') || holder).getBoundingClientRect();
+  const b = target.getBoundingClientRect();
+  if(!a.width || !b.width){ done(); return; }
+  const size = 56, fly = document.createElement('div');
+  const img = holder.tagName === 'IMG' ? holder : holder.querySelector('img');
+  fly.style.cssText = `position:fixed;z-index:9999;left:0;top:0;width:${size}px;height:${size}px;border-radius:16px;overflow:hidden;pointer-events:none;background:var(--vl,#F1EDFE);display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 10px 24px -6px rgba(108,75,244,.55);will-change:transform,opacity`;
+  if(img){ fly.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:cover">`; } else { fly.textContent = '🛍️'; }
+  document.body.appendChild(fly);
+  const sx = a.left + a.width/2 - size/2, sy = a.top + a.height/2 - size/2;
+  const ex = b.left + b.width/2 - size/2, ey = b.top + b.height/2 - size/2;
+  const mx = (sx + ex)/2, my = Math.min(sy, ey) - 90;
+  const end = () => { fly.remove(); done(); };
+  if(!fly.animate){ end(); return; }
+  const an = fly.animate([
+    { transform: `translate(${sx}px,${sy}px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
+    { transform: `translate(${mx}px,${my}px) scale(.8) rotate(180deg)`, opacity: 1, offset: .5 },
+    { transform: `translate(${ex}px,${ey}px) scale(.2) rotate(360deg)`, opacity: .6, offset: 1 }
+  ], { duration: 650, easing: 'cubic-bezier(.45,.05,.55,.95)' });
+  an.onfinish = end; an.oncancel = end;
+}
+function addToCart(p, src){
   const n = S.cart[p.id] || 0;
   if(n >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; }
-  S.cart[p.id] = n + 1; toast(`"${p.name}" savatga qo'shildi`); renderNav();
+  S.cart[p.id] = n + 1; toast(`"${p.name}" savatga qo'shildi`);
+  if(src) flyToCart(src, renderNav); else renderNav();
 }
 function wire(main, products, after){
-  main.querySelectorAll('[data-add]').forEach(b => b.onclick = e => { e.stopPropagation(); const p = products.find(x => x.id == b.dataset.add); if(p) addToCart(p); });
+  main.querySelectorAll('[data-add]').forEach(b => b.onclick = e => { e.stopPropagation(); const p = products.find(x => x.id == b.dataset.add); if(p) addToCart(p, b); });
   main.querySelectorAll('[data-fav]').forEach(b => b.onclick = async e => {
     e.stopPropagation();
     try {
@@ -577,7 +602,7 @@ async function renderDetail(main){
     ${reviews.length ? reviews.map(r => `<div class="reviewitem"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700;font-size:12.5px">${esc(r.buyerName)}</span><span style="font-size:11px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></div>${r.comment ? `<div style="font-size:12px;color:var(--mut)">${esc(r.comment)}</div>` : ''}</div>`).join('') : '<div class="empty" style="padding:20px">Hali sharh yo\'q</div>'}`;
   $('backBtn').onclick = goBack;
   $('sellerLink').onclick = () => { S.sellerId = p.sellerId; S.prev = 'home'; S.tab = 'store'; renderTab(); };
-  $('detailAdd').onclick = () => addToCart(p);
+  $('detailAdd').onclick = () => addToCart(p, $('detailAdd'));
 }
 
 // ---- Reklama banneri (xaridor bosh sahifasida) ----
