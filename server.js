@@ -60,7 +60,7 @@ function fcmNotify(db, userIds, payload) {
     if (payload.icon) msg.notification.imageUrl = BASE_URL + payload.icon;
     fcmAdmin.messaging().send(msg).catch(e => {
       if (e.code === 'messaging/registration-token-not-registered' || e.code === 'messaging/invalid-registration-token') db.fcmTokens = (db.fcmTokens || []).filter(y => y !== x);
-      else console.error('FCM xato:', e.code || e.message);
+      else console.error('FCM xato:', e.code, e.message);
     });
   });
 }
