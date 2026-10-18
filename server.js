@@ -6,10 +6,35 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { MongoClient } = require('mongodb');
 
 // ---------- Firebase FCM (APK yopiq bo'lsa ham bildirishnoma) ----------
+// Service account JSON ni o'qiydi: oddiy JSON, qatorlari buzilgan JSON (matn ichida haqiqiy yangi qator) yoki base64 bo'lsa ham ishlaydi
+function parseServiceAccount(raw) {
+  raw = String(raw || '').trim();
+  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT bo'sh");
+  if (raw[0] !== '{') { try { raw = Buffer.from(raw, 'base64').toString('utf8').trim(); } catch (e) {} }
+  let obj;
+  try { obj = JSON.parse(raw); }
+  catch (e) {
+    let out = '', inStr = false, esc = false;
+    for (const ch of raw) {
+      if (inStr) {
+        if (esc) { out += ch; esc = false; }
+        else if (ch === '\\') { out += ch; esc = true; }
+        else if (ch === '"') { out += ch; inStr = false; }
+        else if (ch === '\n') out += '\\n';
+        else if (ch === '\r') { /* tashlab ketiladi */ }
+        else if (ch === '\t') out += '\\t';
+        else out += ch;
+      } else { if (ch === '"') inStr = true; out += ch; }
+    }
+    obj = JSON.parse(out);
+  }
+  if (obj.private_key) obj.private_key = String(obj.private_key).replace(/\\n/g, '\n');
+  return obj;
+}
 let fcmAdmin = null, fcmReady = false;
 try {
   fcmAdmin = require('firebase-admin');
-  fcmAdmin.initializeApp({ credential: fcmAdmin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
+  fcmAdmin.initializeApp({ credential: fcmAdmin.credential.cert(parseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT)) });
   fcmReady = true;
   console.log('Firebase tayyor ✅');
 } catch (e) { console.error("Firebase ulanmadi:", e.message); }
