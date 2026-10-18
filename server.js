@@ -28,7 +28,15 @@ function parseServiceAccount(raw) {
     }
     obj = JSON.parse(out);
   }
-  if (obj.private_key) obj.private_key = String(obj.private_key).replace(/\\n/g, '\n');
+  if (obj.private_key) {
+    // Kalitni tozalab, qaytadan to'g'ri PEM ko'rinishiga keltiradi (qo'shimcha \\n, bo'shliq yoki yangi qatorlar bo'lsa ham)
+    const mm = String(obj.private_key).match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
+    if (mm) {
+      const body = mm[1].replace(/\\+n/g, '').replace(/[^A-Za-z0-9+\/=]/g, '');
+      console.log('Firebase kalit uzunligi:', body.length, '(kutilgan: 1624 ga yaqin)');
+      obj.private_key = '-----BEGIN PRIVATE KEY-----\n' + (body.match(/.{1,64}/g) || []).join('\n') + '\n-----END PRIVATE KEY-----\n';
+    }
+  }
   return obj;
 }
 let fcmAdmin = null, fcmReady = false;
