@@ -514,6 +514,32 @@ const EXTRA_HTML = String.raw`<script>
   }
   document.addEventListener('click', setupPush);
   setInterval(setupPush, 20000);
+
+  // ---- Firebase FCM (Capacitor APK ichida): telefon tokenini serverga yuboradi ----
+  var fcmDone = null, fcmBusy = false, fcmHooked = false;
+  function setupFcm() {
+    try {
+      var C = window.Capacitor;
+      if (!C || !C.Plugins || !C.Plugins.PushNotifications) return;
+      if (typeof C.isNativePlatform === 'function' && !C.isNativePlatform()) return;
+      if (fcmBusy || !tok || (nRole !== 'seller' && nRole !== 'admin') || fcmDone === tok) return;
+      var PN = C.Plugins.PushNotifications; fcmBusy = true;
+      if (!fcmHooked) {
+        fcmHooked = true;
+        PN.addListener('registration', function (r) {
+          if (!r || !r.value || !tok) return;
+          var t2 = tok;
+          api('POST', '/api/push/fcm', { token: r.value }).then(function (x) { if (x.ok) fcmDone = t2; }).catch(function () {});
+        });
+        PN.addListener('registrationError', function () {});
+      }
+      PN.requestPermissions().then(function (p) {
+        if (p.receive !== 'granted') return;
+        return PN.register();
+      }).catch(function () {}).then(function () { fcmBusy = false; });
+    } catch (e) { fcmBusy = false; }
+  }
+  setInterval(setupFcm, 5000);
 })();
 </script>`;
 function injectLogo(buf) {
