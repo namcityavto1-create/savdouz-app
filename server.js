@@ -29,6 +29,7 @@ function parseServiceAccount(raw) {
     obj = JSON.parse(out);
   }
   if (obj.private_key) {
+    console.log('Firebase hisob:', obj.client_email, '| kalit ID:', String(obj.private_key_id).slice(0, 10));
     // Kalitni tozalab, qaytadan to'g'ri PEM ko'rinishiga keltiradi (qo'shimcha \\n, bo'shliq yoki yangi qatorlar bo'lsa ham)
     const mm = String(obj.private_key).match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
     if (mm) {
