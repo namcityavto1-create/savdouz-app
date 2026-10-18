@@ -601,6 +601,15 @@ async function cachedInfo(key, ms, fn) {
   catch (e) { return c ? c.data : null; }
 }
 const wDesc = c => c === 0 ? 'Ochiq' : c <= 3 ? 'Bulutli' : c <= 48 ? 'Tuman' : c <= 67 ? "Yomg'ir" : c <= 82 ? 'Jala' : c <= 86 ? 'Qor' : 'Momaqaldiroq';
+// Zaxira manba (wttr.in) kodini o'zbekcha tavsifga aylantiradi
+const wttrDesc = k => k === 113 ? 'Ochiq'
+  : [116, 119, 122].includes(k) ? 'Bulutli'
+  : [143, 248, 260].includes(k) ? 'Tuman'
+  : [200, 386, 389, 392, 395].includes(k) ? 'Momaqaldiroq'
+  : [179, 182, 185, 227, 230, 323, 326, 329, 332, 335, 338, 368, 371, 374, 377].includes(k) ? 'Qor'
+  : [353, 356, 359].includes(k) ? 'Jala'
+  : [176, 263, 266, 293, 296, 299, 302, 305, 308].includes(k) ? "Yomg'ir"
+  : 'Bulutli';
 
 // ---------- Server ----------
 const server = http.createServer(async (req, res) => {
@@ -621,8 +630,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/weather' && M === 'GET') {
       const d = await cachedInfo('weather', 15 * 60 * 1000, async () => {
-        const r = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.9983&longitude=71.6726&current=temperature_2m,weather_code&timezone=Asia%2FTashkent')).json();
-        return { temp: Math.round(r.current.temperature_2m), desc: wDesc(r.current.weather_code) };
+        // 1) Asosiy manba: open-meteo
+        try {
+          const r = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.9983&longitude=71.6726&current=temperature_2m,weather_code&timezone=Asia%2FTashkent', { signal: AbortSignal.timeout(8000) })).json();
+          if (r && r.current && Number.isFinite(r.current.temperature_2m)) return { temp: Math.round(r.current.temperature_2m), desc: wDesc(r.current.weather_code) };
+        } catch (e) { console.error('open-meteo xato:', e.message); }
+        // 2) Zaxira manba: wttr.in
+        const r2 = await (await fetch('https://wttr.in/Namangan?format=j1', { headers: { 'User-Agent': 'SavdoUz' }, signal: AbortSignal.timeout(8000) })).json();
+        const c = r2.current_condition[0];
+        return { temp: Math.round(Number(c.temp_C)), desc: wttrDesc(Number(c.weatherCode)) };
       });
       return d ? sendJSON(res, 200, d) : sendJSON(res, 503, { error: 'Ob-havo olinmadi' });
     }
