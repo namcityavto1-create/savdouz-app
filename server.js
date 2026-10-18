@@ -5,6 +5,33 @@ require('./extras.js');
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
 const { MongoClient } = require('mongodb');
 
+// ---------- Firebase FCM (APK yopiq bo'lsa ham bildirishnoma) ----------
+let fcmAdmin = null, fcmReady = false;
+try {
+  fcmAdmin = require('firebase-admin');
+  fcmAdmin.initializeApp({ credential: fcmAdmin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
+  fcmReady = true;
+  console.log('Firebase tayyor ✅');
+} catch (e) { console.error("Firebase ulanmadi:", e.message); }
+const BASE_URL = process.env.RENDER_EXTERNAL_URL || 'https://savdouz-app.onrender.com';
+function fcmNotify(db, userIds, payload) {
+  if (!fcmReady) return;
+  const ids = new Set(userIds);
+  (db.fcmTokens || []).filter(x => ids.has(x.userId)).forEach(x => {
+    const msg = {
+      token: x.token,
+      notification: { title: payload.title || 'SavdoUz', body: payload.body || '' },
+      data: { url: payload.url || '/', tag: payload.tag || 'savdouz' },
+      android: { priority: 'high', notification: { sound: 'default', tag: payload.tag || 'savdouz' } }
+    };
+    if (payload.icon) msg.notification.imageUrl = BASE_URL + payload.icon;
+    fcmAdmin.messaging().send(msg).catch(e => {
+      if (e.code === 'messaging/registration-token-not-registered' || e.code === 'messaging/invalid-registration-token') db.fcmTokens = (db.fcmTokens || []).filter(y => y !== x);
+      else console.error('FCM xato:', e.code || e.message);
+    });
+  });
+}
+
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -45,6 +72,7 @@ function pushInit(db) {
 }
 function pushNotify(db, userIds, payload) {
   try {
+    fcmNotify(db, userIds, payload);
     if (!webpush) return;
     pushInit(db);
     const ids = new Set(userIds);
@@ -559,6 +587,16 @@ const server = http.createServer(async (req, res) => {
       if (!subscription || !subscription.endpoint) return sendJSON(res, 400, { error: "Noto'g'ri obuna" });
       db.pushSubs = (db.pushSubs || []).filter(x => x.sub.endpoint !== subscription.endpoint);
       db.pushSubs.push({ userId: u.id, sub: subscription });
+      await saveDB(db);
+      return sendJSON(res, 200, { ok: true });
+    }
+    // ---- Firebase FCM token (APK ilova yuboradi) ----
+    if (pathname === '/api/push/fcm' && M === 'POST') {
+      const u = me(); if (!u) return sendJSON(res, 401, { error: "Tizimga kirilmagan" });
+      const { token } = await readBody(req);
+      if (!token || typeof token !== 'string' || token.length > 4096) return sendJSON(res, 400, { error: "Noto'g'ri token" });
+      db.fcmTokens = (db.fcmTokens || []).filter(x => x.token !== token);
+      db.fcmTokens.push({ userId: u.id, token });
       await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
