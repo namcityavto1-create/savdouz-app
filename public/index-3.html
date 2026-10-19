@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<style>*{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select{-webkit-user-select:text!important;user-select:text!important}</style>
+<script>document.addEventListener("selectstart",function(e){var t=e.target&&e.target.tagName;if(t!=="INPUT"&&t!=="TEXTAREA"&&t!=="SELECT")e.preventDefault();},true);document.addEventListener("contextmenu",function(e){var t=e.target&&e.target.tagName;if(t!=="INPUT"&&t!=="TEXTAREA")e.preventDefault();},true);</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SavdoUz</title>
+<style>
+:root{--ink:#150F2E;--v:#6C4BF4;--vd:#4E2FD9;--vl:#F1EDFE;--bg:#F5F4FA;--card:#fff;--mut:#8A8497;--line:#ECE9F5;--red:#F23557;--or:#FF6B35;--grn:#1E7E34;--toast:#150F2E;--vt:#4E2FD9;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--ink:#F2EFFA;--vl:#2A2250;--bg:#0F0B1F;--card:#1A1530;--mut:#A49FB8;--line:#2D2750;--toast:#3A3263;--vt:#B7A5FF;}:root:not([data-theme=light]) .usdstrip .ch.o b{color:#4CC46A}:root:not([data-theme=light]) .usdstrip .ch.s b{color:#FF7A92}}
+:root[data-theme=dark]{--ink:#F2EFFA;--vl:#2A2250;--bg:#0F0B1F;--card:#1A1530;--mut:#A49FB8;--line:#2D2750;--toast:#3A3263;--vt:#B7A5FF;}:root[data-theme=dark] .usdstrip .ch.o b{color:#4CC46A}:root[data-theme=dark] .usdstrip .ch.s b{color:#FF7A92}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{overscroll-behavior-y:contain}
+#ptr{position:fixed;left:50%;top:0;width:38px;height:38px;margin-left:-19px;border-radius:50%;background:var(--card);box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:40;opacity:0;pointer-events:none;transform:translateY(-50px)}
+#ptr svg{width:20px;height:20px;stroke:var(--v);fill:none;stroke-width:2.6;stroke-linecap:round}
+#ptr.spin svg{animation:ptrspin .7s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Tahoma,sans-serif}
+.app{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+svg{display:block}
+input,select,textarea{font-family:inherit;font-size:14px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);width:100%;background:var(--card);color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--v)}
+button{font-family:inherit;cursor:pointer;transition:transform .1s}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.5}
+label{font-size:12.5px;color:var(--mut);font-weight:700;margin-bottom:6px;display:block}
+.field{margin-bottom:13px}
+.authwrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:30px 26px}
+.authlogo{width:84px;height:84px;border-radius:24px;display:block;object-fit:contain;margin:0 auto 18px}
+.authtitle{text-align:center;font-size:23px;font-weight:800;margin-bottom:4px}
+.authsub{text-align:center;font-size:13px;color:var(--mut);margin-bottom:28px}
+.roletabs{display:flex;background:var(--vl);border-radius:14px;padding:4px;margin-bottom:16px}
+.roletab{flex:1;text-align:center;padding:9px 0;font-size:13px;border-radius:11px;font-weight:700;color:var(--vt);opacity:.55;cursor:pointer}
+.roletab.active{background:var(--card);opacity:1}
+.primarybtn,.checkout{width:100%;background:linear-gradient(135deg,var(--v),var(--vd));color:#fff;border:none;border-radius:15px;padding:14px;font-weight:800;font-size:14.5px;margin-top:6px;box-shadow:0 8px 18px -6px rgba(108,75,244,.5)}
+.switchmode{text-align:center;margin-top:18px;font-size:13px;color:var(--mut)}
+.switchmode b{color:var(--vt);cursor:pointer}
+.errmsg{background:#FEECEF;color:var(--red);font-size:12.5px;padding:10px 13px;border-radius:12px;margin-bottom:12px;display:none;font-weight:600}
+header{background:linear-gradient(135deg,var(--v),var(--vd));padding:16px 18px 18px;display:flex;align-items:center;justify-content:space-between;border-radius:0 0 22px 22px;box-shadow:0 6px 20px -8px rgba(108,75,244,.5)}
+.brandrow{display:flex;gap:10px;align-items:center}
+.logo{width:42px;height:42px;border-radius:12px;display:block;object-fit:contain}
+.bname{font-size:17px;font-weight:800;color:#fff}
+.bsubline{font-size:11px;color:rgba(255,255,255,.85)}
+.logoutbtn{background:rgba(255,255,255,.18);border:none;border-radius:11px;padding:8px 13px;font-size:11.5px;color:#fff;font-weight:700}
+main{flex:1;padding:16px 16px 92px}
+.sectitle{font-size:17px;font-weight:800;margin-bottom:12px}
+.cats,.sortrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px}
+.cat,.sortchip{flex:0 0 auto;padding:8px 15px;border-radius:20px;background:var(--card);border:1.5px solid var(--line);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.sortchip{padding:7px 13px;font-size:11.5px}
+.cat.active{background:var(--v);color:#fff;border-color:var(--v)}
+.sortchip.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pcard{background:var(--card);border-radius:20px;overflow:hidden;box-shadow:0 4px 16px -6px rgba(21,15,46,.1)}
+.pimg{height:110px;background:var(--vl);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.pimg svg{width:44px;height:44px}
+.pimg img{width:100%;height:100%;object-fit:cover}
+.heartbtn{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);border:none;font-size:13px;z-index:2}
+.discbadge{position:absolute;top:7px;left:7px;background:var(--or);color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px;z-index:2}
+.oldprice{font-size:11px;color:var(--mut);text-decoration:line-through;margin-right:5px}
+.searchbar{position:relative;margin-bottom:12px}
+.searchbar input{padding-left:38px;border-radius:16px}
+.sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5}
+.storehead{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:18px;padding:16px;margin-bottom:14px}
+.storeavatar{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--v),var(--vd));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px}
+.lowstock{color:var(--or);font-weight:700}
+.salebadge{position:absolute;bottom:7px;left:7px;background:var(--v);color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px;z-index:2}
+.weekbox{background:var(--v);border-radius:22px;padding:14px;margin-bottom:14px}
+.hscroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.hscroll .pcard{flex:0 0 160px;scroll-snap-align:start}
+.hscroll.wrap{flex-wrap:wrap;overflow:visible}
+.hscroll.wrap .pcard{flex:0 0 calc(50% - 6px)}
+.seeall{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:12px;padding:6px 12px;font-size:11.5px;font-weight:700}
+/* ---- Reklama (banner) ---- */
+.adwrap{margin-bottom:16px}
+.adtrack{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:22px;scrollbar-width:none;-webkit-overflow-scrolling:touch;box-shadow:0 12px 28px -12px rgba(21,15,46,.45)}
+.adtrack::-webkit-scrollbar{display:none}
+.adslide{flex:0 0 100%;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center;background:#0c0820;cursor:pointer;overflow:hidden;min-height:110px}
+.adbg{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(24px) brightness(.65) saturate(1.2);transform:scale(1.1)}
+.adslide img{position:relative;z-index:1;display:block;width:100%;height:auto;max-height:270px;object-fit:contain}
+.adtag{position:absolute;top:10px;right:10px;z-index:2;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;font-size:10px;font-weight:700;letter-spacing:.3px;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.25)}
+.adcta{position:absolute;bottom:10px;right:10px;z-index:2;background:linear-gradient(135deg,var(--v),var(--vd));color:#fff;font-size:12px;font-weight:800;padding:8px 14px;border-radius:20px;box-shadow:0 6px 14px -4px rgba(0,0,0,.5)}
+.addots{display:flex;justify-content:center;gap:5px;margin-top:9px}
+.addots i{width:6px;height:6px;border-radius:50%;background:#D7CCFB;transition:all .25s}
+.addots i.on{background:var(--v);width:20px;border-radius:4px}
+.adslot{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1.5px dashed #D7CCFB;border-radius:20px;padding:14px 16px;margin-bottom:14px;font-size:12.5px;font-weight:700;color:var(--vt)}
+.adslot small{display:block;font-weight:500;color:var(--mut);font-size:11px;margin-top:2px}
+.adslot button{flex:0 0 auto;background:var(--v);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-size:12px;font-weight:800}
+.chatwrap{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.chatmsg{max-width:78%;padding:9px 13px;border-radius:14px;font-size:12.5px;line-height:1.4;word-break:break-word}
+.chatmsg.mine{align-self:flex-end;background:var(--v);color:#fff;border-bottom-right-radius:4px}
+.chatmsg.theirs{align-self:flex-start;background:var(--card);border-bottom-left-radius:4px}
+.who{font-size:9.5px;opacity:.7;margin-bottom:2px;font-weight:700}
+.chatinput{display:flex;gap:8px}
+.chatinput button{background:var(--v);color:#fff;border:none;border-radius:14px;padding:0 18px;font-weight:800}
+.banner{background:linear-gradient(120deg,var(--v),#9B7BFF);border-radius:20px;padding:18px;margin-bottom:14px;color:#fff}
+.btitle{font-size:16px;font-weight:800;margin-bottom:3px}
+.bsub{font-size:12px;opacity:.9}
+.detailimg{width:100%;height:220px;border-radius:18px;overflow:hidden;background:var(--vl);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.detailimg img{width:100%;height:100%;object-fit:cover}
+.detailimg svg{width:70px;height:70px}
+.backbtn{background:var(--vl);color:var(--vt);border:none;border-radius:12px;padding:8px 14px;font-size:12.5px;font-weight:700;margin-bottom:12px}
+.reviewitem,.citem,.oitem,.summary,.addform{background:var(--card);border-radius:18px;padding:14px;margin-bottom:11px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09)}
+.pbody{padding:11px 12px 13px}
+.tag{display:inline-block;background:var(--vl);color:var(--vt);font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:8px;margin-bottom:6px}
+.pname{font-size:13px;font-weight:700;line-height:1.25;margin-bottom:2px;cursor:pointer}
+.pseller{font-size:10.5px;color:var(--mut);margin-bottom:5px}
+.price{font-weight:800;font-size:15px;margin-bottom:8px}
+.addbtn{width:100%;background:linear-gradient(135deg,var(--v),var(--vd));color:#fff;border:none;border-radius:13px;padding:9px 0;font-size:11.5px;font-weight:800}
+.empty{text-align:center;color:var(--mut);font-size:13px;padding:60px 20px;line-height:1.6}
+.empty.err{color:var(--red)}
+.citem{display:flex;justify-content:space-between;align-items:center}
+.cname{font-size:13px;font-weight:700}
+.cprice{font-size:12px;color:var(--vt);font-weight:800;margin-top:2px}
+.qty{display:flex;align-items:center;gap:10px}
+.qty button{width:27px;height:27px;border-radius:9px;border:none;background:var(--vl);color:var(--vt);font-size:15px;font-weight:800}
+.sumrow{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px;color:var(--mut)}
+.sumrow.total{font-weight:800;font-size:16px;margin-top:6px;color:var(--ink)}
+.top{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--mut);margin-bottom:7px}
+.status{display:inline-block;padding:4px 10px;border-radius:9px;font-size:10.5px;font-weight:800;background:var(--vl);color:var(--vt);white-space:nowrap}
+.oline{font-size:12.5px;display:flex;justify-content:space-between;gap:8px;margin-top:4px}
+.ototal{font-weight:800;margin-top:9px;padding-top:9px;border-top:1.5px dashed var(--line);display:flex;justify-content:space-between}
+select.statusSel{margin-top:9px;font-size:12px;padding:9px 11px}
+.imgpreview{width:100%;height:140px;border-radius:15px;background:var(--vl);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;border:1.5px dashed #D7CCFB}
+.imgpreview img{width:100%;height:100%;object-fit:cover}
+#adPrev img{object-fit:contain;background:#0c0820}
+.imgpreview span{font-size:12px;color:var(--mut)}
+nav{position:fixed;bottom:12px;left:12px;right:12px;background:var(--card);border-radius:22px;max-width:396px;margin:0 auto;display:flex;box-shadow:0 10px 30px -8px rgba(21,15,46,.25);padding:4px;z-index:30}
+.navitem{flex:1;min-width:0;text-align:center;padding:9px 0 7px;font-size:10px;color:var(--mut);cursor:pointer;border-radius:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navitem.active{color:var(--vt);font-weight:800;background:var(--vl)}
+.navicon{margin-bottom:2px;display:flex;justify-content:center;font-size:17px}
+.badge{position:relative;top:-16px;left:10px;background:var(--red);color:#fff;font-size:9.5px;border-radius:9px;min-width:15px;height:15px;line-height:15px;padding:0 3px;font-weight:700}
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--toast);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;opacity:0;transition:all .25s;z-index:40;max-width:380px;text-align:center;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.warn{background:#FDEDED;color:var(--red);font-size:12px;padding:10px 12px;border-radius:10px;font-weight:600;margin-bottom:12px}
+.usdstrip{display:flex;gap:6px;padding:8px 16px 0}
+.usdstrip .ch{flex:1;min-width:0;display:flex;align-items:center;gap:7px;text-align:left;background:var(--card);border-radius:12px;padding:6px 8px;box-shadow:0 3px 12px -6px rgba(21,15,46,.15)}
+.usdstrip .ch .ci{flex:0 0 28px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+.usdstrip .ch .ct{min-width:0;line-height:1.25}
+.usdstrip .ch small{display:block;font-size:10.5px;color:var(--mut);font-weight:700;margin:0;white-space:nowrap}
+.usdstrip .ch b{display:block;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usdstrip .ch b i{font-style:normal;font-size:10.5px;color:var(--mut);font-weight:600;margin-left:3px}
+.usdstrip .ch.k{background:linear-gradient(135deg,var(--v),var(--vd))}
+.usdstrip .ch.k small{color:rgba(255,255,255,.8)}
+.usdstrip .ch small+small{margin:2px 0 0}
+.usdstrip .ch.k b{color:#fff}
+.usdstrip .ch.o b{color:var(--grn)}
+.usdstrip .ch.s b{color:var(--red)}
+/* ---- Profil (xaridor, sotuvchi, admin) ---- */
+.profhero{position:relative;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--v),var(--vd));border-radius:22px;padding:20px 18px;color:#fff;margin-bottom:14px}
+.profav{flex:0 0 62px;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+.profname{font-size:18px;font-weight:800;line-height:1.2;word-break:break-word}
+.profphone{font-size:12.5px;opacity:.9;margin-top:3px}
+.profgear{position:absolute;top:12px;right:12px;width:36px;height:36px;border:none;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;font-size:17px;line-height:36px;padding:0}
+.menu{background:var(--card);border-radius:20px;margin-bottom:12px;overflow:hidden;box-shadow:0 3px 12px -6px rgba(21,15,46,.09)}
+.mrow{display:flex;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink);text-decoration:none}
+.mrow:last-child{border-bottom:none}
+.mico{flex:0 0 26px;text-align:center;font-size:19px}
+.mgrow{flex:1;min-width:0}
+.mval{color:var(--mut);font-size:13px;font-weight:600}
+.marr{color:var(--mut);font-size:20px;line-height:1}
+.appver{text-align:center;font-size:12px;color:var(--mut);margin:16px 0 8px}
+.qa{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 3px 12px -6px rgba(21,15,46,.09)}
+.qa b{display:block;font-size:13.5px;margin-bottom:5px}
+.qa span{font-size:12.5px;color:var(--mut);line-height:1.5}
+.skel{animation:pulse 1.2s ease-in-out infinite}
+.skel .pimg{background:var(--line)}
+.sk{height:11px;border-radius:6px;background:var(--line);margin-bottom:9px}
+.sk.l1{width:40%}.sk.l2{width:80%}.sk.l3{width:60%;height:14px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.35) rotate(-8deg)}70%{transform:scale(.92)}100%{transform:scale(1)}}
+.navicon.bump{animation:bump .5s}
+.newbadge{position:absolute;bottom:7px;right:7px;background:var(--grn);color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:8px;z-index:2}
+.newbadge.top{background:#F5A623}
+.stp{display:flex;margin:6px 0 12px}
+.stp.cancel{color:var(--red);font-size:12px;font-weight:700}
+.stp .st{flex:1;text-align:center;position:relative;font-size:10px;color:var(--mut);font-weight:600}
+.stp .st i{display:flex;width:18px;height:18px;border-radius:50%;background:var(--line);color:#fff;font-size:10px;font-style:normal;align-items:center;justify-content:center;margin:0 auto 4px;position:relative;z-index:1}
+.stp .st::before{content:'';position:absolute;top:8px;left:-50%;width:100%;height:2px;background:var(--line)}
+.stp .st:first-child::before{display:none}
+.stp .st.done i,.stp .st.cur i,.stp .st.done::before,.stp .st.cur::before{background:var(--v)}
+.stp .st.cur{color:var(--vt);font-weight:800}
+.stp .st.done{color:var(--ink)}
+.eico{font-size:52px;line-height:1;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div id="apkBanner" style="display:none;background:#6C4DF6;color:#fff;padding:10px 14px;font-family:sans-serif;font-size:14px;align-items:center;justify-content:space-between;gap:10px">
+  <span>📱 SavdoUz ilovasini yuklab oling</span>
+  <span style="display:flex;gap:8px;align-items:center">
+    <a href="/app-debug.apk" download style="background:#fff;color:#6C4DF6;padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:700">Yuklab olish</a>
+    <button type="button" onclick="document.getElementById('apkBanner').style.display='none';try{sessionStorage.setItem('apkHide','1')}catch(e){}" style="background:none;border:0;color:#fff;font-size:20px;line-height:1">×</button>
+  </span>
+</div>
+<script>
+(function(){
+  try{
+    var isAndroid=/android/i.test(navigator.userAgent);
+    var isApp=(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+    var hidden=sessionStorage.getItem('apkHide')==='1';
+    if(isAndroid&&!isApp&&!hidden){document.getElementById('apkBanner').style.display='flex';}
+  }catch(e){}
+})();
+</script>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+<script src="/i18n.js?v=1"></script>
+<script src="/apk-banner.js?v=1"></script>
+<script>
+// Logotip: o'zingizning rasmingiz bo'lsa, shu qatorga data:image/png;base64,... qo'ying
+const LOGO = '/logo.png';
+(()=>{ const l=document.createElement('link'); l.rel='icon'; l.href=LOGO; document.head.appendChild(l); })();
+const $ = id => document.getElementById(id);
+const getTheme = () => localStorage.getItem('savdouz_theme') || 'auto';
+function applyTheme(t){ if(t==='light' || t==='dark') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
+applyTheme(getTheme());
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n || 0).toLocaleString('ru-RU') + " so'm";
+const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none', pend:0 });
+let S = { ...fresh(), token: localStorage.getItem('savdouz_token') };
+// Savatni telefonda saqlash: sahifa yangilansa yoki ilova yopilsa ham yo'qolmaydi
+try { const c = JSON.parse(localStorage.getItem('savdouz_cart') || '{}'); if(c && typeof c === 'object' && !Array.isArray(c)) S.cart = c; } catch(e){}
+const saveCart = () => { try { localStorage.setItem('savdouz_cart', JSON.stringify(S.cart || {})); } catch(e){} };
+const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","Kiyim","Poyabzal","Aksessuarlar","Go'zallik","Oziq-ovqat","Uy-ro'zg'or","Mebel","Bolalar","Sport","Avto","Qurilish","Kitob","Boshqa"];
+const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
+const CI = { 'Barchasi':'✨','Telefon':'📱','Kompyuter':'💻','Elektronika':'🔌','Maishiy texnika':'🧺','Kiyim':'👕','Poyabzal':'👟','Aksessuarlar':'👜',"Go'zallik":'💄','Oziq-ovqat':'🍎',"Uy-ro'zg'or":'🏠','Mebel':'🛋️','Bolalar':'🧸','Sport':'⚽','Avto':'🚗','Qurilish':'🧱','Kitob':'📚','Boshqa':'📦' };
+let NEWIDS = new Set();
+const SKEL = '<div class="grid">' + '<div class="pcard skel"><div class="pimg"></div><div class="pbody"><div class="sk l1"></div><div class="sk l2"></div><div class="sk l3"></div></div></div>'.repeat(4) + '</div>';
+const STEPS = [['yangi','Yangi'],['tasdiqlandi','Tasdiqlandi'],['kuryerga topshirildi','Kuryerda'],['yetkazildi','Yetkazildi']];
+function stepper(status){
+  if(status==='bekor qilindi') return '<div class="stp cancel">❌ Buyurtma bekor qilindi</div>';
+  const idx = Math.max(0, STEPS.findIndex(x => x[0]===status));
+  return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
+}
+const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
+const APP_VERSION = 'v5';
+// Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
+const CONTACT_TG = 'https://t.me/Savol_24bot';
+const CONTACT_BOT = '@Savol_24bot';
+// Profil ichidagi sahifalar (barcha rollar uchun)
+const COMMON_PROFILE = ['profile','settings','notifs','help','contact'];
+const PROFILE_TABS = [...COMMON_PROFILE, 'account', 'ads'];
+
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2200); }
+
+// ---- API ----
+async function api(path, o = {}){
+  const h = { 'Content-Type':'application/json' };
+  if(S.token) h.Authorization = 'Bearer ' + S.token;
+  const c = new AbortController(), t = setTimeout(()=>c.abort(), 40000);
+  let res;
+  try { res = await fetch(path, { ...o, headers:h, signal:c.signal, cache:'no-store' }); }
+  catch(e){ throw new Error(e.name==='AbortError' ? "Server javob bermadi (vaqt tugadi)" : "Server bilan aloqa yo'q"); }
+  finally { clearTimeout(t); }
+  let d = {};
+  try { d = await res.json(); } catch(e){ if(res.ok) throw new Error("Serverdan noto'g'ri javob: " + path); }
+  if(!res.ok){
+    if(res.status===401 && S.token) logout(true);
+    throw new Error(d.error || ('Server xatosi ' + res.status + ': ' + path));
+  }
+  return d;
+}
+function logout(expired){
+  localStorage.removeItem('savdouz_token');
+  localStorage.removeItem('savdouz_cart');
+  try { sessionStorage.removeItem('savdouz_view'); } catch(e){}
+  S = fresh();
+  // Orqaga tugmasi uchun qo'shilgan tarix yozuvini olib tashlaymiz
+  if(guard){ guard = false; try { history.back(); } catch(e){} }
+  if(expired) toast("Sessiya tugadi, qaytadan kiring");
+  renderAuth();
+}
+
+function readImage(file){
+  return new Promise((ok, no) => {
+    const r = new FileReader();
+    r.onerror = () => no(new Error("Rasmni o'qib bo'lmadi"));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => no(new Error("Rasm formati noto'g'ri"));
+      im.onload = () => {
+        let w = im.width, h = im.height, m = 700;
+        if(w > h && w > m){ h = Math.round(h*m/w); w = m; } else if(h > m){ w = Math.round(w*m/h); h = m; }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        ok(cv.toDataURL('image/jpeg', .72));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+// Reklama rasmi: kengroq (1000 px) va sifati yaxshiroq
+function readAdImage(file){
+  return new Promise((ok, no) => {
+    const r = new FileReader();
+    r.onerror = () => no(new Error("Rasmni o'qib bo'lmadi"));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => no(new Error("Rasm formati noto'g'ri"));
+      im.onload = () => {
+        let w = im.width, h = im.height;
+        if(w > 1000){ h = Math.round(h * 1000 / w); w = 1000; }
+        if(h > 600){ w = Math.round(w * 600 / h); h = 600; }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        ok(cv.toDataURL('image/jpeg', .8));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+// ---- Kirish ----
+let authMode = 'login', authRole = 'buyer';
+function renderAuth(){
+  const reg = authMode === 'register';
+  $('app').innerHTML = `<div class="authwrap">
+    <img class="authlogo" src="${LOGO}" alt="SavdoUz"><div class="authtitle">SavdoUz</div>
+    <div class="authsub">${reg ? "Yangi hisob yarating" : "Hisobingizga kiring"}</div>
+    <div class="errmsg" id="errmsg"></div>
+    ${reg ? `<div class="roletabs">
+      <div class="roletab ${authRole==='buyer'?'active':''}" data-role="buyer">Xaridor</div>
+      <div class="roletab ${authRole==='seller'?'active':''}" data-role="seller">Sotuvchi</div></div>
+      <div class="field"><label>Ism</label><input id="fname" placeholder="Ismingiz"></div>
+      ${authRole==='seller' ? `<div class="field"><label>Pasport yoki ID karta rasmi</label><input id="fid" type="file" accept="image/*"></div><div class="field"><label>Selfi (o'zingizning rasmingiz)</label><input id="fself" type="file" accept="image/*" capture="user"></div><div style="font-size:11.5px;color:var(--mut);margin:-4px 0 12px">Admin rasmlaringizni tekshirib, hisobingizni tasdiqlaydi. Tasdiqlangunga qadar mahsulot qo'sha olmaysiz.</div>` : ''}` : ''}
+    <div class="field"><label>Telefon raqam</label><input id="fphone" placeholder="+998901234567" inputmode="tel"></div>
+    <div class="field"><label>Parol</label><input id="fpass" type="password" placeholder="••••••••"></div>
+    <button class="primarybtn" id="submitBtn">${reg ? "Ro'yxatdan o'tish" : "Kirish"}</button>
+    <div class="switchmode">${reg ? `Hisobingiz bormi? <b id="sw">Kiring</b>` : `Hisobingiz yo'qmi? <b id="sw">Ro'yxatdan o'ting</b>`}</div></div>`;
+  document.querySelectorAll('.roletab').forEach(r => r.onclick = () => { authRole = r.dataset.role; renderAuth(); });
+  $('sw').onclick = () => { authMode = reg ? 'login' : 'register'; renderAuth(); };
+  $('submitBtn').onclick = submitAuth;
+  $('fpass').onkeydown = e => { if(e.key==='Enter') submitAuth(); };
+}
+async function submitAuth(){
+  const err = $('errmsg'), btn = $('submitBtn');
+  err.style.display = 'none';
+  const phone = $('fphone').value.trim(), password = $('fpass').value;
+  btn.disabled = true;
+  try {
+    let d;
+    if(authMode === 'login') d = await api('/api/login', { method:'POST', body:JSON.stringify({ phone, password }) });
+    else {
+      const name = $('fname').value.trim();
+      if(!name) throw new Error('Ismingizni kiriting');
+      const body = { name, phone, password, role:authRole };
+      if(authRole === 'seller'){
+        const f1 = $('fid').files[0], f2 = $('fself').files[0];
+        if(!f1 || !f2) throw new Error('Pasport yoki ID karta va selfi rasmini yuklang');
+        body.idDoc = await readImage(f1); body.selfie = await readImage(f2);
+      }
+      d = await api('/api/register', { method:'POST', body:JSON.stringify(body) });
+    }
+    S.token = d.token; S.user = d.user; S.tab = 'home'; try { sessionStorage.removeItem('savdouz_view'); } catch(e){}
+    localStorage.setItem('savdouz_token', S.token);
+    renderApp();
+  } catch(e){ err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; }
+}
+async function loadUsd(){
+  const b = $('usdBox'); if(!b) return;
+  try {
+    const d = await api('/api/kurs');
+    if(![d.rate, d.buy, d.sell].every(Number.isFinite)) throw 0;
+    const f = n => Number(n).toLocaleString('ru-RU');
+    b.innerHTML = `<div class="ch o"><span class="ci" style="background:#E6F4EA">💵</span><div class="ct"><small>1 $ Olish</small><b>${f(d.buy)} so'm</b></div></div>
+    <div class="ch s"><span class="ci" style="background:#FEECEF">💸</span><div class="ct"><small>1 $ Sotish</small><b>${f(d.sell)} so'm</b></div></div>`;
+  } catch(e){ b.style.display = 'none'; }
+}
+setInterval(loadUsd, 5 * 60 * 1000);
+
+// ---- Ob-havo va 5 vaqt namoz (eng yaqin namozgacha qolgan vaqt) ----
+async function loadInfo(){
+  const b = $('infoBox'); if(!b) return;
+  try {
+    const [wr, nr] = await Promise.allSettled([api('/api/weather'), api('/api/namoz')]);
+    const w = wr.status === 'fulfilled' ? wr.value : null, n = nr.status === 'fulfilled' ? nr.value : null;
+    if(!w && !n) throw 0;
+    const WICON = { 'Ochiq':'☀️', 'Bulutli':'⛅', 'Tuman':'🌫️', "Yomg'ir":'🌧️', 'Jala':'🌦️', 'Qor':'❄️', 'Momaqaldiroq':'⛈️' };
+    let html = '';
+    if(w) html += `<div class="ch"><span class="ci" style="background:#FFF1DB">${WICON[w.desc] || '🌤️'}</span><div class="ct"><small>Namangan</small><b>${esc(w.temp)}°C<i>${esc(w.desc)}</i></b></div></div>`;
+    if(n){
+      const NAMES = [['bomdod','Bomdod'],['peshin','Peshin'],['asr','Asr'],['shom','Shom'],['xufton','Xufton']];
+      const now = new Date(), cur = now.getHours()*60 + now.getMinutes();
+      const mins = k => { const [h, m] = String(n[k]).split(':').map(Number); return h*60 + m; };
+      let next = NAMES.find(([k]) => mins(k) > cur), diff;
+      if(next) diff = mins(next[0]) - cur;
+      else { next = NAMES[0]; diff = mins('bomdod') + 1440 - cur; }
+      const hh = Math.floor(diff/60), mm = diff % 60;
+      const left = (hh ? hh + ' soat ' : '') + mm + ' daq';
+      html += `<div class="ch"><span class="ci" style="background:#F1EDFE">🕌</span><div class="ct"><small>${next[1]} · ${esc(n[next[0]])}</small><b>${left}</b></div></div>`;
+    }
+    b.innerHTML = html;
+    b.style.display = '';
+  } catch(e){ b.style.display = 'none'; }
+}
+setInterval(loadInfo, 60 * 1000);
+
+// ---- Asosiy ekran ----
+const role = () => S.user.role;
+function renderApp(){
+  const label = role()==='admin' ? 'Admin' : role()==='seller' ? 'Sotuvchi' : 'Xaridor';
+  // "Chiqish" tugmasi barcha rollarda Profil ichida (tepadagi tugma yashirin)
+  $('app').innerHTML = `<header><div class="brandrow"><img class="logo" src="${LOGO}" alt="SavdoUz">
+    <div><div class="bname">SavdoUz</div><div class="bsubline">${esc(S.user.name)} · ${label} · ${APP_VERSION}</div></div></div>
+  <button class="logoutbtn" id="logoutBtn" style="display:none">Chiqish</button></header><div class="usdstrip" id="infoBox"></div><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
+  $('logoutBtn').onclick = () => logout(false);
+  loadUsd(); loadInfo();
+  if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = 'sellers';
+  renderNav(); renderTab();
+  pushGuard();
+}
+function renderNav(){
+  saveCart();
+  const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
+  const r = role();
+  const items = r==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','🛍️','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"],['profile','👤','Profil']]
+    : r==='seller' ? [['home','🏠','Mahsulotlarim'],['orders','📦','Buyurtmalar'],['add','➕',"Qo'shish"],['pay','💰',"To'lov"],['profile','👤','Profil']]
+    : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['profile','👤','Profil']];
+  let active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
+  if(PROFILE_TABS.includes(active) || (r==='buyer' && active==='orders')) active = 'profile';
+  const bdg = k => k==='cart' ? cnt : k==='sellers' ? (S.pend || 0) : 0;
+  $('nav').innerHTML = items.map(([k,i,l]) => `<div class="navitem ${active===k?'active':''}" data-tab="${k}"><div class="navicon">${i}</div>${l}${bdg(k)>0?`<span class="badge">${bdg(k)}</span>`:''}</div>`).join('');
+  if(cnt > (window._lc || 0)){ const ci = $('nav').querySelector('[data-tab="cart"] .navicon'); if(ci) ci.classList.add('bump'); }
+  window._lc = cnt;
+  $('nav').querySelectorAll('.navitem').forEach(n => n.onclick = () => { S.tab = n.dataset.tab; S.img = null; S.edit = null; S.sel = null; renderNav(); renderTab(); });
+}
+
+// ---- Yordamchilar ----
+const media = p => p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}">` : ICON;
+const disc = p => p.oldPrice && p.oldPrice > p.price;
+const priceHtml = p => `<div class="price">${disc(p) ? `<span class="oldprice">${fmt(p.oldPrice)}</span>` : ''}${fmt(p.price)}</div>`;
+function stars(avg, n){
+  const f = Math.round(avg || 0); let s = '';
+  for(let i=1;i<=5;i++) s += `<span style="color:${i<=f?'#F5A623':'#DADEDA'}">★</span>`;
+  return `<div style="font-size:11px;margin-bottom:4px">${s} <span style="color:var(--mut)">(${n||0})</span></div>`;
+}
+function delivery(p, mode){
+  const r = p.deliveryRegions || [];
+  if(!r.length) return "🚫 Yetkazib berish yo'q";
+  const pr = p.deliveryPrice ? fmt(p.deliveryPrice) : 'Bepul';
+  const all = r.includes('barchasi');
+  const sc = mode==='full' ? (all ? 'Barcha viloyatlarga' : r.map(esc).join(', ')) : all ? 'Barcha viloyatlar' : `${r.length} ta hudud`;
+  return `🚚 ${sc} · ${pr}`;
+}
+const dcolor = p => (p.deliveryRegions||[]).length ? 'var(--grn)' : 'var(--mut)';
+function card(p, buyer){
+  const low = p.stock > 0 && p.stock <= 5;
+  return `<div class="pcard"><div class="pimg" data-detail="${p.id}">
+    ${disc(p) ? `<div class="discbadge">−${Math.round((1-p.price/p.oldPrice)*100)}%</div>` : ''}
+    ${p.onSale ? `<div class="salebadge">⏱ ${p.daysLeft} KUN</div>` : ''}
+    ${(p.reviewCount >= 3 && p.avgRating >= 4.5) ? '<div class="newbadge top">⭐ Top</div>' : NEWIDS.has(p.id) ? '<div class="newbadge">✨ Yangi</div>' : ''}
+    ${buyer ? `<button class="heartbtn" data-fav="${p.id}">${p.isFavorited?'❤️':'🤍'}</button>` : ''}${media(p)}</div>
+    <div class="pbody"><span class="tag">${esc(p.cat)}</span>
+    <div class="pname" data-detail="${p.id}">${esc(p.name)}</div>
+    <div class="pseller" data-store="${p.sellerId}" style="cursor:pointer;text-decoration:underline">${esc(p.sellerName)}</div>
+    ${stars(p.avgRating, p.reviewCount)}
+    <div style="font-size:10px;color:${dcolor(p)};margin-bottom:3px">${delivery(p)}</div>${priceHtml(p)}
+    <div style="font-size:10.5px;margin-bottom:6px" class="${low?'lowstock':''}">${p.stock>0 ? (low ? `⚡ Faqat ${p.stock} dona qoldi!` : `Omborda: ${p.stock} dona`) : '<span style="color:var(--red)">Tugagan</span>'}</div>
+    <button class="addbtn" data-add="${p.id}" ${p.stock>0?'':'disabled'}>${p.stock>0 ? "Savatga qo'shish" : 'Tugagan'}</button></div></div>`;
+}
+function flyToCart(src, done){
+  const target = $('nav').querySelector('[data-tab="cart"] .navicon');
+  const holder = src && (src.closest('.pcard') || src.closest('#main') || document).querySelector('.pimg img, .pimg, .detailimg img, .detailimg');
+  if(!target || !holder){ done(); return; }
+  const a = (holder.tagName === 'IMG' ? holder : holder.querySelector('img') || holder).getBoundingClientRect();
+  const b = target.getBoundingClientRect();
+  if(!a.width || !b.width){ done(); return; }
+  const size = 56, fly = document.createElement('div');
+  const img = holder.tagName === 'IMG' ? holder : holder.querySelector('img');
+  fly.style.cssText = `position:fixed;z-index:9999;left:0;top:0;width:${size}px;height:${size}px;border-radius:16px;overflow:hidden;pointer-events:none;background:var(--vl,#F1EDFE);display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 10px 24px -6px rgba(108,75,244,.55);will-change:transform,opacity`;
+  if(img){ fly.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:cover">`; } else { fly.textContent = '🛍️'; }
+  document.body.appendChild(fly);
+  const sx = a.left + a.width/2 - size/2, sy = a.top + a.height/2 - size/2;
+  const ex = b.left + b.width/2 - size/2, ey = b.top + b.height/2 - size/2;
+  const mx = (sx + ex)/2, my = Math.min(sy, ey) - 90;
+  const end = () => { fly.remove(); done(); };
+  if(!fly.animate){ end(); return; }
+  const an = fly.animate([
+    { transform: `translate(${sx}px,${sy}px) scale(1) rotate(0deg)`, opacity: 1, offset: 0 },
+    { transform: `translate(${mx}px,${my}px) scale(.8) rotate(180deg)`, opacity: 1, offset: .5 },
+    { transform: `translate(${ex}px,${ey}px) scale(.2) rotate(360deg)`, opacity: .6, offset: 1 }
+  ], { duration: 650, easing: 'cubic-bezier(.45,.05,.55,.95)' });
+  an.onfinish = end; an.oncancel = end;
+}
+function addToCart(p, src){
+  const n = S.cart[p.id] || 0;
+  if(n >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; }
+  S.cart[p.id] = n + 1; saveCart(); toast(`"${p.name}" savatga qo'shildi`);
+  if(src) flyToCart(src, renderNav); else renderNav();
+}
+function wire(main, products, after){
+  main.querySelectorAll('[data-add]').forEach(b => b.onclick = e => { e.stopPropagation(); const p = products.find(x => x.id == b.dataset.add); if(p) addToCart(p, b); });
+  main.querySelectorAll('[data-fav]').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    try {
+      const { favorited } = await api('/api/favorites/toggle', { method:'POST', body:JSON.stringify({ productId:Number(b.dataset.fav) }) });
+      b.textContent = favorited ? '❤️' : '🤍';
+      toast(favorited ? "Sevimlilarga qo'shildi ❤️" : "Sevimlilardan olib tashlandi");
+      if(after) after();
+    } catch(e){ toast(e.message); }
+  });
+  main.querySelectorAll('[data-detail]').forEach(el => el.onclick = () => {
+    const p = products.find(x => x.id == el.dataset.detail); if(!p) return;
+    S.sel = p; S.prev = S.tab; S.tab = 'detail'; renderTab();
+  });
+  main.querySelectorAll('[data-store]').forEach(el => el.onclick = e => {
+    e.stopPropagation(); S.sellerId = Number(el.dataset.store); S.prev = S.tab === 'detail' ? 'home' : S.tab; S.tab = 'store'; renderTab();
+  });
+}
+const goBack = () => { S.tab = S.prev || 'home'; S.sel = null; renderNav(); renderTab(); };
+
+// ---- To'lov yordamchilari ----
+const PAYST = { naqd:'💵 Naqd', 'kutilmoqda':'⏳ Chek kutilmoqda', 'chek yuborildi':'🧾 Chek tekshirilmoqda', 'tasdiqlandi':"✅ To'lov tasdiqlandi", 'rad etildi':'❌ Chek rad etildi' };
+const payLabel = o => o.paymentMethod==='karta' ? (PAYST[o.paymentStatus] || o.paymentStatus) : PAYST.naqd;
+const rcpUrl = id => '/api/receipt/' + id + '?t=' + encodeURIComponent(S.token);
+const sellerPay = o => `<div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>`
+  + (o.hasReceipt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : '')
+  + (o.paymentStatus==='chek yuborildi' ? `<div style="display:flex;gap:6px;margin-top:8px"><button class="addbtn" style="background:var(--grn)" data-payok="${o.id}">Tasdiqlash</button><button class="addbtn" style="background:var(--red)" data-payno="${o.id}">Rad etish</button></div>` : '');
+function wirePay(main, after){
+  main.querySelectorAll('[data-fullimg]').forEach(i => i.onclick = () => window.open(i.src, '_blank'));
+  const act = (sel, key, status, msg) => main.querySelectorAll(sel).forEach(b => b.onclick = async () => {
+    try { await api('/api/orders/' + b.dataset[key] + '/payment', { method:'POST', body:JSON.stringify({ status }) }); toast(msg); after(); }
+    catch(e){ toast(e.message); }
+  });
+  act('[data-payok]', 'payok', 'tasdiqlandi', "To'lov tasdiqlandi ✅");
+  act('[data-payno]', 'payno', 'rad etildi', "To'lov rad etildi");
+}
+
+// ---- Chat ----
+const chatBtn = id => `<button class="addbtn" style="background:var(--vl);color:var(--vt);margin-top:8px" data-chattoggle="${id}">💬 Xabarlar</button><div data-chatbox="${id}" style="display:none;margin-top:10px"></div>`;
+function wireChat(main){
+  main.querySelectorAll('[data-chattoggle]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.chattoggle, box = main.querySelector(`[data-chatbox="${id}"]`);
+    if(box.style.display === 'none'){ box.style.display = 'block'; await loadChat(id, box); } else box.style.display = 'none';
+  });
+}
+async function loadChat(id, box){
+  box.innerHTML = '<div class="empty" style="padding:10px">Yuklanmoqda...</div>';
+  try {
+    const { messages } = await api('/api/orders/' + id + '/messages');
+    box.innerHTML = `<div class="chatwrap">${messages.length ? messages.map(m => `<div class="chatmsg ${m.senderId===S.user.id?'mine':'theirs'}"><div class="who">${esc(m.senderName)}</div>${esc(m.text)}</div>`).join('') : '<div class="empty" style="padding:10px;font-size:11.5px">Hali xabar yo\'q</div>'}</div>
+      <div class="chatinput"><input id="ci-${id}" placeholder="Xabar yozing..."><button id="cs-${id}">➤</button></div>`;
+    const send = async () => {
+      const inp = $('ci-' + id), text = inp.value.trim(); if(!text) return;
+      try { await api('/api/orders/' + id + '/messages', { method:'POST', body:JSON.stringify({ text }) }); await loadChat(id, box); }
+      catch(e){ toast(e.message); }
+    };
+    $('cs-' + id).onclick = send;
+    $('ci-' + id).onkeydown = e => { if(e.key==='Enter') send(); };
+  } catch(e){ box.innerHTML = `<div class="empty err" style="padding:10px">${esc(e.message)}</div>`; }
+}
+
+// ---- Sahifalar ----
+// Sahifani yangilaganda (pastga tortganda) shu bo'limda va shu joyda qolish uchun holat saqlanadi
+let pendingScroll = null;
+function saveView(){
+  try {
+    if(!S.user) return;
+    sessionStorage.setItem('savdouz_view', JSON.stringify({ uid:S.user.id, tab:S.tab, prev:S.prev, sellerId:S.sellerId, selId:S.sel ? S.sel.id : null, cat:S.cat, search:S.search, sort:S.sort, y:window.scrollY || 0 }));
+  } catch(e){}
+}
+let _scT = null;
+window.addEventListener('scroll', () => { clearTimeout(_scT); _scT = setTimeout(saveView, 150); }, { passive:true });
+window.addEventListener('pagehide', saveView);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') saveView(); });
+function restoreScroll(){
+  if(pendingScroll === null) return;
+  const y = pendingScroll; pendingScroll = null;
+  [0, 150, 500, 1000].forEach(ms => setTimeout(() => window.scrollTo(0, y), ms));
+}
+async function renderTab(silent){
+  const main = $('main'); if(!main) return;
+  if(silent !== true && pendingScroll === null) saveView();
+  if(silent !== true && pendingScroll === null) main.innerHTML = (S.user && S.user.role==='buyer' && ['home','favorites','store'].includes(S.tab)) ? SKEL : '<div class="empty">Yuklanmoqda...</div>';
+  try { await renderTabInner(main); restoreScroll(); if(silent !== true) saveView(); }
+  catch(e){
+    main.innerHTML = `<div class="empty err">⚠️ ${esc(e.message)}<br><br><button class="addbtn" style="width:auto;padding:10px 20px" id="retryBtn">Qayta urinish</button></div>`;
+    const r = $('retryBtn'); if(r) r.onclick = () => renderTab();
+  }
+}
+
+async function renderTabInner(main){
+  const seller = role()==='seller';
+  // Profil bo'limlari barcha rollar uchun (tasdiqlanmagan sotuvchi ham chiqib keta olishi uchun)
+  if(COMMON_PROFILE.includes(S.tab)) return renderProfilePage(main);
+  if(role()==='admin') return renderAdmin(main);
+  // Tasdiqlanmagan sotuvchi hech qaysi bo'limni ishlata olmaydi
+  if(seller && (S.user.sellerStatus || 'faol') !== 'faol') return sellerPending(main);
+  if(S.tab==='detail') return renderDetail(main);
+  if(S.tab==='store') return renderStore(main);
+  if(S.tab==='home') return seller ? sellerHome(main) : buyerHome(main);
+  if(S.tab==='favorites' && !seller) return buyerFavs(main);
+  if(S.tab==='cart' && !seller) return buyerCart(main);
+  if(S.tab==='orders') return seller ? sellerOrders(main) : buyerOrders(main);
+  if(S.tab==='add' && seller) return sellerAdd(main);
+  if(S.tab==='account' && seller) return sellerAccount(main);
+  if(S.tab==='pay' && seller) return sellerPayments(main);
+  S.tab = 'home'; renderNav(); return renderTab();
+}
+
+// ---- Sotuvchi tasdiqlanishini kutish ----
+async function refreshMe(manual){
+  try {
+    const { user } = await api('/api/me');
+    const was = S.user.sellerStatus;
+    S.user = user;
+    if(user.sellerStatus !== was){
+      if(user.sellerStatus === 'faol') toast('Hisobingiz tasdiqlandi ✅');
+      renderApp();
+    } else if(manual) toast(user.sellerStatus === 'faol' ? 'Hisobingiz faol' : 'Hali tasdiqlanmagan');
+  } catch(e){ if(manual) toast(e.message); }
+}
+function sellerPending(main){
+  const rej = S.user.sellerStatus === 'rad etildi';
+  main.innerHTML = `<div class="empty" style="padding-top:50px">${rej
+    ? "❌<br><br><b>Hisobingiz rad etilgan yoki bloklangan</b><br>Admin bilan bog'laning."
+    : "⏳<br><br><b>Arizangiz ko'rib chiqilmoqda</b><br>Admin pasport va selfingizni tekshirgach, mahsulot qo'sha olasiz.<br>Tasdiqlansa shu yerda xabar chiqadi."}<br><br>
+    <button class="addbtn" style="width:auto;padding:10px 20px" id="chkBtn">Tekshirish</button></div>`;
+  $('chkBtn').onclick = () => refreshMe(true);
+}
+setInterval(() => {
+  if(!S.user || S.user.role !== 'seller' || (S.user.sellerStatus || 'faol') === 'faol' || document.hidden) return;
+  refreshMe(false);
+}, 10000);
+
+async function renderStore(main){
+  if(!S.sellerId){ goBack(); return; }
+  const { seller, products } = await api('/api/sellers/' + S.sellerId);
+  main.innerHTML = `<button class="backbtn" id="backBtn">← Orqaga</button>
+    <div class="storehead"><div class="storeavatar">${esc(seller.name.charAt(0).toUpperCase())}</div>
+    <div><div style="font-weight:800;font-size:15px">${esc(seller.name)}</div><div style="font-size:11.5px;color:var(--mut);margin-top:2px">${products.length} ta mahsulot</div></div></div>
+    <div class="grid">${products.length ? products.map(p => card(p, true)).join('') : '<div class="empty" style="grid-column:1/-1">Hozircha mahsulot yo\'q</div>'}</div>`;
+  $('backBtn').onclick = goBack;
+  wire(main, products);
+}
+
+async function renderDetail(main){
+  const p = S.sel; if(!p){ goBack(); return; }
+  let reviews = [];
+  try { reviews = (await api('/api/products/' + p.id + '/reviews')).reviews || []; } catch(e){}
+  main.innerHTML = `<button class="backbtn" id="backBtn">← Orqaga</button>
+    <div class="detailimg">${media(p)}</div><span class="tag">${esc(p.cat)}</span>
+    <div style="font-size:19px;font-weight:800;margin:6px 0 4px">${esc(p.name)}</div>
+    <div class="pseller" id="sellerLink" style="cursor:pointer;text-decoration:underline">${esc(p.sellerName)}</div>
+    ${stars(p.avgRating, p.reviewCount)}
+    <div style="font-size:10.5px;color:${dcolor(p)};margin-bottom:8px">${delivery(p,'full')}</div>
+    ${p.onSale ? `<div class="tag" style="background:var(--or);color:#fff">⏱ Chegirma tugashiga ${p.daysLeft} kun</div>` : ''}
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px">${disc(p) ? `<span class="oldprice" style="font-size:14px">${fmt(p.oldPrice)}</span>` : ''}${fmt(p.price)}</div>
+    <div style="font-size:11px;color:${p.stock>0?'var(--mut)':'var(--red)'};margin-bottom:14px">${p.stock>0 ? 'Omborda: ' + p.stock + ' dona' : 'Tugagan'}</div>
+    ${p.desc ? `<div class="summary"><div style="font-size:12.5px;line-height:1.5">${esc(p.desc)}</div></div>` : ''}
+    <button class="checkout" id="detailAdd" ${p.stock>0?'':'disabled'}>${p.stock>0 ? "Savatga qo'shish" : 'Tugagan'}</button>
+    <div class="sectitle" style="margin:20px 0 10px;font-size:14px">Sharhlar (${reviews.length})</div>
+    ${reviews.length ? reviews.map(r => `<div class="reviewitem"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700;font-size:12.5px">${esc(r.buyerName)}</span><span style="font-size:11px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></div>${r.comment ? `<div style="font-size:12px;color:var(--mut)">${esc(r.comment)}</div>` : ''}</div>`).join('') : '<div class="empty" style="padding:20px">Hali sharh yo\'q</div>'}`;
+  $('backBtn').onclick = goBack;
+  $('sellerLink').onclick = () => { S.sellerId = p.sellerId; S.prev = 'home'; S.tab = 'store'; renderTab(); };
+  $('detailAdd').onclick = () => addToCart(p, $('detailAdd'));
+}
+
+// ---- Reklama banneri (xaridor bosh sahifasida) ----
+let adsCache = { t:0, data:null }, adTimer = null;
+const adViewed = {};
+async function loadAds(){
+  const box = $('adBox'); if(!box) return;
+  clearInterval(adTimer);
+  let ads = null;
+  try {
+    if(adsCache.data && Date.now() - adsCache.t < 60000) ads = adsCache.data;
+    else { ads = (await api('/api/ads')).ads || []; adsCache = { t:Date.now(), data:ads }; }
+  } catch(e){ ads = null; }
+  const b = $('adBox'); if(!b) return;
+  if(ads === null){ b.innerHTML = ''; return; }
+  if(!ads.length){
+    b.innerHTML = `<div class="adslot"><div>📢 Bu yerda sizning reklamangiz bo'lishi mumkin<small>Reklama joylash uchun biz bilan bog'laning</small></div><button id="adContact">Bog'lanish</button></div>`;
+    $('adContact').onclick = () => window.open(CONTACT_TG, '_blank');
+    return;
+  }
+  b.innerHTML = `<div class="adwrap"><div class="adtrack" id="adTrack">${ads.map((a, i) => `<div class="adslide" data-i="${i}"><div class="adbg" style="background-image:url('${esc(a.image)}')"></div><img src="${esc(a.image)}" alt="${esc(a.title)}"><span class="adtag">Reklama</span>${a.link ? '<span class="adcta">Batafsil ›</span>' : ''}</div>`).join('')}</div>${ads.length > 1 ? `<div class="addots" id="adDots">${ads.map((a, i) => `<i class="${i===0?'on':''}"></i>`).join('')}</div>` : ''}</div>`;
+  const tr = $('adTrack'), n = ads.length;
+  let cur = 0, resume = null;
+  const mark = i => {
+    cur = i;
+    document.querySelectorAll('#adDots i').forEach((d, k) => d.classList.toggle('on', k === i));
+    const a = ads[i];
+    if(a && !adViewed[a.id]){ adViewed[a.id] = 1; api('/api/ads/' + a.id + '/view', { method:'POST' }).catch(() => {}); }
+  };
+  const go = i => { const k = (i + n) % n; tr.scrollTo({ left:k * tr.clientWidth, behavior:'smooth' }); };
+  const start = () => {
+    clearInterval(adTimer);
+    if(n > 1) adTimer = setInterval(() => { if(!$('adTrack')){ clearInterval(adTimer); return; } if(!document.hidden) go(cur + 1); }, 5000);
+  };
+  tr.addEventListener('scroll', () => { const i = Math.round(tr.scrollLeft / (tr.clientWidth || 1)); if(i !== cur && i >= 0 && i < n) mark(i); });
+  tr.addEventListener('touchstart', () => { clearInterval(adTimer); clearTimeout(resume); }, { passive:true });
+  tr.addEventListener('touchend', () => { clearTimeout(resume); resume = setTimeout(start, 6000); }, { passive:true });
+  tr.addEventListener('click', e => {
+    const s = e.target.closest('.adslide'); if(!s) return;
+    const a = ads[Number(s.dataset.i)]; if(!a) return;
+    api('/api/ads/' + a.id + '/click', { method:'POST' }).catch(() => {});
+    if(a.link) window.open(a.link, '_blank');
+  });
+  mark(0); start();
+}
+
+async function buyerHome(main){
+  const { products } = await api('/api/products');
+  const weekly = products.filter(p => p.onSale);
+  NEWIDS = products.length >= 6 ? new Set([...products].sort((a, b) => b.id - a.id).slice(0, 4).map(p => p.id)) : new Set();
+  main.innerHTML = `<div class="banner"><div class="btitle">Xush kelibsiz, ${esc(S.user.name)}! 👋</div><div class="bsub">SavdoUz'da minglab mahsulot — ishonchli sotuvchilardan</div></div>
+    <div class="searchbar"><span class="sicon">🔍</span><input id="searchInput" placeholder="Mahsulot qidirish..." value="${esc(S.search)}"></div>
+    <div id="adBox"></div>
+    ${weekly.length ? `<div id="weekly" class="weekbox"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px"><div class="sectitle" style="color:#fff;margin:0">🔥 Hafta chegirmalari (${weekly.length})</div>${weekly.length > 2 ? '<button class="seeall" id="weekAll">Hammasi ›</button>' : ''}</div><div class="hscroll" id="weekScroll">${weekly.map(p => card(p, true)).join('')}</div></div>` : ''}
+    <div class="cats">${CATS.map(c => `<div class="cat ${c===S.cat?'active':''}" data-cat="${esc(c)}">${CI[c] || ''} ${esc(c)}</div>`).join('')}</div>
+    <div class="sortrow">${[['none','Odatiy'],['priceAsc','Arzon→Qimmat'],['priceDesc','Qimmat→Arzon'],['rating','Reyting']].map(([k,l]) => `<div class="sortchip ${S.sort===k?'active':''}" data-sort="${k}">${l}</div>`).join('')}</div>
+    <div class="grid" id="plist"></div>`;
+  const draw = () => {
+    const q = S.search.trim().toLowerCase();
+    let list = S.cat==='Barchasi' ? products : products.filter(p => p.cat===S.cat);
+    if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q));
+    list = [...list];
+    if(S.sort==='priceAsc') list.sort((a,b) => a.price-b.price);
+    else if(S.sort==='priceDesc') list.sort((a,b) => b.price-a.price);
+    else if(S.sort==='rating') list.sort((a,b) => (b.avgRating||0)-(a.avgRating||0));
+    $('plist').innerHTML = list.length ? list.map(p => card(p, true)).join('') : `<div class="empty" style="grid-column:1/-1">${q ? 'Hech narsa topilmadi' : "Bu kategoriyada mahsulot yo'q"}</div>`;
+    wire($('plist'), products);
+    if($('weekly')){ $('weekly').style.display = (q || S.cat!=='Barchasi') ? 'none' : 'block'; wire($('weekly'), products); }
+  };
+  draw();
+  const wa = $('weekAll');
+  if(wa) wa.onclick = () => { const on = $('weekScroll').classList.toggle('wrap'); wa.textContent = on ? "‹ Yig'ish" : 'Hammasi ›'; };
+  main.querySelectorAll('.cat').forEach(c => c.onclick = () => { S.cat = c.dataset.cat; renderTab(); });
+  main.querySelectorAll('[data-sort]').forEach(c => c.onclick = () => { S.sort = c.dataset.sort; renderTab(); });
+  let tm; $('searchInput').oninput = e => { clearTimeout(tm); const v = e.target.value; tm = setTimeout(() => { S.search = v; draw(); }, 250); };
+  loadAds();
+}
+
+async function buyerFavs(main){
+  const { products } = await api('/api/favorites');
+  main.innerHTML = `<div class="sectitle">Sevimlilar</div><div class="grid">${products.length ? products.map(p => card(p, true)).join('') : '<div class="empty" style="grid-column:1/-1"><div class="eico">❤️</div>Hali sevimli mahsulot yo\'q</div>'}</div>`;
+  wire(main, products, () => renderTab());
+}
+
+async function buyerCart(main){
+  const { products } = await api('/api/products');
+  drawCart(main, products);
+}
+function drawCart(main, products, draft){
+  const redraw = () => { const d = { region:$('region').value, addr:$('addr').value, pm:$('pm').value }; renderNav(); drawCart(main, products, d); };
+  const ids = Object.keys(S.cart).filter(id => S.cart[id] > 0 && products.some(p => p.id == id));
+  if(!ids.length){ main.innerHTML = '<div class="empty"><div class="eico">🛒</div>Savatingiz bo\'sh<br><br><button class="addbtn" style="width:auto;padding:10px 20px" id="goShop">Xarid qilish</button></div>'; $('goShop').onclick = () => { S.tab = 'home'; renderNav(); renderTab(); }; return; }
+  let total = 0;
+  const rows = ids.map(id => { const p = products.find(x => x.id == id); total += p.price * S.cart[id];
+    return `<div class="citem"><div><div class="cname">${esc(p.name)}</div><div class="cprice">${fmt(p.price)}</div></div><div class="qty"><button data-dec="${id}">−</button><span>${S.cart[id]}</span><button data-inc="${id}">+</button></div></div>`; }).join('');
+  const addr = localStorage.getItem('savdouz_addr') || '', reg = localStorage.getItem('savdouz_region') || '';
+  main.innerHTML = `<div class="sectitle">Savat</div>${rows}
+    <div class="field" style="margin-top:14px"><label>Yetkazib berish viloyati</label><select id="region"><option value="">Viloyatni tanlang</option>${REGIONS.map(r => `<option ${r===reg?'selected':''}>${esc(r)}</option>`).join('')}</select></div>
+    <div class="warn" id="regionWarning" style="display:none"></div>
+    <div class="field"><label>Yetkazib berish manzili</label><input id="addr" placeholder="Shahar, ko'cha, uy" value="${esc(addr)}"></div>
+    <div class="summary"><div class="sumrow"><span>Mahsulotlar</span><span>${fmt(total)}</span></div>
+    <div class="sumrow"><span>Yetkazib berish</span><span id="dDisp">—</span></div>
+    <div class="sumrow total"><span>Jami</span><span id="gDisp">${fmt(total)}</span></div>
+    <div class="field" style="margin-top:10px"><label>To'lov usuli</label><select id="pm"><option value="naqd">💵 Naqd (yetkazishda)</option><option value="karta">💳 Karta orqali (sotuvchi kartasiga)</option></select></div>
+    <div id="pmHint" style="font-size:11px;color:var(--mut);margin:-6px 0 8px;display:none">Buyurtmadan keyin Profil → «Buyurtmalarim» bo'limida sotuvchi kartasi ko'rinadi va chekni yuklaysiz.</div>
+    <button class="checkout" id="checkoutBtn">Buyurtma berish</button></div>`;
+  main.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { const p = products.find(x => x.id == b.dataset.inc); if(p && S.cart[p.id] >= p.stock){ toast("Omborda shuncha bor: " + p.stock + " dona"); return; } S.cart[b.dataset.inc]++; redraw(); });
+  main.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { S.cart[b.dataset.dec] = Math.max(0, S.cart[b.dataset.dec] - 1); redraw(); });
+  const calc = () => {
+    const r = $('region').value, w = $('regionWarning');
+    if(!r){ $('dDisp').textContent = '—'; $('gDisp').textContent = fmt(total); w.style.display = 'none'; return null; }
+    let d = 0; const bad = [];
+    ids.forEach(id => { const p = products.find(x => x.id == id), rg = p.deliveryRegions || []; if(rg.includes('barchasi') || rg.includes(r)) d += p.deliveryPrice || 0; else bad.push(p.name); });
+    w.style.display = bad.length ? 'block' : 'none';
+    if(bad.length) w.textContent = `⚠️ Quyidagilar "${r}"ga yetkazilmaydi: ${bad.join(', ')}`;
+    $('dDisp').textContent = fmt(d); $('gDisp').textContent = fmt(total + d);
+    return { bad };
+  };
+  $('region').onchange = calc; if(reg) calc();
+  $('pm').onchange = () => { $('pmHint').style.display = $('pm').value==='karta' ? 'block' : 'none'; };
+  if(draft){ $('region').value = draft.region; $('addr').value = draft.addr; $('pm').value = draft.pm; $('pmHint').style.display = draft.pm==='karta' ? 'block' : 'none'; calc(); }
+  $('checkoutBtn').onclick = async () => {
+    const address = $('addr').value.trim(), region = $('region').value, paymentMethod = $('pm').value;
+    if(!region){ toast('Viloyatni tanlang'); return; }
+    if(!address){ toast('Manzilni kiriting'); return; }
+    const c = calc(); if(c && c.bad.length){ toast("Ba'zi mahsulotlar shu hududga yetkazilmaydi"); return; }
+    $('checkoutBtn').disabled = true;
+    try {
+      await api('/api/orders', { method:'POST', body:JSON.stringify({ items:ids.map(id => ({ productId:Number(id), qty:S.cart[id] })), address, region, paymentMethod }) });
+      localStorage.setItem('savdouz_addr', address); localStorage.setItem('savdouz_region', region);
+      S.cart = {}; toast(paymentMethod==='karta' ? "Qabul qilindi! «Buyurtmalarim»da chekni yuklang 🧾" : 'Buyurtma qabul qilindi! ✅');
+      S.tab = 'orders'; renderNav(); renderTab();
+    } catch(e){ toast(e.message); $('checkoutBtn').disabled = false; }
+  };
+}
+
+// ---- Profil (xaridor, sotuvchi va admin uchun) ----
+const subBack = (main, title) => {
+  main.insertAdjacentHTML('afterbegin', `<button class="backbtn" id="subBack">← Orqaga</button><div class="sectitle">${title}</div>`);
+  $('subBack').onclick = () => { S.tab = 'profile'; renderNav(); renderTab(); };
+};
+async function renderProfilePage(main){
+  const t = S.tab;
+  if(t==='profile') return renderProfile(main);
+  if(t==='settings') return renderSettings(main);
+  if(t==='notifs') return renderNotifs(main);
+  if(t==='help') return renderHelp(main);
+  return renderContact(main);
+}
+function profileGroups(){
+  const r = role();
+  const lang = ['lang','🌐','Ilova tili',"O'zbekcha"];
+  const info = [['help','❓',"Ma'lumotnoma"],['contact','✉️',"Biz bilan bog'lanish"]];
+  if(r==='buyer') return [
+    [['orders','📦','Buyurtmalarim'],['favorites','❤️','Sevimlilar'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [lang, ['sell','🏪',"Sotuvchi bo'lish"]],
+    info
+  ];
+  if(r==='seller') return [
+    [['account','💼','Mening hisobim'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [lang],
+    info
+  ];
+  return [
+    [['ads','📢','Reklamalar'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [lang],
+    info
+  ];
+}
+function renderProfile(main){
+  const u = S.user, r = role(), ini = esc((u.name || '?').trim().charAt(0).toUpperCase());
+  const ST = { faol:'tasdiqlangan', kutilmoqda:'tasdiqlanish kutilmoqda', 'rad etildi':'rad etilgan' };
+  const rl = r==='admin' ? 'Administrator' : r==='seller' ? 'Sotuvchi · ' + (ST[u.sellerStatus || 'faol'] || '') : '';
+  main.innerHTML = `<div class="profhero"><div class="profav">${ini}</div>
+      <div><div class="profname">${esc(u.name)}</div><div class="profphone">${esc(u.phone)}</div>${rl ? `<div class="profphone">${rl}</div>` : ''}</div>
+      <button class="profgear" data-go="settings" aria-label="Sozlamalar">⚙️</button></div>
+    ${profileGroups().map(g => `<div class="menu">${g.map(([k, i, l, v]) => `<div class="mrow" data-go="${k}"><span class="mico">${i}</span><span class="mgrow">${l}</span>${v ? `<span class="mval">${v}</span>` : ''}<span class="marr">›</span></div>`).join('')}</div>`).join('')}
+    <div class="appver">Ilova versiyasi: ${APP_VERSION}</div>
+    <button class="primarybtn" id="profLogout">Chiqish</button>`;
+  main.querySelectorAll('[data-go]').forEach(row => row.onclick = () => {
+    const to = row.dataset.go;
+    if(to === 'lang'){ if(window.openLangPicker) window.openLangPicker(); return; }
+    if(to === 'sell'){
+      if(confirm("Sotuvchi hisobi alohida ochiladi. Hozirgi hisobdan chiqib, sotuvchi sifatida ro'yxatdan o'tasizmi?")){ authMode = 'register'; authRole = 'seller'; logout(false); }
+      return;
+    }
+    if(to === 'account' && (u.sellerStatus || 'faol') !== 'faol'){ toast('Hisobingiz hali tasdiqlanmagan'); return; }
+    S.prev = 'profile'; S.tab = to; renderNav(); renderTab();
+  });
+  $('profLogout').onclick = () => { if(confirm('Hisobdan chiqasizmi?')) logout(false); };
+}
+function renderSettings(main){
+  const u = S.user, r = role();
+  const ST = { faol:'Tasdiqlangan', kutilmoqda:'Kutilmoqda', 'rad etildi':'Rad etilgan' };
+  const rows = [['Ism', esc(u.name)], ['Telefon', esc(u.phone)], ['Rol', r==='buyer' ? 'Xaridor' : r==='seller' ? 'Sotuvchi' : 'Admin']];
+  if(r==='seller') rows.push(['Holat', ST[u.sellerStatus || 'faol'] || '']);
+  rows.push(['Ilova versiyasi', APP_VERSION]);
+  let html = `<div class="summary">${rows.map(([k, v]) => `<div class="sumrow"><span>${k}</span><span style="color:var(--ink);font-weight:700">${v}</span></div>`).join('')}</div>`;
+  if(r==='buyer'){
+    const addr = localStorage.getItem('savdouz_addr') || '', reg = localStorage.getItem('savdouz_region') || '';
+    html += `<div class="summary"><div style="font-size:13px;font-weight:800;margin-bottom:6px">Saqlangan manzil</div>
+      <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px">${addr || reg ? esc((reg ? reg + ', ' : '') + addr) : "Hozircha saqlangan manzil yo'q"}</div>
+      ${addr || reg ? '<button class="addbtn" style="background:var(--red)" id="clrAddr">Manzilni o\'chirish</button>' : ''}</div>`;
+  }
+  const th = getTheme();
+  html += `<div class="summary"><div style="font-size:13px;font-weight:800;margin-bottom:8px">Ko'rinish</div><div class="roletabs" style="margin:0">${[['auto','Avto'],['light',"Yorug'"],['dark',"Qorong'u"]].map(([k, l]) => `<div class="roletab ${th===k?'active':''}" data-th="${k}">${l}</div>`).join('')}</div></div>`;
+  main.innerHTML = html;
+  subBack(main, 'Sozlamalar');
+  main.querySelectorAll('[data-th]').forEach(el => el.onclick = () => { localStorage.setItem('savdouz_theme', el.dataset.th); applyTheme(el.dataset.th); renderTab(); });
+  const c = $('clrAddr');
+  if(c) c.onclick = () => { localStorage.removeItem('savdouz_addr'); localStorage.removeItem('savdouz_region'); toast("Manzil o'chirildi"); renderTab(); };
+}
+async function renderNotifs(main){
+  const r = role(), none = '<div class="empty"><div class="eico">🔔</div>Hozircha bildirishnoma yo\'q</div>';
+  const date = s => new Date(s).toLocaleDateString('uz');
+  if(r==='buyer'){
+    const { orders } = await api('/api/orders/mine');
+    const TXT = { 'yangi':'Buyurtmangiz qabul qilindi', 'tasdiqlandi':'Sotuvchi buyurtmangizni tasdiqladi', 'kuryerga topshirildi':'Buyurtmangiz kuryerga topshirildi', 'yetkazildi':'Buyurtmangiz yetkazildi', 'bekor qilindi':'Buyurtmangiz bekor qilindi' };
+    main.innerHTML = orders.length ? orders.slice(0, 30).map(o => `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${date(o.createdAt)} · ${fmt(o.total)} · ${payLabel(o)}</span></div>`).join('') : none;
+  } else if(r==='seller'){
+    const { orders } = await api('/api/orders/incoming');
+    const TXT = { 'yangi':'Yangi buyurtma', 'tasdiqlandi':'Buyurtmani tasdiqladingiz', 'kuryerga topshirildi':'Kuryerga topshirildi', 'yetkazildi':'Buyurtma yetkazildi', 'bekor qilindi':'Buyurtma bekor qilindi' };
+    main.innerHTML = orders.length ? orders.slice(0, 30).map(o => { const sum = (o.items || []).reduce((s, i) => s + (i.subtotal || i.price * i.qty), 0); return `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${date(o.createdAt)} · ${fmt(sum)} · ${payLabel(o)}</span></div>`; }).join('') : none;
+  } else {
+    const [pd, pay] = await Promise.all([api('/api/admin/pending'), api('/api/admin/payments')]);
+    const wait = (pay.payments || []).filter(p => p.status === 'kutilmoqda');
+    let html = '';
+    if(pd.count > 0) html += `<div class="qa" data-go="sellers" style="cursor:pointer"><b>🏪 ${pd.count} ta sotuvchi tasdiqlashni kutmoqda</b><span>${esc((pd.sellers || []).map(s => s.name).join(', '))}</span></div>`;
+    if(wait.length) html += `<div class="qa" data-go="payments" style="cursor:pointer"><b>💳 ${wait.length} ta to'lov tekshirishni kutmoqda</b><span>Jami: ${fmt(wait.reduce((s, p) => s + p.amount, 0))}</span></div>`;
+    main.innerHTML = html || none;
+    main.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { S.tab = el.dataset.go; renderNav(); renderTab(); });
+  }
+  subBack(main, 'Bildirishnomalar');
+}
+function renderHelp(main){
+  const r = role();
+  const BUYER = [
+    ["Qanday buyurtma beraman?", "Mahsulotni savatga qo'shing, Savat bo'limida viloyat va manzilni kiriting, so'ng «Buyurtma berish» tugmasini bosing."],
+    ["To'lovni qanday qilaman?", "Naqd to'lov mahsulotni olganingizda amalga oshadi. Karta orqali to'lasangiz, Profil → Buyurtmalarim bo'limida sotuvchi kartasi ko'rinadi. Pulni o'tkazib, chek rasmini shu yerda yuklaysiz."],
+    ["Buyurtma holatini qayerda ko'raman?", "Profil → Buyurtmalarim va Bildirishnomalar bo'limlarida."],
+    ["Mahsulotni olganimni qanday tasdiqlayman?", "Sotuvchi buyurtmani kuryerga topshirgach, Buyurtmalarim bo'limida «Mahsulotni oldim» tugmasi paydo bo'ladi."],
+    ["Yetkazib berish narxi qancha?", "Narx har bir mahsulot kartasida ko'rsatilgan. Savatda viloyatni tanlasangiz, jami narx hisoblanadi."],
+    ["Baho va sharh qoldirsam bo'ladimi?", "Ha. Sotib olgan mahsulotingiz uchun Buyurtmalarim bo'limida yulduzcha bosib baho qo'ying."]
+  ];
+  const SELLER = [
+    ["Mahsulotni qanday qo'shaman?", "«Qo'shish» bo'limida rasm, nom, narx va sonini kiriting. Hisobingiz admin tomonidan tasdiqlangan bo'lishi kerak."],
+    ["Hafta chegirmasi nima?", "Mahsulot tahrirlashda «Hafta chegirmasi»ni yoqib, chegirma narxini kiriting. U 7 kun ko'rinadi, keyin narx o'zi asl holiga qaytadi."],
+    ["Komissiya qancha?", "Har bir yetkazilgan buyurtmadan 1% komissiya olinadi. «To'lov» bo'limida jami komissiya va qarzingiz ko'rinadi."],
+    ["Qarz limiti nima?", "Qarzingiz 10 000 so'mdan oshsa, mahsulotlaringiz xaridorlarga ko'rinmay qoladi. To'lov qilib chek yuborsangiz, admin tasdiqlagach qayta ochiladi."],
+    ["Karta orqali to'lovni qanday olaman?", "Profil → Mening hisobim bo'limida karta raqamingizni saqlang. Xaridor shu kartaga o'tkazadi va chek yuboradi, siz «Tasdiqlash» tugmasini bosasiz."],
+    ["Buyurtmani qachon yetkazildi deyman?", "Siz buyurtmani kuryerga topshirasiz. «Yetkazildi» holatini xaridor «Mahsulotni oldim» tugmasi bilan o'zi tasdiqlaydi."]
+  ];
+  const ADMIN = [
+    ["Sotuvchini qanday tasdiqlayman?", "Sotuvchilar bo'limida Pasport/ID va Selfi rasmlarini ochib tekshiring, so'ng «Tasdiqlash» yoki «Rad etish» tugmasini bosing."],
+    ["To'lovni qanday tasdiqlayman?", "To'lovlar bo'limida chek rasmini ko'ring va «Tasdiqlash» bosing. Tasdiqlangan summa sotuvchi qarzidan ayriladi."],
+    ["Sotuvchi balansini qanday o'zgartiraman?", "Ekrandagi qizil «±» tugmasini bosing, sotuvchini tanlab summani qo'shing yoki ayiring."],
+    ["Reklamani qanday qo'shaman?", "Profil → Reklamalar bo'limida rasm, havola va muddatni kiriting. Reklama xaridorlar bosh sahifasida aylanib turadi."],
+    ["Reklamani qanday to'xtataman?", "Reklamalar ro'yxatida «O'chirib qo'yish» yoki «Butunlay o'chirish» tugmasini bosing."]
+  ];
+  main.innerHTML = (r==='admin' ? ADMIN : r==='seller' ? SELLER : BUYER).map(([q, a]) => `<div class="qa"><b>${esc(q)}</b><span>${esc(a)}</span></div>`).join('');
+  subBack(main, "Ma'lumotnoma");
+}
+function renderContact(main){
+  main.innerHTML = `<div class="menu">
+      <a class="mrow" href="${CONTACT_TG}" target="_blank" rel="noopener"><span class="mico">💬</span><span class="mgrow">Telegram bot<span class="mval" style="display:block">${CONTACT_BOT}</span></span><span class="marr">›</span></a>
+    </div>
+    <div class="qa"><span>Savol, taklif yoki muammoingizni to'g'ridan-to'g'ri Telegram orqali shu botga yozing.</span></div>`;
+  subBack(main, "Biz bilan bog'lanish");
+}
+
+async function buyerOrders(main){
+  const { orders } = await api('/api/orders/mine');
+  if(!orders.length){ main.innerHTML = '<div class="empty"><div class="eico">📦</div>Hali buyurtmalar yo\'q</div>'; subBack(main, 'Buyurtmalarim'); return; }
+  main.innerHTML = orders.map(o => {
+    const needRcpt = o.paymentMethod==='karta' && ['kutilmoqda','rad etildi'].includes(o.paymentStatus) && o.status!=='bekor qilindi';
+    const canRecv = o.status==='kuryerga topshirildi' && (o.paymentMethod!=='karta' || o.paymentStatus==='tasdiqlandi');
+    return `<div class="oitem">
+    <div class="top"><span>№${o.id} · ${new Date(o.createdAt).toLocaleDateString('uz')}</span><span class="status">${esc(o.status)}</span></div>
+    ${stepper(o.status)}
+    ${o.region ? `<div style="font-size:11px;color:var(--mut);margin-bottom:4px">📍 ${esc(o.region)}${o.address ? ', ' + esc(o.address) : ''}</div>` : ''}
+    ${(o.items||[]).map(it => `<div class="oline"><span>${esc(it.name)} × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>
+      <div class="rate-row" data-pid="${it.productId}" data-pname="${esc(it.name)}" style="display:flex;align-items:center;gap:4px;margin:2px 0 6px">${[1,2,3,4,5].map(n => `<span class="starbtn" data-star="${n}" style="cursor:pointer;color:#DADEDA;font-size:15px">★</span>`).join('')}<span style="font-size:10.5px;color:var(--mut);margin-left:4px">Baho qo'ying</span></div>`).join('')}
+    ${o.deliveryTotal ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(o.deliveryTotal)}</span></div>` : ''}
+    <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+    <div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>
+    ${needRcpt ? `<div class="summary" style="margin:10px 0 0;background:var(--vl)">
+      <div style="font-size:11.5px;color:var(--mut);margin-bottom:6px">${fmt(o.total)} ni sotuvchi kartasiga o'tkazing:</div>
+      ${(o.sellers||[]).map(s => `<div style="margin-bottom:6px"><div style="font-weight:800;font-size:14px;color:var(--vt)">${s.card ? esc(s.card.number) : "Karta kiritilmagan"}</div><div style="font-size:11px;color:var(--mut)">${esc(s.name)}${s.card ? ' · ' + esc(s.card.holder) : ''} · ${esc(s.phone)}</div></div>`).join('')}
+      <label style="margin-top:8px">Chek yoki skrinshot yuklang</label><input type="file" accept="image/*" data-rfile="${o.id}"></div>` : ''}
+    ${o.hasReceipt && !needRcpt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
+    ${canRecv ? `<button class="checkout" style="margin-top:10px" data-recv="${o.id}">✅ Mahsulotni oldim</button>` : ''}
+    ${chatBtn(o.id)}</div>`; }).join('');
+  subBack(main, 'Buyurtmalarim');
+  main.querySelectorAll('.rate-row').forEach(row => {
+    const st = row.querySelectorAll('.starbtn');
+    st.forEach(s => s.onclick = async () => {
+      const n = Number(s.dataset.star);
+      st.forEach((x, i) => x.style.color = i < n ? '#F5A623' : '#DADEDA');
+      try { await api('/api/products/' + row.dataset.pid + '/reviews', { method:'POST', body:JSON.stringify({ rating:n, comment:'' }) }); toast(`"${row.dataset.pname}" uchun ${n} yulduz ✅`); }
+      catch(e){ toast(e.message); }
+    });
+  });
+  main.querySelectorAll('[data-rfile]').forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if(!f) return;
+    try {
+      toast('Chek yuborilmoqda...');
+      const image = await readImage(f);
+      await api('/api/orders/' + inp.dataset.rfile + '/receipt', { method:'POST', body:JSON.stringify({ image }) });
+      toast('Chek yuborildi, sotuvchi tasdiqlaydi ✅'); renderTab();
+    } catch(e){ toast(e.message); }
+  });
+  main.querySelectorAll('[data-recv]').forEach(b => b.onclick = async () => {
+    if(!b.dataset.sure){
+      b.dataset.sure = '1'; b.textContent = 'Tasdiqlash uchun yana bosing';
+      setTimeout(() => { if(b.isConnected){ b.dataset.sure = ''; b.textContent = '✅ Mahsulotni oldim'; } }, 4000);
+      return;
+    }
+    b.disabled = true;
+    try { await api('/api/orders/' + b.dataset.recv + '/received', { method:'POST' }); toast('Rahmat! Buyurtma yetkazildi ✅'); renderTab(); }
+    catch(e){ toast(e.message); b.disabled = false; }
+  });
+  wirePay(main, () => {});
+  wireChat(main);
+}
+
+function accountHtml(a){
+  if(!a) return '';
+  return `<div class="summary"><div style="font-size:12px;color:var(--mut);margin-bottom:10px">Admin pul tushirsa, balansda shu yerda ko'rinadi</div>
+    <div class="sumrow"><span>Hisob raqami</span><span style="font-weight:800;color:var(--ink)">${esc(a.accountNumber)}</span></div>
+    <div class="sumrow total"><span>Balans</span><span>${fmt(a.balance)}</span></div>
+    ${(a.transactions||[]).length ? `<div style="margin-top:8px;border-top:1px dashed var(--line);padding-top:8px">${a.transactions.slice(0,20).map(t => `<div class="oline" style="font-size:11.5px"><span>${esc(t.note)}</span><span style="font-weight:700;color:${t.amount<0?'var(--red)':'var(--grn)'}">${t.amount>0?'+':''}${fmt(t.amount)}</span></div>`).join('')}</div>` : ''}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)">
+      <div style="font-size:12px;font-weight:800;margin-bottom:8px">💳 Qabul qilish kartasi ${a.card ? '' : '<span style="color:var(--red)">(kiritilmagan)</span>'}</div>
+      <div class="field"><label>Karta raqami (16 xonali)</label><input id="cardNum" inputmode="numeric" maxlength="19" placeholder="8600 0000 0000 0000" value="${a.card ? esc(a.card.number) : ''}"></div>
+      <div class="field"><label>Ism familiya</label><input id="cardHolder" placeholder="Karta egasi" value="${a.card ? esc(a.card.holder) : ''}"></div>
+      <button class="primarybtn" id="saveCard" style="margin-top:0">Kartani saqlash</button>
+      <div style="font-size:10.5px;color:var(--mut);margin-top:6px">Xaridorlar karta orqali to'laganda shu kartaga o'tkazadi (ism faqat bosh harflarda ko'rinadi).</div></div></div>`;
+}
+function wireCard(main){
+  const b = $('saveCard'); if(!b) return;
+  b.onclick = async () => {
+    b.disabled = true;
+    try { await api('/api/me/card', { method:'PATCH', body:JSON.stringify({ number:$('cardNum').value, holder:$('cardHolder').value }) }); toast('Karta saqlandi ✅'); renderTab(); }
+    catch(e){ toast(e.message); b.disabled = false; }
+  };
+}
+
+async function sellerAccount(main){
+  const acc = await api('/api/account');
+  main.innerHTML = accountHtml(acc);
+  subBack(main, 'Mening hisobim');
+  wireCard(main);
+}
+
+async function sellerHome(main){
+  const [{ products }, earn] = await Promise.all([api('/api/my-products'), api('/api/earnings').catch(() => null)]);
+  main.innerHTML = '<div class="sectitle">Mening mahsulotlarim</div>' +
+    (earn && earn.restricted ? `<div class="warn">⚠️ Qarzingiz limitdan (${fmt(earn.debtLimit)}) oshgan! Mahsulotlaringiz xaridorlarga ko'rinmayapti. "To'lov" bo'limidan to'lov yuboring.</div>` : '') +
+    (products.length ? `<div class="grid">${products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
+      <span class="tag">${esc(p.cat)}</span><div class="pname">${esc(p.name)}</div>${priceHtml(p)}${p.onSale ? `<div style="font-size:10.5px;color:var(--or);font-weight:700;margin-bottom:4px">🔥 Hafta chegirmasi: ${p.daysLeft} kun qoldi</div>` : ''}
+      <div style="font-size:10.5px;color:var(--mut);margin-bottom:2px">Omborda: ${p.stock} dona</div>
+      <div style="font-size:10px;color:${dcolor(p)};margin-bottom:6px;line-height:1.4">${delivery(p,'full')}</div>
+      <div style="display:flex;gap:6px"><button class="addbtn" style="background:var(--vd)" data-edit="${p.id}">Tahrirlash</button><button class="addbtn" style="background:var(--red)" data-del="${p.id}">O'chirish</button></div></div></div>`).join('')}</div>` : '<div class="empty">Hali mahsulot qo\'shmagansiz.<br>"Qo\'shish" bo\'limiga o\'ting.</div>');
+  main.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if(!confirm("Rostdan ham o'chirmoqchimisiz?")) return;
+    try { await api('/api/products/' + b.dataset.del, { method:'DELETE' }); toast("Mahsulot o'chirildi"); renderTab(); } catch(e){ toast(e.message); }
+  });
+  main.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+    const p = products.find(x => x.id == b.dataset.edit);
+    S.edit = p; S.img = p.image || null; S.tab = 'add'; renderNav(); renderTab();
+  });
+}
+
+async function sellerAdd(main){
+  const ed = S.edit, allR = !ed || (ed.deliveryRegions || ['barchasi']).includes('barchasi');
+  main.innerHTML = `<div class="sectitle">${ed ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}</div><div class="addform">
+    <div class="field"><label>Mahsulot rasmi</label><div class="imgpreview" id="imgPreview">${S.img ? `<img src="${esc(S.img)}">` : '<span>Rasm tanlanmagan</span>'}</div><input id="pimageFile" type="file" accept="image/*"></div>
+    <div class="field"><label>Nomi</label><input id="pname" placeholder="Masalan: Samsung Galaxy" value="${ed ? esc(ed.name) : ''}"></div>
+    <div class="field"><label>Kategoriya</label><select id="pcat">${CATS.filter(c => c!=='Barchasi').map(c => `<option ${ed && ed.cat===c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+    <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" inputmode="numeric" value="${ed ? (ed.regularPrice ?? ed.price) : ''}"></div>
+    <div class="field"><label>Eski narx (chegirma uchun, ixtiyoriy)</label><input id="poldprice" type="number" inputmode="numeric" value="${ed && ed.oldPrice ? ed.oldPrice : ''}"></div>
+    <div class="field" style="background:var(--vl);border-radius:14px;padding:12px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><input id="psale" type="checkbox" style="width:auto" ${ed && ed.onSale ? 'checked' : ''}><label style="margin:0;color:var(--vt)" for="psale">🔥 Hafta chegirmasi (7 kundan keyin o'zi tugaydi)</label></div><input id="psaleprice" type="number" inputmode="numeric" placeholder="Chegirma narxi (so'm)" value="${ed && ed.onSale ? ed.salePrice : ''}"><div style="font-size:10.5px;color:var(--mut);margin-top:6px">7 kundan keyin narx avtomatik asl narxga qaytadi.</div></div>
+    <div class="field"><label>Nechta bor (soni)</label><input id="pstock" type="number" inputmode="numeric" value="${ed ? ed.stock : ''}"></div>
+    <div class="field"><label>Tavsif</label><textarea id="pdesc" rows="3" placeholder="Mahsulot haqida qisqacha">${ed ? esc(ed.desc || '') : ''}</textarea></div>
+    <div class="field"><label>🚚 Yetkazib berish narxi (so'm)</label><input id="pdp" type="number" inputmode="numeric" value="${ed ? (ed.deliveryPrice || 0) : 0}"></div>
+    <div class="field"><label>Qaysi hududlarga yetkazib berasiz?</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><input id="pall" type="checkbox" style="width:auto" ${allR ? 'checked' : ''}><label style="margin:0" for="pall">Barcha viloyatlar</label></div>
+      <div id="regionList" style="display:${allR ? 'none' : 'grid'};grid-template-columns:1fr 1fr;gap:6px;background:var(--bg);border-radius:10px;padding:10px">${REGIONS.map(r => `<div style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="regionChk" value="${esc(r)}" style="width:auto" ${ed && (ed.deliveryRegions || []).includes(r) ? 'checked' : ''}><label style="margin:0;font-size:12px;font-weight:400">${esc(r)}</label></div>`).join('')}</div></div>
+    <button class="primarybtn" id="saveBtn">${ed ? 'Saqlash' : "Mahsulot qo'shish"}</button>
+    ${ed ? '<button class="primarybtn" id="cancelBtn" style="background:var(--bg);color:var(--mut);box-shadow:none">Bekor qilish</button>' : ''}</div>`;
+  $('pimageFile').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try { toast('Rasm tayyorlanmoqda...'); S.img = await readImage(f); $('imgPreview').innerHTML = `<img src="${S.img}">`; }
+    catch(err){ toast("Rasmni yuklab bo'lmadi: " + err.message); }
+  };
+  $('pall').onchange = e => { $('regionList').style.display = e.target.checked ? 'none' : 'grid'; };
+  if(ed) $('cancelBtn').onclick = () => { S.edit = null; S.img = null; S.tab = 'home'; renderNav(); renderTab(); };
+  $('saveBtn').onclick = async () => {
+    const name = $('pname').value.trim(), price = $('pprice').value, stock = $('pstock').value;
+    const all = $('pall').checked;
+    const deliveryRegions = all ? ['barchasi'] : [...document.querySelectorAll('.regionChk:checked')].map(c => c.value);
+    if(!name || !price){ toast('Nom va narxni kiriting'); return; }
+    if(stock === ''){ toast('Nechta borligini kiriting'); return; }
+    if(!all && !deliveryRegions.length){ toast("Kamida bitta hududni tanlang yoki 'Barcha viloyatlar'ni belgilang"); return; }
+    const saleOn = $('psale').checked, salePrice = $('psaleprice').value;
+    if(saleOn && (!salePrice || Number(salePrice) <= 0 || Number(salePrice) >= Number(price))){ toast("Chegirma narxi asl narxdan past bo'lishi kerak"); return; }
+    const body = JSON.stringify({ name, cat:$('pcat').value, price, desc:$('pdesc').value.trim(), stock, image:S.img, deliveryRegions, deliveryPrice:$('pdp').value || 0, oldPrice:$('poldprice').value || '', saleOn, salePrice });
+    $('saveBtn').disabled = true;
+    try {
+      if(ed) await api('/api/products/' + ed.id, { method:'PATCH', body }); else await api('/api/products', { method:'POST', body });
+      toast(ed ? 'Mahsulot yangilandi! ✅' : "Mahsulot qo'shildi! ✅");
+      S.img = null; S.edit = null; S.tab = 'home'; renderNav(); renderTab();
+    } catch(e){ toast(e.message); $('saveBtn').disabled = false; }
+  };
+}
+
+async function sellerOrders(main){
+  const [{ orders }, earn] = await Promise.all([api('/api/orders/incoming'), api('/api/earnings').catch(() => null)]);
+  const rate = earn ? Math.round((earn.commissionRate || 0) * 100) : 0;
+  const ordersHtml = !orders.length ? '<div class="empty">📦<br><br>Hali buyurtma tushmagan</div>' : '<div class="sectitle" style="margin:16px 0 12px">Kelgan buyurtmalar</div>' + orders.map(o => {
+    const its = o.items || [];
+    const com = its.reduce((s, i) => s + (i.commission || 0), 0), del = its.reduce((s, i) => s + (i.deliveryFee || 0), 0);
+    const out = its.reduce((s, i) => s + (i.payout || i.price * i.qty), 0) + del;
+    const done = o.status==='yetkazildi';
+    const opts = ['yangi','tasdiqlandi','kuryerga topshirildi', ...(done ? ['yetkazildi'] : []), 'bekor qilindi'];
+    return `<div class="oitem"><div class="top"><span>№${o.id} · ${esc(o.buyerName)} · ${esc(o.phone)}</span><span class="status">${esc(o.status)}</span></div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:4px">📍 ${o.region ? esc(o.region) + ', ' : ''}${esc(o.address)}</div>
+      ${its.map(i => `<div class="oline"><span>${esc(i.name)} × ${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
+      ${del ? `<div class="oline"><span>🚚 Yetkazib berish</span><span>${fmt(del)}</span></div>` : ''}
+      <div class="oline" style="color:var(--red)"><span>Komissiya${rate ? ' (' + rate + '%)' : ''}</span><span>−${fmt(com)}</span></div>
+      <div class="ototal"><span>Sizga tushum</span><span>${fmt(out)}</span></div>
+      ${sellerPay(o)}
+      <select class="statusSel" data-order="${o.id}" ${done ? 'disabled' : ''}>${opts.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>
+      ${!done ? '<div style="font-size:10.5px;color:var(--mut);margin-top:5px">«Yetkazildi» holatini xaridor «Oldim» tugmasi bilan qo\'yadi</div>' : ''}${chatBtn(o.id)}</div>`;
+  }).join('');
+  main.innerHTML = ordersHtml;
+  main.querySelectorAll('.statusSel').forEach(s => s.onchange = async () => {
+    try { await api('/api/orders/' + s.dataset.order + '/status', { method:'PATCH', body:JSON.stringify({ status:s.value }) }); toast('Holat yangilandi'); }
+    catch(e){ toast(e.message); renderTab(); }
+  });
+  wirePay(main, renderTab);
+  wireChat(main);
+}
+
+async function sellerPayments(main){
+  const [earn, pay] = await Promise.all([api('/api/earnings').catch(() => null), api('/api/payments/mine').catch(() => ({ payments: [] }))]);
+  const myPay = pay.payments || [];
+  const rate = earn ? Math.round((earn.commissionRate || 0) * 100) : 0;
+  const summary = earn ? `<div class="summary">
+    <div class="sumrow"><span>Jami savdo</span><span>${fmt(earn.totalSales)}</span></div>
+    <div class="sumrow"><span>Platforma komissiyasi (${rate}%)</span><span>−${fmt(earn.totalCommission)}</span></div>
+    <div class="sumrow"><span>To'langan komissiya</span><span>${fmt(earn.paidCommission)}</span></div>
+    <div class="sumrow total" style="color:${earn.debt>0?'var(--red)':'var(--ink)'}"><span>${earn.debt>0 ? 'Qarzingiz' : "Qarzingiz yo'q"}</span><span>${fmt(Math.max(0, earn.debt))}</span></div>
+    <div class="sumrow" style="margin-top:4px"><span>Ruxsat etilgan limit</span><span>${fmt(earn.debtLimit)}</span></div>
+    ${earn.restricted ? '<div class="warn" style="margin-top:10px">⚠️ Qarzingiz limitdan oshgan! Mahsulotlaringiz ko\'rinmayapti. To\'lov qilib, admin tasdiqlashi bilan qayta ochiladi.</div>' : ''}
+    ${earn.payoutCard ? `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)"><div style="font-size:11px;color:var(--mut);margin-bottom:6px">Komissiyani shu kartaga o'tkazing:</div><div style="background:var(--vl);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:14px;color:var(--vt)">${esc(earn.payoutCard.number)}</div><div style="font-size:11px;color:var(--mut);margin-top:2px">${esc(earn.payoutCard.name)}</div></div></div>` : ''}</div>`
+    : '<div class="warn">Daromad ma\'lumotlarini yuklab bo\'lmadi</div>';
+  const stc = s => s==='tasdiqlandi' ? ['#E6F4EA','var(--grn)'] : s==='rad etildi' ? ['#FDEDED','var(--red)'] : ['var(--vl)','var(--vd)'];
+  main.innerHTML = '<div class="sectitle">Komissiya va to\'lov</div>' + summary + `<div class="addform"><div class="sectitle" style="font-size:14px">To'lov yuborish</div>
+    <div class="field"><label>To'langan summa (so'm)</label><input id="payAmount" type="number" inputmode="numeric" placeholder="Masalan: 50000"></div>
+    <div class="field"><label>Chek yoki skrinshot</label><div class="imgpreview" id="receiptPreview"><span>Rasm tanlanmagan</span></div><input id="payReceipt" type="file" accept="image/*"></div>
+    <button class="primarybtn" id="sendPay">Yuborish</button></div>` +
+    (myPay.length ? '<div class="sectitle" style="font-size:14px">Mening to\'lovlarim</div>' + myPay.map(p => { const c = stc(p.status); return `<div class="oitem"><div class="top"><span>${fmt(p.amount)} · ${new Date(p.createdAt).toLocaleDateString('uz')}</span><span class="status" style="background:${c[0]};color:${c[1]}">${esc(p.status)}</span></div>${p.adminNote ? `<div style="font-size:11.5px;color:var(--mut)">Admin izohi: ${esc(p.adminNote)}</div>` : ''}</div>`; }).join('') : '');
+  S.receipt = null;
+  $('payReceipt').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try { toast('Rasm tayyorlanmoqda...'); S.receipt = await readImage(f); $('receiptPreview').innerHTML = `<img src="${S.receipt}">`; }
+    catch(err){ toast("Rasmni yuklab bo'lmadi: " + err.message); }
+  };
+  $('sendPay').onclick = async () => {
+    const amount = $('payAmount').value;
+    if(!amount || Number(amount) <= 0){ toast('Summani kiriting'); return; }
+    if(!S.receipt){ toast('Chek yoki skrinshot yuklang'); return; }
+    $('sendPay').disabled = true;
+    try { await api('/api/payments', { method:'POST', body:JSON.stringify({ amount, receiptImage:S.receipt }) }); S.receipt = null; toast("To'lov yuborildi, admin tasdiqlaydi ✅"); renderTab(); }
+    catch(e){ toast(e.message); $('sendPay').disabled = false; }
+  };
+}
+
+// ---- Admin: reklama boshqaruvi ----
+async function adsAdmin(main){
+  const { ads } = await api('/api/admin/ads');
+  let img = null;
+  const stOf = a => a.expired ? ['Muddati tugagan', '#FDEDED', 'var(--red)'] : !a.active ? ["O'chiq", 'var(--vl)', 'var(--mut)'] : ['Faol', '#E6F4EA', 'var(--grn)'];
+  main.innerHTML = `<div class="addform">
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px">Yangi reklama</div>
+      <div class="field"><label>Rasm (tavsiya: 1200×400, istalgan o'lcham to'liq ko'rinadi)</label><div class="imgpreview" id="adPrev" style="height:110px"><span>Rasm tanlanmagan</span></div><input id="adFile" type="file" accept="image/*"></div>
+      <div class="field"><label>Sarlavha (faqat o'zingiz uchun)</label><input id="adTitle" placeholder="Masalan: Faberlic aksiyasi"></div>
+      <div class="field"><label>Bosilganda ochiladigan havola (ixtiyoriy)</label><input id="adLink" placeholder="https://t.me/..." inputmode="url"></div>
+      <div class="field"><label>Necha kun turadi (bo'sh bo'lsa cheksiz)</label><input id="adDays" type="number" inputmode="numeric" placeholder="7"></div>
+      <div class="field"><label>Tartib raqami (kichigi birinchi chiqadi)</label><input id="adOrder" type="number" inputmode="numeric" value="0"></div>
+      <button class="primarybtn" id="adSave">Reklamani qo'shish</button></div>
+    ${ads.length ? ads.map(a => { const st = stOf(a), ctr = a.views ? (a.clicks / a.views * 100).toFixed(1) + '%' : '—'; return `<div class="oitem">
+      <img src="${esc(a.image)}" alt="" style="width:100%;height:auto;max-height:260px;object-fit:contain;border-radius:12px;margin-bottom:8px;background:#0c0820">
+      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(a.title || 'Sarlavhasiz')}</span><span class="status" style="background:${st[1]};color:${st[2]}">${st[0]}</span></div>
+      <div class="oline"><span>Ko'rishlar / bosishlar</span><span>${a.views} / ${a.clicks} (${ctr})</span></div>
+      <div class="oline"><span>Tugash sanasi</span><span>${a.expiresAt ? new Date(a.expiresAt).toLocaleDateString('uz') : 'cheksiz'}</span></div>
+      ${a.link ? `<div class="oline"><span>Havola</span><span style="word-break:break-all;text-align:right">${esc(a.link)}</span></div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="addbtn" style="background:${a.active ? 'var(--or)' : 'var(--grn)'}" data-adtoggle="${a.id}" data-on="${a.active ? 1 : 0}">${a.active ? "O'chirib qo'yish" : 'Yoqish'}</button><button class="addbtn" style="background:var(--vd)" data-addays="${a.id}">Muddat</button></div>
+      <button class="addbtn" style="background:var(--red);margin-top:6px" data-addel="${a.id}">🗑 Butunlay o'chirish</button></div>`; }).join('') : '<div class="empty" style="padding:30px 20px">Hali reklama yo\'q</div>'}`;
+  subBack(main, `Reklamalar (${ads.length})`);
+  $('adFile').onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try { toast('Rasm tayyorlanmoqda...'); img = await readAdImage(f); $('adPrev').innerHTML = `<img src="${img}">`; }
+    catch(err){ toast("Rasmni yuklab bo'lmadi: " + err.message); }
+  };
+  $('adSave').onclick = async () => {
+    if(!img){ toast('Reklama rasmini yuklang'); return; }
+    $('adSave').disabled = true;
+    try {
+      await api('/api/admin/ads', { method:'POST', body:JSON.stringify({ title:$('adTitle').value.trim(), link:$('adLink').value.trim(), image:img, days:$('adDays').value, order:$('adOrder').value }) });
+      adsCache.t = 0; toast("Reklama qo'shildi ✅"); renderTab();
+    } catch(e){ toast(e.message); $('adSave').disabled = false; }
+  };
+  const act = async (method, id, body, msg) => {
+    try { await api('/api/admin/ads/' + id, { method, body: body ? JSON.stringify(body) : undefined }); adsCache.t = 0; toast(msg); renderTab(); }
+    catch(e){ toast(e.message); }
+  };
+  main.querySelectorAll('[data-adtoggle]').forEach(b => b.onclick = () => act('PATCH', b.dataset.adtoggle, { active: b.dataset.on !== '1' }, 'Bajarildi ✅'));
+  main.querySelectorAll('[data-addays]').forEach(b => b.onclick = () => {
+    const d = prompt("Bugundan boshlab necha kun turadi? (0 yoki bo'sh = cheksiz)");
+    if(d === null) return;
+    act('PATCH', b.dataset.addays, { days: d }, 'Muddat yangilandi ✅');
+  });
+  main.querySelectorAll('[data-addel]').forEach(b => b.onclick = () => {
+    if(!confirm("Reklama butunlay o'chiriladi. Davom etasizmi?")) return;
+    act('DELETE', b.dataset.addel, null, "Reklama o'chirildi");
+  });
+}
+
+// ---- Admin ----
+const SST = { faol: ['#E6F4EA', 'var(--grn)', 'Tasdiqlangan'], kutilmoqda: ['#FFF1E6', 'var(--or)', 'Kutilmoqda'], 'rad etildi': ['#FDEDED', 'var(--red)', 'Rad etilgan'] };
+async function renderAdmin(main){
+  const t = S.tab;
+  const none = m => `<div class="empty">${m}</div>`;
+  if(t==='ads') return adsAdmin(main);
+  if(t==='sellers'){
+    const { sellers } = await api('/api/admin/sellers');
+    // Tasdiqlashni kutayotganlar eng tepada
+    sellers.sort((a, b) => (a.sellerStatus === 'kutilmoqda' ? 0 : 1) - (b.sellerStatus === 'kutilmoqda' ? 0 : 1));
+    const pc = sellers.filter(s => s.sellerStatus === 'kutilmoqda').length;
+    if(S.pend !== pc){ S.pend = pc; renderNav(); }
+    main.innerHTML = `<div class="sectitle">Sotuvchilar (${sellers.length})</div>` + (sellers.length ? sellers.map(s => { const c = SST[s.sellerStatus] || SST.faol; return `<div class="oitem">
+      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Qarz limiti</span>' : ''}</span><span>${esc(s.phone)}</span></div>
+      <div class="oline"><span>Holati</span><span class="status" style="background:${c[0]};color:${c[1]}">${c[2]}</span></div>
+      <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
+      <div class="oline"><span>Hujjatlar</span><span>${s.hasDocs ? `<a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank">Pasport/ID</a> · <a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank">Selfi</a>` : 'yuklanmagan'}</span></div>
+      <div class="oline"><span>Balans</span><span>${fmt(s.balance)}</span></div>
+      <div class="oline"><span>Mahsulotlar</span><span>${s.productCount} ta</span></div><div class="oline"><span>Buyurtmalar</span><span>${s.orderCount} ta</span></div>
+      <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
+      <div class="oline"><span>To'langan</span><span>${fmt(s.paidCommission)}</span></div>
+      <div class="ototal" style="color:${s.debt>0?'var(--red)':'var(--ink)'}"><span>Qarzi</span><span>${fmt(Math.max(0, s.debt))}</span></div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        ${s.sellerStatus !== 'faol' ? `<button class="addbtn" style="background:var(--grn)" data-sst="${s.id}" data-st="faol" data-sname="${esc(s.name)}">Tasdiqlash</button>` : ''}
+        ${s.sellerStatus !== 'rad etildi' ? `<button class="addbtn" style="background:var(--or)" data-sst="${s.id}" data-st="rad etildi" data-sname="${esc(s.name)}">${s.sellerStatus === 'faol' ? 'Bloklash' : 'Rad etish'}</button>` : ''}
+      </div>
+      <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; }).join('') : none("Hali sotuvchi yo'q"));
+    main.querySelectorAll('[data-sst]').forEach(b => b.onclick = async () => {
+      const ok = b.dataset.st === 'faol' ? `"${b.dataset.sname}" ni tasdiqlaysizmi? Rasmlarni tekshirdingizmi?` : `"${b.dataset.sname}" ni ${b.textContent.toLowerCase()}ni tasdiqlaysizmi? Mahsulotlari ko'rinmay qoladi.`;
+      if(!confirm(ok)) return;
+      try { await api('/api/admin/sellers/' + b.dataset.sst + '/status', { method:'POST', body:JSON.stringify({ status:b.dataset.st }) }); toast('Bajarildi ✅'); renderTab(); }
+      catch(e){ toast(e.message); }
+    });
+    main.querySelectorAll('[data-delseller]').forEach(b => b.onclick = async () => {
+      if(!confirm(`"${b.dataset.sname}" va uning barcha mahsulotlari o'chiriladi. Davom etasizmi?`)) return;
+      try { await api('/api/admin/sellers/' + b.dataset.delseller, { method:'DELETE' }); toast("Sotuvchi o'chirildi"); renderTab(); }
+      catch(e){ toast(e.message); }
+    });
+  } else if(t==='products'){
+    const { products } = await api('/api/admin/products');
+    main.innerHTML = `<div class="sectitle">Barcha mahsulotlar (${products.length})</div><div class="grid">${products.length ? products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
+      <span class="tag">${esc(p.cat)}</span><div class="pname">${esc(p.name)}</div><div class="pseller">${esc(p.sellerName)} · ${esc(p.sellerPhone)}</div>${priceHtml(p)}
+      <div style="font-size:10.5px;color:var(--mut)">Omborda: ${p.stock} dona</div><div style="font-size:10px;color:${dcolor(p)};margin-bottom:6px">${delivery(p)}</div>
+      <button class="addbtn" style="background:var(--red)" data-admindel="${p.id}">O'chirish</button></div></div>`).join('') : '<div class="empty" style="grid-column:1/-1">Mahsulot yo\'q</div>'}</div>`;
+    main.querySelectorAll('[data-admindel]').forEach(b => b.onclick = async () => {
+      if(!confirm("Bu mahsulotni o'chirishni tasdiqlaysizmi?")) return;
+      try { await api('/api/products/' + b.dataset.admindel, { method:'DELETE' }); toast("Mahsulot o'chirildi"); renderTab(); } catch(e){ toast(e.message); }
+    });
+  } else if(t==='buyers'){
+    const { buyers } = await api('/api/admin/buyers');
+    main.innerHTML = `<div class="sectitle">Xaridorlar (${buyers.length})</div>` + (buyers.length ? buyers.map(b => `<div class="oitem"><div class="top"><span style="font-weight:700;color:var(--ink)">${esc(b.name)}</span><span>${esc(b.phone)}</span></div><div class="oline"><span>Buyurtmalar soni</span><span>${b.orderCount} ta</span></div><div class="oline"><span>Jami xarid</span><span>${fmt(b.totalSpent)}</span></div></div>`).join('') : none("Hali xaridor yo'q"));
+  } else if(t==='orders'){
+    const { orders } = await api('/api/admin/orders');
+    main.innerHTML = `<div class="sectitle">Barcha buyurtmalar (${orders.length})</div>` + (orders.length ? orders.map(o => `<div class="oitem">
+      <div class="top"><span>№${o.id} · ${esc(o.buyerName)} · ${esc(o.phone)}</span><span class="status">${esc(o.status)}</span></div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:4px">📍 ${o.region ? esc(o.region) + ', ' : ''}${esc(o.address)}</div>
+      ${(o.items||[]).map(i => `<div class="oline"><span>${esc(i.name)} × ${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
+      <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
+      <div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>
+      ${o.hasReceipt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
+      <div class="field" style="margin-top:8px"><label>Admin izohi</label><textarea class="adminNote" data-order="${o.id}" rows="2" placeholder="Izoh yozing...">${esc(o.adminNote || '')}</textarea></div>
+      <button class="addbtn" style="background:var(--vd)" data-savenote="${o.id}">Izohni saqlash</button></div>`).join('') : none("Hali buyurtma yo'q"));
+    main.querySelectorAll('[data-fullimg]').forEach(im => im.onclick = () => window.open(im.src, '_blank'));
+    main.querySelectorAll('[data-savenote]').forEach(b => b.onclick = async () => {
+      const note = main.querySelector(`.adminNote[data-order="${b.dataset.savenote}"]`).value;
+      try { await api('/api/admin/orders/' + b.dataset.savenote, { method:'PATCH', body:JSON.stringify({ adminNote:note }) }); toast('Izoh saqlandi'); } catch(e){ toast(e.message); }
+    });
+  } else if(t==='payments'){
+    const { payments } = await api('/api/admin/payments');
+    const stc = s => s==='tasdiqlandi' ? ['#E6F4EA','var(--grn)'] : s==='rad etildi' ? ['#FDEDED','var(--red)'] : ['var(--vl)','var(--vd)'];
+    main.innerHTML = `<div class="sectitle">To'lovlar (${payments.length})</div>` + (payments.length ? payments.map(p => { const c = stc(p.status); return `<div class="oitem">
+      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(p.sellerName)}</span><span class="status" style="background:${c[0]};color:${c[1]}">${esc(p.status)}</span></div>
+      <div class="oline"><span>Summa</span><span style="font-weight:800">${fmt(p.amount)}</span></div>
+      <div style="font-size:11px;color:var(--mut);margin:4px 0">${new Date(p.createdAt).toLocaleString('uz')}</div>
+      ${p.receiptImage ? `<div class="imgpreview" style="height:160px"><img src="${esc(p.receiptImage)}" style="cursor:pointer" data-fullimg="1"></div>` : ''}
+      ${p.status==='kutilmoqda' ? `<div style="display:flex;gap:6px"><button class="addbtn" style="background:var(--grn)" data-approve="${p.id}">Tasdiqlash</button><button class="addbtn" style="background:var(--red)" data-reject="${p.id}">Rad etish</button></div>` : (p.adminNote ? `<div style="font-size:11.5px;color:var(--mut)">Izoh: ${esc(p.adminNote)}</div>` : '')}</div>`; }).join('') : none("Hali to'lov yo'q"));
+    main.querySelectorAll('[data-fullimg]').forEach(im => im.onclick = () => window.open(im.src, '_blank'));
+    const act = async (id, status, adminNote, msg) => {
+      try { await api('/api/admin/payments/' + id, { method:'PATCH', body:JSON.stringify({ status, adminNote }) }); toast(msg); renderTab(); } catch(e){ toast(e.message); }
+    };
+    main.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => act(b.dataset.approve, 'tasdiqlandi', '', "To'lov tasdiqlandi ✅"));
+    main.querySelectorAll('[data-reject]').forEach(b => b.onclick = () => act(b.dataset.reject, 'rad etildi', prompt('Rad etish sababi (ixtiyoriy):') || '', "To'lov rad etildi"));
+  }
+}
+
+// Buyurtmalar bo'limi har 12 soniyada jimgina yangilanadi (holat o'zgarsa ko'rinadi)
+setInterval(() => {
+  if(!S.user || S.tab !== 'orders' || document.hidden) return;
+  if(document.querySelector('input:focus,textarea:focus,select:focus')) return;
+  if(document.querySelector('[data-chatbox][style*="block"]')) return;
+  renderTab(true);
+}, 12000);
+
+// ---- Pastga tortib yangilash (sahifa qayta yuklanmaydi, ekran joyida turadi) ----
+(function(){
+  const box = document.createElement('div');
+  box.id = 'ptr';
+  box.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
+  document.body.appendChild(box);
+  const MAX = 90, TRIG = 70;
+  let y0 = 0, x0 = 0, dy = 0, pulling = false, busy = false, ok = false;
+  const place = (d, anim) => {
+    box.style.transition = anim ? 'transform .25s, opacity .25s' : 'none';
+    box.style.transform = 'translateY(' + (d - 50) + 'px) rotate(' + (d * 4) + 'deg)';
+    box.style.opacity = d > 8 ? Math.min(1, d / TRIG) : 0;
+  };
+  const blocked = t => !!(t && t.closest && t.closest('input,textarea,select,#adTrack,[data-chatbox],.modal,.overlay'));
+  document.addEventListener('touchstart', e => {
+    ok = false; pulling = false; dy = 0;
+    if(busy || !S.user || e.touches.length !== 1) return;
+    if((window.scrollY || document.documentElement.scrollTop) > 0) return;
+    if(S.tab === 'add' || blocked(e.target)) return;
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; ok = true;
+  }, { passive:true });
+  document.addEventListener('touchmove', e => {
+    if(!ok || busy) return;
+    const d = e.touches[0].clientY - y0;
+    if(!pulling){
+      if(Math.abs(e.touches[0].clientX - x0) > Math.abs(d) || d < 8){ if(d < -4) ok = false; return; }
+      if((window.scrollY || 0) > 0){ ok = false; return; }
+      pulling = true;
+    }
+    dy = Math.min(MAX, d * 0.5);
+    place(dy, false);
+    if(e.cancelable) e.preventDefault();
+  }, { passive:false });
+  async function end(){
+    if(!pulling){ ok = false; return; }
+    pulling = false; ok = false;
+    if(dy >= TRIG * 0.6 && !busy){
+      busy = true; box.classList.add('spin'); place(46, true);
+      try {
+        await Promise.all([
+          renderTab(true),
+          typeof loadUsd === 'function' ? loadUsd() : 0,
+          typeof loadInfo === 'function' ? loadInfo() : 0,
+          new Promise(r => setTimeout(r, 600))
+        ]);
+      } catch(e){}
+      box.classList.remove('spin'); busy = false;
+    }
+    dy = 0; place(0, true);
+  }
+  document.addEventListener('touchend', end, { passive:true });
+  document.addEventListener('touchcancel', end, { passive:true });
+})();
+
+// ---- Telefondagi "Orqaga" tugmasi ----
+// Ilova ichida bosilsa: ochiq sahifadan bir qadam orqaga qaytadi.
+// Bosh sahifada birinchi bosish ogohlantiradi, 2 soniya ichida ikkinchi bosish ilovani yopadi.
+let guard = false, exitArmed = false, exitTimer = null;
+const homeTab = () => (S.user && role()==='admin') ? 'sellers' : 'home';
+function parentTab(){
+  const t = S.tab;
+  if(t==='detail' || t==='store') return S.prev && S.prev!==t ? S.prev : homeTab();
+  if(['settings','notifs','help','contact','account','ads'].includes(t)) return 'profile';
+  if(t==='orders' && S.user && role()==='buyer') return 'profile';
+  return homeTab();
+}
+function pushGuard(){
+  if(guard || !S.user) return;
+  // Brauzer foydalanuvchi bosmasdan qo'shilgan yozuvni o'tkazib yuboradi, shuning uchun faqat bosishdan keyin qo'shamiz
+  if(navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+  try { history.pushState({ sv:1 }, ''); guard = true; } catch(e){}
+}
+document.addEventListener('click', () => { exitArmed = false; clearTimeout(exitTimer); pushGuard(); }, true);
+window.addEventListener('popstate', () => {
+  guard = false;
+  if(!S.user) return;
+  if(S.tab !== homeTab()){
+    S.tab = parentTab();
+    S.sel = null; S.img = null; S.edit = null;
+    renderNav(); renderTab(); pushGuard();
+    return;
+  }
+  if(exitArmed){ exitArmed = false; clearTimeout(exitTimer); return; }
+  exitArmed = true; toast('Chiqish uchun yana bir marta bosing');
+  clearTimeout(exitTimer); exitTimer = setTimeout(() => { exitArmed = false; }, 2000);
+  pushGuard();
+});
+
+// ---- Ilovani ishga tushirish ----
+(async function init(){
+  if(S.token){
+    try {
+      const { user } = await api('/api/me'); S.user = user;
+      try {
+        const v = JSON.parse(sessionStorage.getItem('savdouz_view') || 'null');
+        if(v && v.uid === user.id && v.tab){
+          S.tab = v.tab; S.prev = v.prev || 'home'; S.sellerId = v.sellerId || null;
+          if(v.cat) S.cat = v.cat; if(v.search) S.search = v.search; if(v.sort) S.sort = v.sort;
+          if(v.tab === 'detail'){
+            const list = (await api('/api/products')).products || [];
+            S.sel = list.find(p => p.id === v.selId) || null;
+            if(!S.sel){ S.tab = S.prev && S.prev !== 'detail' ? S.prev : 'home'; }
+          }
+          if(v.tab === 'store' && !S.sellerId) S.tab = 'home';
+          if(v.tab === 'add') S.tab = 'home';
+          pendingScroll = Number(v.y) || 0;
+        }
+      } catch(e){ pendingScroll = null; }
+      renderApp(); return;
+    }
+    catch(e){ S.token = null; }
+  }
+  renderAuth();
+})();
+</script>
+</body>
+</html>
