@@ -1,4 +1,4 @@
-// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + xaridorlar faolligi
+// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + xaridorlar va sotuvchilar faolligi
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
@@ -74,7 +74,7 @@ const mongoClient = new MongoClient(MONGODB_URI);
 let stateCollection, cache = null, adminDone = false;
 const SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update('sv:' + String(MONGODB_URI)).digest('hex');
 
-// ---------- Xaridorlar faolligi (onlayn / bugun kirgan) ----------
+// ---------- Xaridorlar va sotuvchilar faolligi (onlayn / bugun kirgan) ----------
 // Alohida "seen" kolleksiyasida saqlanadi, asosiy "state" hujjatiga tegmaydi.
 const seenMap = new Map(); let seenDirty = new Set();
 const seenCol = () => mongoClient.db('savdouz').collection('seen');
@@ -964,20 +964,28 @@ const server = http.createServer(async (req, res) => {
         return r.matchedCount ? sendJSON(res, 200, { ok: true }) : sendJSON(res, 404, { error: "Reklama topilmadi" });
       }
 
+      // Sotuvchilar: onlayn soni, bugun kirganlar, jami ro'yxatdan o'tganlar va ro'yxat
       if (pathname === '/api/admin/sellers' && M === 'GET') {
         const docIds = new Set((await mongoClient.db('savdouz').collection('sellerdocs').find({}, { projection: { _id: 1 } }).toArray()).map(x => x._id));
+        const now = Date.now(), t0 = startOfToday();
         const sellers = db.users.filter(u => u.role === 'seller').map(s => {
           const all = sellerItems(db, s.id, false), del = sellerItems(db, s.id, true);
           const totalCommission = del.reduce((x, it) => x + (it.commission || 0), 0), paid = commissionPaid(db, s.id);
+          const ls = seenMap.get(s.id) || null;
           return {
             hasDocs: docIds.has(s.id), sellerStatus: sellerStatusOf(s), id: s.id, name: s.name, phone: s.phone, accountNumber: s.accountNumber, balance: s.balance || 0,
+            createdAt: s.createdAt || null, lastSeen: ls, online: !!ls && now - ls < ONLINE_MS,
             productCount: db.products.filter(p => p.sellerId === s.id).length,
             orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === s.id)).length,
             totalSales: all.reduce((x, it) => x + (it.subtotal || it.price * it.qty), 0),
             totalCommission, paidCommission: paid, debt: totalCommission - paid, restricted: (totalCommission - paid) > DEBT_LIMIT
           };
         });
-        return sendJSON(res, 200, { sellers });
+        return sendJSON(res, 200, {
+          sellers, total: sellers.length,
+          online: sellers.filter(s => s.online).length,
+          today: sellers.filter(s => s.lastSeen && s.lastSeen >= t0).length
+        });
       }
       // Sotuvchining pasport/ID va selfi rasmi (faqat admin ko'radi)
       if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/doc\/(id|selfie)$/)) && M === 'GET') {
