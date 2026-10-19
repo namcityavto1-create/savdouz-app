@@ -1203,7 +1203,7 @@ async function renderAdmin(main){
     const ago = ts => { if(!ts) return '—'; const m = Math.floor((Date.now()-ts)/6e4); if(m<2) return 'Hozir'; if(m<60) return m+' daqiqa oldin'; const h = Math.floor(m/60); if(h<24) return h+' soat oldin'; const d = Math.floor(h/24); return d===1 ? 'Kecha' : d+' kun oldin'; };
     const ini = n => String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
     const card = s => { const c = SST[s.sellerStatus] || SST.faol; return `<div class="oitem">
-      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Qarz limiti</span>' : ''}</span><span>${esc(s.phone)}</span></div>
+      <div class="top" data-close="${s.id}" style="cursor:pointer"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Qarz limiti</span>' : ''}</span><span>${esc(s.phone)}</span></div>
       <div class="oline"><span>Holati</span><span class="status" style="background:${c[0]};color:${c[1]}">${c[2]}</span></div>
       <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
       <div class="oline"><span>Hujjatlar</span><span>${s.hasDocs ? `<a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank">Pasport/ID</a> · <a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank">Selfi</a>` : 'yuklanmagan'}</span></div>
@@ -1217,10 +1217,10 @@ async function renderAdmin(main){
         ${s.sellerStatus !== 'rad etildi' ? `<button class="addbtn" style="background:var(--or)" data-sst="${s.id}" data-st="rad etildi" data-sname="${esc(s.name)}">${s.sellerStatus === 'faol' ? 'Bloklash' : 'Rad etish'}</button>` : ''}
       </div>
       <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; };
-    const row = s => `<div class="oitem" style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(s.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(s.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(s.phone)}</div><div style="font-size:11px;color:var(--mut)">Mahsulot: ${s.productCount} ta · Buyurtma: ${s.orderCount} ta</div></div><div style="font-size:11.5px;color:${s.online?'#1E7E34':'var(--mut)'};font-weight:${s.online?800:500};text-align:right">${s.online?'● Onlayn':esc(ago(s.lastSeen))}</div></div>`;
+    const row = s => `<div class="oitem" data-row="${s.id}" style="display:flex;align-items:center;gap:12px;cursor:pointer"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(s.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(s.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(s.phone)}</div><div style="font-size:11px;color:var(--mut)">Mahsulot: ${s.productCount} ta · Buyurtma: ${s.orderCount} ta</div></div><div style="font-size:11.5px;color:${s.online?'#1E7E34':'var(--mut)'};font-weight:${s.online?800:500};text-align:right">${s.online?'● Onlayn':esc(ago(s.lastSeen))}</div></div>`;
     const recent = [...sellers].sort((x,y) => (y.id - x.id));
     const pending = sellers.filter(x => x.sellerStatus === 'kutilmoqda');
-    let all = false;
+    let all = false; const opened = new Set();
     const draw = () => {
       main.innerHTML = `<div class="sectitle">Sotuvchilar</div>
         <div style="background:#C8E6C9;color:#1B5E20;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:10px"><span>● Hozir onlayn</span><span style="font-size:22px">${online}</span></div>
@@ -1228,213 +1228,4 @@ async function renderAdmin(main){
           <div class="oitem" style="flex:1;margin:0"><div style="font-size:12px;color:var(--mut)">Bugun kirgan</div><div style="font-size:26px;font-weight:800">${today}</div></div>
           <div class="oitem" style="flex:1;margin:0"><div style="font-size:12px;color:var(--mut)">Ro'yxatdan o'tgan</div><div style="font-size:26px;font-weight:800">${total}</div></div>
         </div>` +
-        (!all && pending.length ? `<div style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--or)">⏳ Tasdiqlashni kutmoqda (${pending.length})</div>` + pending.map(card).join('') : '') +
-        `<div style="font-size:15px;font-weight:800;margin:6px 0 8px">${all ? 'Barcha sotuvchilar' : "Oxirgi qo'shilganlar"}</div>` +
-        (sellers.length ? (all ? sellers.map(card).join('') : recent.slice(0,4).map(row).join('')) : none("Hali sotuvchi yo'q")) +
-        (sellers.length > 4 || all ? `<button class="addbtn" id="sellersToggle" style="background:#fff;color:var(--ink);border:1.5px solid #ECE9F5">${all ? 'Yopish' : "Hammasini ko'rish"}</button>` : '');
-      const t2 = main.querySelector('#sellersToggle'); if(t2) t2.onclick = () => { all = !all; draw(); };
-      bindSellerActions();
-    };
-    const bindSellerActions = () => {
-    main.querySelectorAll('[data-sst]').forEach(b => b.onclick = async () => {
-      const ok = b.dataset.st === 'faol' ? `"${b.dataset.sname}" ni tasdiqlaysizmi? Rasmlarni tekshirdingizmi?` : `"${b.dataset.sname}" ni ${b.textContent.toLowerCase()}ni tasdiqlaysizmi? Mahsulotlari ko'rinmay qoladi.`;
-      if(!confirm(ok)) return;
-      try { await api('/api/admin/sellers/' + b.dataset.sst + '/status', { method:'POST', body:JSON.stringify({ status:b.dataset.st }) }); toast('Bajarildi ✅'); renderTab(); }
-      catch(e){ toast(e.message); }
-    });
-    main.querySelectorAll('[data-delseller]').forEach(b => b.onclick = async () => {
-      if(!confirm(`"${b.dataset.sname}" va uning barcha mahsulotlari o'chiriladi. Davom etasizmi?`)) return;
-      try { await api('/api/admin/sellers/' + b.dataset.delseller, { method:'DELETE' }); toast("Sotuvchi o'chirildi"); renderTab(); }
-      catch(e){ toast(e.message); }
-    });
-    };
-    draw();
-  } else if(t==='products'){
-    const { products } = await api('/api/admin/products');
-    main.innerHTML = `<div class="sectitle">Barcha mahsulotlar (${products.length})</div><div class="grid">${products.length ? products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
-      <span class="tag">${esc(p.cat)}</span><div class="pname">${esc(p.name)}</div><div class="pseller">${esc(p.sellerName)} · ${esc(p.sellerPhone)}</div>${priceHtml(p)}
-      <div style="font-size:10.5px;color:var(--mut)">Omborda: ${p.stock} dona</div><div style="font-size:10px;color:${dcolor(p)};margin-bottom:6px">${delivery(p)}</div>
-      <button class="addbtn" style="background:var(--red)" data-admindel="${p.id}">O'chirish</button></div></div>`).join('') : '<div class="empty" style="grid-column:1/-1">Mahsulot yo\'q</div>'}</div>`;
-    main.querySelectorAll('[data-admindel]').forEach(b => b.onclick = async () => {
-      if(!confirm("Bu mahsulotni o'chirishni tasdiqlaysizmi?")) return;
-      try { await api('/api/products/' + b.dataset.admindel, { method:'DELETE' }); toast("Mahsulot o'chirildi"); renderTab(); } catch(e){ toast(e.message); }
-    });
-  } else if(t==='buyers'){
-    const { buyers, online, today, total } = await api('/api/admin/buyers');
-    const ago = ts => { if(!ts) return '—'; const m = Math.floor((Date.now()-ts)/6e4); if(m<2) return 'Hozir'; if(m<60) return m+' daqiqa oldin'; const h = Math.floor(m/60); if(h<24) return h+' soat oldin'; const d = Math.floor(h/24); return d===1 ? 'Kecha' : d+' kun oldin'; };
-    const ini = n => String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
-    const recent = [...buyers].sort((x,y) => (y.id - x.id));
-    const row = b => `<div class="oitem" style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(b.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(b.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(b.phone)}</div><div style="font-size:11px;color:var(--mut)">Buyurtma: ${b.orderCount} ta · ${fmt(b.totalSpent)}</div></div><div style="font-size:11.5px;color:${b.online?'#1E7E34':'var(--mut)'};font-weight:${b.online?800:500};text-align:right">${b.online?'● Onlayn':esc(ago(b.lastSeen))}</div></div>`;
-    let all = false;
-    const draw = () => {
-      main.innerHTML = `<div class="sectitle">Xaridorlar</div>
-        <div style="background:#C8E6C9;color:#1B5E20;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:10px"><span>● Hozir onlayn</span><span style="font-size:22px">${online}</span></div>
-        <div style="display:flex;gap:10px;margin-bottom:14px">
-          <div class="oitem" style="flex:1;margin:0"><div style="font-size:12px;color:var(--mut)">Bugun kirgan</div><div style="font-size:26px;font-weight:800">${today}</div></div>
-          <div class="oitem" style="flex:1;margin:0"><div style="font-size:12px;color:var(--mut)">Ro'yxatdan o'tgan</div><div style="font-size:26px;font-weight:800">${total}</div></div>
-        </div>
-        <div style="font-size:15px;font-weight:800;margin-bottom:8px">${all ? 'Barcha xaridorlar' : "Oxirgi qo'shilganlar"}</div>` +
-        (buyers.length ? (all ? recent : recent.slice(0,4)).map(row).join('') : none("Hali xaridor yo'q")) +
-        (buyers.length > 4 ? `<button class="addbtn" id="buyersToggle" style="background:#fff;color:var(--ink);border:1.5px solid #ECE9F5">${all ? 'Yopish' : "Hammasini ko'rish"}</button>` : '');
-      const t2 = main.querySelector('#buyersToggle'); if(t2) t2.onclick = () => { all = !all; draw(); };
-    };
-    draw();
-  } else if(t==='orders'){
-    const { orders } = await api('/api/admin/orders');
-    main.innerHTML = `<div class="sectitle">Barcha buyurtmalar (${orders.length})</div>` + (orders.length ? orders.map(o => `<div class="oitem">
-      <div class="top"><span>№${o.id} · ${esc(o.buyerName)} · ${esc(o.phone)}</span><span class="status">${esc(o.status)}</span></div>
-      <div style="font-size:12px;color:var(--mut);margin-bottom:4px">📍 ${o.region ? esc(o.region) + ', ' : ''}${esc(o.address)}</div>
-      ${(o.items||[]).map(i => `<div class="oline"><span>${esc(i.name)} × ${i.qty}</span><span>${fmt(i.price*i.qty)}</span></div>`).join('')}
-      <div class="ototal"><span>Jami</span><span>${fmt(o.total)}</span></div>
-      <div class="oline" style="margin-top:6px"><span>To'lov</span><span>${payLabel(o)}</span></div>
-      ${o.hasReceipt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
-      <div class="field" style="margin-top:8px"><label>Admin izohi</label><textarea class="adminNote" data-order="${o.id}" rows="2" placeholder="Izoh yozing...">${esc(o.adminNote || '')}</textarea></div>
-      <button class="addbtn" style="background:var(--vd)" data-savenote="${o.id}">Izohni saqlash</button></div>`).join('') : none("Hali buyurtma yo'q"));
-    main.querySelectorAll('[data-fullimg]').forEach(im => im.onclick = () => window.open(im.src, '_blank'));
-    main.querySelectorAll('[data-savenote]').forEach(b => b.onclick = async () => {
-      const note = main.querySelector(`.adminNote[data-order="${b.dataset.savenote}"]`).value;
-      try { await api('/api/admin/orders/' + b.dataset.savenote, { method:'PATCH', body:JSON.stringify({ adminNote:note }) }); toast('Izoh saqlandi'); } catch(e){ toast(e.message); }
-    });
-  } else if(t==='payments'){
-    const { payments } = await api('/api/admin/payments');
-    const stc = s => s==='tasdiqlandi' ? ['#E6F4EA','var(--grn)'] : s==='rad etildi' ? ['#FDEDED','var(--red)'] : ['var(--vl)','var(--vd)'];
-    main.innerHTML = `<div class="sectitle">To'lovlar (${payments.length})</div>` + (payments.length ? payments.map(p => { const c = stc(p.status); return `<div class="oitem">
-      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(p.sellerName)}</span><span class="status" style="background:${c[0]};color:${c[1]}">${esc(p.status)}</span></div>
-      <div class="oline"><span>Summa</span><span style="font-weight:800">${fmt(p.amount)}</span></div>
-      <div style="font-size:11px;color:var(--mut);margin:4px 0">${new Date(p.createdAt).toLocaleString('uz')}</div>
-      ${p.receiptImage ? `<div class="imgpreview" style="height:160px"><img src="${esc(p.receiptImage)}" style="cursor:pointer" data-fullimg="1"></div>` : ''}
-      ${p.status==='kutilmoqda' ? `<div style="display:flex;gap:6px"><button class="addbtn" style="background:var(--grn)" data-approve="${p.id}">Tasdiqlash</button><button class="addbtn" style="background:var(--red)" data-reject="${p.id}">Rad etish</button></div>` : (p.adminNote ? `<div style="font-size:11.5px;color:var(--mut)">Izoh: ${esc(p.adminNote)}</div>` : '')}</div>`; }).join('') : none("Hali to'lov yo'q"));
-    main.querySelectorAll('[data-fullimg]').forEach(im => im.onclick = () => window.open(im.src, '_blank'));
-    const act = async (id, status, adminNote, msg) => {
-      try { await api('/api/admin/payments/' + id, { method:'PATCH', body:JSON.stringify({ status, adminNote }) }); toast(msg); renderTab(); } catch(e){ toast(e.message); }
-    };
-    main.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => act(b.dataset.approve, 'tasdiqlandi', '', "To'lov tasdiqlandi ✅"));
-    main.querySelectorAll('[data-reject]').forEach(b => b.onclick = () => act(b.dataset.reject, 'rad etildi', prompt('Rad etish sababi (ixtiyoriy):') || '', "To'lov rad etildi"));
-  }
-}
-
-// Buyurtmalar bo'limi har 12 soniyada jimgina yangilanadi (holat o'zgarsa ko'rinadi)
-setInterval(() => {
-  if(!S.user || S.tab !== 'orders' || document.hidden) return;
-  if(document.querySelector('input:focus,textarea:focus,select:focus')) return;
-  if(document.querySelector('[data-chatbox][style*="block"]')) return;
-  renderTab(true);
-}, 12000);
-
-// ---- Pastga tortib yangilash (sahifa qayta yuklanmaydi, ekran joyida turadi) ----
-(function(){
-  const box = document.createElement('div');
-  box.id = 'ptr';
-  box.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
-  document.body.appendChild(box);
-  const MAX = 90, TRIG = 70;
-  let y0 = 0, x0 = 0, dy = 0, pulling = false, busy = false, ok = false;
-  const place = (d, anim) => {
-    box.style.transition = anim ? 'transform .25s, opacity .25s' : 'none';
-    box.style.transform = 'translateY(' + (d - 50) + 'px) rotate(' + (d * 4) + 'deg)';
-    box.style.opacity = d > 8 ? Math.min(1, d / TRIG) : 0;
-  };
-  const blocked = t => !!(t && t.closest && t.closest('input,textarea,select,#adTrack,[data-chatbox],.modal,.overlay'));
-  document.addEventListener('touchstart', e => {
-    ok = false; pulling = false; dy = 0;
-    if(busy || !S.user || e.touches.length !== 1) return;
-    if((window.scrollY || document.documentElement.scrollTop) > 0) return;
-    if(S.tab === 'add' || blocked(e.target)) return;
-    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; ok = true;
-  }, { passive:true });
-  document.addEventListener('touchmove', e => {
-    if(!ok || busy) return;
-    const d = e.touches[0].clientY - y0;
-    if(!pulling){
-      if(Math.abs(e.touches[0].clientX - x0) > Math.abs(d) || d < 8){ if(d < -4) ok = false; return; }
-      if((window.scrollY || 0) > 0){ ok = false; return; }
-      pulling = true;
-    }
-    dy = Math.min(MAX, d * 0.5);
-    place(dy, false);
-    if(e.cancelable) e.preventDefault();
-  }, { passive:false });
-  async function end(){
-    if(!pulling){ ok = false; return; }
-    pulling = false; ok = false;
-    if(dy >= TRIG * 0.6 && !busy){
-      busy = true; box.classList.add('spin'); place(46, true);
-      try {
-        await Promise.all([
-          renderTab(true),
-          typeof loadUsd === 'function' ? loadUsd() : 0,
-          typeof loadInfo === 'function' ? loadInfo() : 0,
-          new Promise(r => setTimeout(r, 600))
-        ]);
-      } catch(e){}
-      box.classList.remove('spin'); busy = false;
-    }
-    dy = 0; place(0, true);
-  }
-  document.addEventListener('touchend', end, { passive:true });
-  document.addEventListener('touchcancel', end, { passive:true });
-})();
-
-// ---- Telefondagi "Orqaga" tugmasi ----
-// Ilova ichida bosilsa: ochiq sahifadan bir qadam orqaga qaytadi.
-// Bosh sahifada birinchi bosish ogohlantiradi, 2 soniya ichida ikkinchi bosish ilovani yopadi.
-let guard = false, exitArmed = false, exitTimer = null;
-const homeTab = () => (S.user && role()==='admin') ? 'sellers' : 'home';
-function parentTab(){
-  const t = S.tab;
-  if(t==='detail' || t==='store') return S.prev && S.prev!==t ? S.prev : homeTab();
-  if(['settings','notifs','help','contact','account','ads'].includes(t)) return 'profile';
-  if(t==='orders' && S.user && role()==='buyer') return 'profile';
-  return homeTab();
-}
-function pushGuard(){
-  if(guard || !S.user) return;
-  // Brauzer foydalanuvchi bosmasdan qo'shilgan yozuvni o'tkazib yuboradi, shuning uchun faqat bosishdan keyin qo'shamiz
-  if(navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
-  try { history.pushState({ sv:1 }, ''); guard = true; } catch(e){}
-}
-document.addEventListener('click', () => { exitArmed = false; clearTimeout(exitTimer); pushGuard(); }, true);
-window.addEventListener('popstate', () => {
-  guard = false;
-  if(!S.user) return;
-  if(S.tab !== homeTab()){
-    S.tab = parentTab();
-    S.sel = null; S.img = null; S.edit = null;
-    renderNav(); renderTab(); pushGuard();
-    return;
-  }
-  if(exitArmed){ exitArmed = false; clearTimeout(exitTimer); return; }
-  exitArmed = true; toast('Chiqish uchun yana bir marta bosing');
-  clearTimeout(exitTimer); exitTimer = setTimeout(() => { exitArmed = false; }, 2000);
-  pushGuard();
-});
-
-// ---- Ilovani ishga tushirish ----
-(async function init(){
-  if(S.token){
-    try {
-      const { user } = await api('/api/me'); S.user = user;
-      try {
-        const v = JSON.parse(sessionStorage.getItem('savdouz_view') || 'null');
-        if(v && v.uid === user.id && v.tab){
-          S.tab = v.tab; S.prev = v.prev || 'home'; S.sellerId = v.sellerId || null;
-          if(v.cat) S.cat = v.cat; if(v.search) S.search = v.search; if(v.sort) S.sort = v.sort;
-          if(v.tab === 'detail'){
-            const list = (await api('/api/products')).products || [];
-            S.sel = list.find(p => p.id === v.selId) || null;
-            if(!S.sel){ S.tab = S.prev && S.prev !== 'detail' ? S.prev : 'home'; }
-          }
-          if(v.tab === 'store' && !S.sellerId) S.tab = 'home';
-          if(v.tab === 'add') S.tab = 'home';
-          pendingScroll = Number(v.y) || 0;
-        }
-      } catch(e){ pendingScroll = null; }
-      renderApp(); return;
-    }
-    catch(e){ S.token = null; }
-  }
-  renderAuth();
-})();
-</script>
-</body>
-</html>
+        (!all && pending.length ? `<div style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--or)">⏳ Tasdiqlashni kutmoqda (${p
