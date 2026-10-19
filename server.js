@@ -1,4 +1,4 @@
-// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner)
+// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + xaridorlar faolligi
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
@@ -73,6 +73,21 @@ if (!MONGODB_URI) console.error("XATO: MONGODB_URI topilmadi. Render Environment
 const mongoClient = new MongoClient(MONGODB_URI);
 let stateCollection, cache = null, adminDone = false;
 const SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update('sv:' + String(MONGODB_URI)).digest('hex');
+
+// ---------- Xaridorlar faolligi (onlayn / bugun kirgan) ----------
+// Alohida "seen" kolleksiyasida saqlanadi, asosiy "state" hujjatiga tegmaydi.
+const seenMap = new Map(); let seenDirty = new Set();
+const seenCol = () => mongoClient.db('savdouz').collection('seen');
+const ONLINE_MS = 2 * 60 * 1000;
+function touchSeen(id) { seenMap.set(id, Date.now()); seenDirty.add(id); }
+async function loadSeen() { try { (await seenCol().find({}).toArray()).forEach(x => seenMap.set(x._id, x.t)); } catch (e) { console.error('seen yuklanmadi:', e.message); } }
+async function flushSeen() {
+  if (!seenDirty.size) return;
+  const ids = [...seenDirty]; seenDirty = new Set();
+  try { await seenCol().bulkWrite(ids.map(id => ({ updateOne: { filter: { _id: id }, update: { $set: { t: seenMap.get(id) } }, upsert: true } }))); }
+  catch (e) { ids.forEach(i => seenDirty.add(i)); console.error('seen saqlanmadi:', e.message); }
+}
+const startOfToday = () => { const d = new Date(Date.now() + 5 * 36e5); d.setUTCHours(0, 0, 0, 0); return d.getTime() - 5 * 36e5; }; // Toshkent (UTC+5)
 
 const COMMISSION_RATE = 0.01;
 const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
@@ -622,6 +637,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const db = await loadDB();
     const me = () => getUserFromReq(req, db);
+    const _tu = me(); if (_tu) touchSeen(_tu.id); // faollikni qayd etadi (onlayn / bugun kirgan)
     const M = req.method;
     let m;
     if (pathname === '/api/kurs' && M === 'GET') {
@@ -728,7 +744,7 @@ const server = http.createServer(async (req, res) => {
       if (role === 'seller' && (!String(idDoc || '').startsWith('data:') || !String(selfie || '').startsWith('data:'))) return sendJSON(res, 400, { error: "Pasport yoki ID karta va selfi rasmini yuklang" });
       if (db.users.find(u => u.phone === phone)) return sendJSON(res, 400, { error: "Bu raqam allaqachon ro'yxatdan o'tgan" });
       const { salt, hash } = hashPassword(password);
-      const user = { id: db.nextId.user++, name, phone, role, salt, hash, paidCommission: 0, favorites: [] };
+      const user = { id: db.nextId.user++, name, phone, role, salt, hash, paidCommission: 0, favorites: [], createdAt: new Date().toISOString() };
       if (role === 'seller') {
         user.accountNumber = 'SU' + String(user.id).padStart(8, '0'); user.balance = 0; user.txs = [];
         user.sellerStatus = 'kutilmoqda'; // admin tasdiqlamaguncha mahsulot qo'sha olmaydi
@@ -736,6 +752,7 @@ const server = http.createServer(async (req, res) => {
       db.users.push(user);
       if (role === 'seller') await mongoClient.db('savdouz').collection('sellerdocs').replaceOne({ _id: user.id }, { _id: user.id, idDoc, selfie, createdAt: new Date().toISOString() }, { upsert: true });
       await saveDB(db);
+      touchSeen(user.id);
       if (role === 'seller') pushAdmins(db, { title: 'Yangi sotuvchi', body: user.name + ' tasdiqlashni kutmoqda', tag: 'seller' });
       return sendJSON(res, 200, { token: makeToken(user.id), user: publicUser(user) });
     }
@@ -743,6 +760,7 @@ const server = http.createServer(async (req, res) => {
       const { phone, password } = await readBody(req);
       const user = db.users.find(u => u.phone === phone);
       if (!user || !verifyPassword(password || '', user.salt, user.hash)) return sendJSON(res, 401, { error: "Telefon raqam yoki parol xato" });
+      touchSeen(user.id);
       return sendJSON(res, 200, { token: makeToken(user.id), user: publicUser(user) });
     }
     if (pathname === '/api/me' && M === 'GET') {
@@ -1006,12 +1024,18 @@ const server = http.createServer(async (req, res) => {
         await mongoClient.db('savdouz').collection('sellerdocs').deleteOne({ _id: sid }).catch(() => {});
         return sendJSON(res, 200, { ok: true });
       }
+      // Xaridorlar: onlayn soni, bugun kirganlar, jami ro'yxatdan o'tganlar va ro'yxat
       if (pathname === '/api/admin/buyers' && M === 'GET') {
+        const now = Date.now(), t0 = startOfToday();
         const buyers = db.users.filter(u => u.role === 'buyer').map(b => {
-          const mo = db.orders.filter(o => o.buyerId === b.id);
-          return { id: b.id, name: b.name, phone: b.phone, orderCount: mo.length, totalSpent: mo.reduce((s, o) => s + o.total, 0) };
+          const mo = db.orders.filter(o => o.buyerId === b.id), ls = seenMap.get(b.id) || null;
+          return { id: b.id, name: b.name, phone: b.phone, orderCount: mo.length, totalSpent: mo.reduce((s, o) => s + o.total, 0), createdAt: b.createdAt || null, lastSeen: ls, online: !!ls && now - ls < ONLINE_MS };
         });
-        return sendJSON(res, 200, { buyers });
+        return sendJSON(res, 200, {
+          buyers, total: buyers.length,
+          online: buyers.filter(b => b.online).length,
+          today: buyers.filter(b => b.lastSeen && b.lastSeen >= t0).length
+        });
       }
       if (pathname === '/api/admin/products' && M === 'GET') {
         return sendJSON(res, 200, { products: db.products.map(p => { const s = db.users.find(u => u.id === p.sellerId); return { ...pub(p), sellerName: s ? s.name : "Noma'lum", sellerPhone: s ? s.phone : '' }; }) });
@@ -1153,6 +1177,7 @@ const server = http.createServer(async (req, res) => {
 
 connectMongo().then(() => {
   server.listen(PORT, () => console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`));
+  loadSeen(); setInterval(flushSeen, 60 * 1000); // faollik ma'lumotini har daqiqada saqlaydi
   cleanupOld();
   setInterval(cleanupOld, 60 * 60 * 1000); // har soatda tekshiradi
 }).catch(err => { console.error('MongoDB ulanishda xato:', err.message); process.exit(1); });
