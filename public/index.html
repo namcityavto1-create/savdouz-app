@@ -1194,12 +1194,15 @@ async function renderAdmin(main){
   const none = m => `<div class="empty">${m}</div>`;
   if(t==='ads') return adsAdmin(main);
   if(t==='sellers'){
-    const { sellers } = await api('/api/admin/sellers');
+    const sellersMeta = await api('/api/admin/sellers'); const sellers = sellersMeta.sellers;
     // Tasdiqlashni kutayotganlar eng tepada
     sellers.sort((a, b) => (a.sellerStatus === 'kutilmoqda' ? 0 : 1) - (b.sellerStatus === 'kutilmoqda' ? 0 : 1));
     const pc = sellers.filter(s => s.sellerStatus === 'kutilmoqda').length;
     if(S.pend !== pc){ S.pend = pc; renderNav(); }
-    main.innerHTML = `<div class="sectitle">Sotuvchilar (${sellers.length})</div>` + (sellers.length ? sellers.map(s => { const c = SST[s.sellerStatus] || SST.faol; return `<div class="oitem">
+    const { online = 0, today = 0, total = sellers.length } = sellersMeta;
+    const ago = ts => { if(!ts) return '—'; const m = Math.floor((Date.now()-ts)/6e4); if(m<2) return 'Hozir'; if(m<60) return m+' daqiqa oldin'; const h = Math.floor(m/60); if(h<24) return h+' soat oldin'; const d = Math.floor(h/24); return d===1 ? 'Kecha' : d+' kun oldin'; };
+    const ini = n => String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
+    const card = s => { const c = SST[s.sellerStatus] || SST.faol; return `<div class="oitem">
       <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Qarz limiti</span>' : ''}</span><span>${esc(s.phone)}</span></div>
       <div class="oline"><span>Holati</span><span class="status" style="background:${c[0]};color:${c[1]}">${c[2]}</span></div>
       <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
@@ -1213,7 +1216,26 @@ async function renderAdmin(main){
         ${s.sellerStatus !== 'faol' ? `<button class="addbtn" style="background:var(--grn)" data-sst="${s.id}" data-st="faol" data-sname="${esc(s.name)}">Tasdiqlash</button>` : ''}
         ${s.sellerStatus !== 'rad etildi' ? `<button class="addbtn" style="background:var(--or)" data-sst="${s.id}" data-st="rad etildi" data-sname="${esc(s.name)}">${s.sellerStatus === 'faol' ? 'Bloklash' : 'Rad etish'}</button>` : ''}
       </div>
-      <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; }).join('') : none("Hali sotuvchi yo'q"));
+      <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; };
+    const row = s => `<div class="oitem" style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(s.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(s.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(s.phone)}</div><div style="font-size:11px;color:var(--mut)">Mahsulot: ${s.productCount} ta · Buyurtma: ${s.orderCount} ta</div></div><div style="font-size:11.5px;color:${s.online?'#1E7E34':'var(--mut)'};font-weight:${s.online?800:500};text-align:right">${s.online?'● Onlayn':esc(ago(s.lastSeen))}</div></div>`;
+    const recent = [...sellers].sort((x,y) => (y.id - x.id));
+    const pending = sellers.filter(x => x.sellerStatus === 'kutilmoqda');
+    let all = false;
+    const draw = () => {
+      main.innerHTML = `<div class="sectitle">Sotuvchilar</div>
+        <div style="background:#C8E6C9;color:#1B5E20;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:10px"><span>● Hozir onlayn</span><span style="font-size:22px">${online}</span></div>
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <div class="oitem" style="flex:1;margin:0"><div style="font-size:12px;color:var(--mut)">Bugun kirgan</div><div style="font-size:26px;font-weight:800">${today}</div></div>
+          <div class="oitem" style="flex:1;margin:0"><div style="font-size:12px;color:var(--mut)">Ro'yxatdan o'tgan</div><div style="font-size:26px;font-weight:800">${total}</div></div>
+        </div>` +
+        (!all && pending.length ? `<div style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--or)">⏳ Tasdiqlashni kutmoqda (${pending.length})</div>` + pending.map(card).join('') : '') +
+        `<div style="font-size:15px;font-weight:800;margin:6px 0 8px">${all ? 'Barcha sotuvchilar' : "Oxirgi qo'shilganlar"}</div>` +
+        (sellers.length ? (all ? sellers.map(card).join('') : recent.slice(0,4).map(row).join('')) : none("Hali sotuvchi yo'q")) +
+        (sellers.length > 4 || all ? `<button class="addbtn" id="sellersToggle" style="background:#fff;color:var(--ink);border:1.5px solid #ECE9F5">${all ? 'Yopish' : "Hammasini ko'rish"}</button>` : '');
+      const t2 = main.querySelector('#sellersToggle'); if(t2) t2.onclick = () => { all = !all; draw(); };
+      bindSellerActions();
+    };
+    const bindSellerActions = () => {
     main.querySelectorAll('[data-sst]').forEach(b => b.onclick = async () => {
       const ok = b.dataset.st === 'faol' ? `"${b.dataset.sname}" ni tasdiqlaysizmi? Rasmlarni tekshirdingizmi?` : `"${b.dataset.sname}" ni ${b.textContent.toLowerCase()}ni tasdiqlaysizmi? Mahsulotlari ko'rinmay qoladi.`;
       if(!confirm(ok)) return;
@@ -1225,6 +1247,8 @@ async function renderAdmin(main){
       try { await api('/api/admin/sellers/' + b.dataset.delseller, { method:'DELETE' }); toast("Sotuvchi o'chirildi"); renderTab(); }
       catch(e){ toast(e.message); }
     });
+    };
+    draw();
   } else if(t==='products'){
     const { products } = await api('/api/admin/products');
     main.innerHTML = `<div class="sectitle">Barcha mahsulotlar (${products.length})</div><div class="grid">${products.length ? products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
