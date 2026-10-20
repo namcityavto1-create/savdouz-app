@@ -234,7 +234,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v5.4';
+const APP_VERSION = 'v5.5';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -1454,11 +1454,14 @@ function loadFaceApi(){
     var sc = document.createElement('script'); sc.src = FACE_CDN + '/dist/face-api.min.js';
     sc.onload = function(){
       if(typeof faceapi === 'undefined'){ rej(new Error('NOFILES')); return; }
-      Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceLandmark68Net.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceRecognitionNet.loadFromUri(FACE_CDN + '/weights')]).then(res, function(){ rej(new Error('NOFILES')); });
+      window.__faceStep = 'Kutubxona yuklandi, modellar olinmoqda';
+      var tf = faceapi.tf, ready = (tf && tf.setBackend) ? Promise.resolve(tf.setBackend('cpu')).then(function(){ return tf.ready(); }) : Promise.resolve();
+      ready.catch(function(){}).then(function(){ return Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceLandmark68Net.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceRecognitionNet.loadFromUri(FACE_CDN + '/weights')]); }).then(res, function(){ rej(new Error('NOFILES')); });
     };
     sc.onerror = function(){ rej(new Error('NOFILES')); };
     document.head.appendChild(sc);
-    setTimeout(function(){ rej(new Error('NOFILES')); }, 90000);
+    window.__faceStep = 'Kutubxona yuklanmoqda';
+    setTimeout(function(){ rej(new Error('NOFILES')); }, 60000);
   }).catch(function(e){ __faceP = null; throw e; });
   return __faceP;
 }
@@ -1467,8 +1470,10 @@ async function runFace(id, btn){
   var out = document.getElementById('fr-' + id); btn.disabled = true;
   function say(t, c){ out.textContent = t; out.style.color = c || ''; }
   try{
-    say('Modellar yuklanmoqda… (birinchi marta 10–20 soniya)');
-    await loadFaceApi();
+    var t0 = Date.now();
+    var tm = setInterval(function(){ say((window.__faceStep || 'Yuklanmoqda') + '… ' + Math.round((Date.now() - t0) / 1000) + ' s (v5.5)'); }, 1000);
+    say('Yuklanmoqda… (v5.5)');
+    try{ await loadFaceApi(); } finally { clearInterval(tm); }
     say('Rasmlar tekshirilmoqda…');
     var tk = encodeURIComponent(S.token), b = '/api/admin/sellers/' + id + '/doc/';
     var a = await imgLoad(b + 'id?t=' + tk), c = await imgLoad(b + 'selfie?t=' + tk);
