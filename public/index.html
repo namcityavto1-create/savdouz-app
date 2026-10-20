@@ -1207,6 +1207,11 @@ async function renderAdmin(main){
       <div class="oline"><span>Holati</span><span class="status" style="background:${c[0]};color:${c[1]}">${c[2]}</span></div>
       <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
       <div class="oline"><span>Hujjatlar</span><span>${s.hasDocs ? `<a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank">Pasport/ID</a> · <a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank">Selfi</a>` : 'yuklanmagan'}</span></div>
+      ${s.hasDocs ? `<div style="margin:6px 0 10px"><div style="display:flex;gap:8px">
+        <div style="flex:1;min-width:0;text-align:center"><div style="font-size:11.5px;font-weight:700;opacity:.7;margin-bottom:4px">Pasport / ID</div><a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank"><img id="fi-${s.id}" loading="lazy" src="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" style="width:100%;height:210px;object-fit:contain;background:#F1EDFE;border-radius:12px"></a></div>
+        <div style="flex:1;min-width:0;text-align:center"><div style="font-size:11.5px;font-weight:700;opacity:.7;margin-bottom:4px">Selfi</div><a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank"><img id="fs-${s.id}" loading="lazy" src="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" style="width:100%;height:210px;object-fit:contain;background:#F1EDFE;border-radius:12px"></a></div></div>
+        <button class="addbtn" style="background:#4E2FD9;margin-top:8px" data-face="${s.id}">🔍 Yuzlarni solishtirish</button>
+        <div id="fr-${s.id}" style="margin-top:6px;font-size:13px;font-weight:700;text-align:center"></div></div>` : ''}
       <div class="oline"><span>Balans</span><span>${fmt(s.balance)}</span></div>
       <div class="oline"><span>Mahsulotlar</span><span>${s.productCount} ta</span></div><div class="oline"><span>Buyurtmalar</span><span>${s.orderCount} ta</span></div>
       <div class="oline"><span>Jami savdo</span><span>${fmt(s.totalSales)}</span></div><div class="oline"><span>Jami komissiya</span><span>${fmt(s.totalCommission)}</span></div>
@@ -1238,6 +1243,7 @@ async function renderAdmin(main){
     const bindSellerActions = () => {
     main.querySelectorAll('[data-row]').forEach(r => r.onclick = () => { opened.add(Number(r.dataset.row)); draw(); });
     main.querySelectorAll('[data-close]').forEach(r => r.onclick = () => { opened.delete(Number(r.dataset.close)); draw(); });
+    main.querySelectorAll('[data-face]').forEach(b => b.onclick = () => runFace(b.dataset.face, b));
     main.querySelectorAll('[data-sst]').forEach(b => b.onclick = async () => {
       const ok = b.dataset.st === 'faol' ? `"${b.dataset.sname}" ni tasdiqlaysizmi? Rasmlarni tekshirdingizmi?` : `"${b.dataset.sname}" ni ${b.textContent.toLowerCase()}ni tasdiqlaysizmi? Mahsulotlari ko'rinmay qoladi.`;
       if(!confirm(ok)) return;
@@ -1440,6 +1446,44 @@ window.addEventListener('popstate', () => {
   }
   renderAuth();
 })();
+var __faceP = null;
+function loadFaceApi(){
+  if(__faceP) return __faceP;
+  __faceP = new Promise(function(res, rej){
+    var sc = document.createElement('script'); sc.src = '/face/face-api.min.js';
+    sc.onload = function(){
+      Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri('/face/models'), faceapi.nets.faceLandmark68Net.loadFromUri('/face/models'), faceapi.nets.faceRecognitionNet.loadFromUri('/face/models')]).then(res, rej);
+    };
+    sc.onerror = function(){ rej(new Error('NOFILES')); };
+    document.head.appendChild(sc);
+  }).catch(function(e){ __faceP = null; throw e; });
+  return __faceP;
+}
+function imgLoad(src){ return new Promise(function(res, rej){ var i = new Image(); i.onload = function(){ res(i); }; i.onerror = function(){ rej(new Error('Rasm yuklanmadi')); }; i.src = src; }); }
+async function runFace(id, btn){
+  var out = document.getElementById('fr-' + id); btn.disabled = true;
+  function say(t, c){ out.textContent = t; out.style.color = c || ''; }
+  try{
+    say('Modellar yuklanmoqda… (birinchi marta 10–20 soniya)');
+    await loadFaceApi();
+    say('Rasmlar tekshirilmoqda…');
+    var tk = encodeURIComponent(S.token), b = '/api/admin/sellers/' + id + '/doc/';
+    var a = await imgLoad(b + 'id?t=' + tk), c = await imgLoad(b + 'selfie?t=' + tk);
+    var opt = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 });
+    var da = await faceapi.detectSingleFace(a, opt).withFaceLandmarks().withFaceDescriptor();
+    var dc = await faceapi.detectSingleFace(c, opt).withFaceLandmarks().withFaceDescriptor();
+    if(!da && !dc) return say('❓ Ikkala rasmda ham yuz topilmadi', '#E08700');
+    if(!da) return say('❓ Pasport rasmida yuz topilmadi', '#E08700');
+    if(!dc) return say('❓ Selfida yuz topilmadi', '#E08700');
+    var d = faceapi.euclideanDistance(da.descriptor, dc.descriptor);
+    var pct = Math.max(0, Math.min(100, Math.round((1 - d / 0.9) * 100)));
+    if(d < 0.45) say('✅ Mos keladi (o\u2018xshashlik ~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#1E7E34');
+    else if(d < 0.6) say('⚠️ Shubhali, o\u2018zingiz tekshiring (~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#E08700');
+    else say('❌ Mos kelmaydi (~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#D62F4B');
+  }catch(e){
+    say(e.message === 'NOFILES' ? "Model fayllari topilmadi: public/face/ papkasini qo'ying" : 'Xato: ' + e.message, '#D62F4B');
+  }finally{ btn.disabled = false; }
+}
 function showRetry(msg){
   var d = document.getElementById('retryBox') || document.createElement('div');
   d.id = 'retryBox';
