@@ -234,7 +234,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v5.3';
+const APP_VERSION = 'v5.4';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -1446,14 +1446,15 @@ window.addEventListener('popstate', () => {
   }
   renderAuth();
 })();
+var FACE_CDN = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2';
 var __faceP = null;
 function loadFaceApi(){
   if(__faceP) return __faceP;
   __faceP = new Promise(function(res, rej){
-    var sc = document.createElement('script'); sc.src = '/face/face-api.min.js';
+    var sc = document.createElement('script'); sc.src = FACE_CDN + '/dist/face-api.min.js';
     sc.onload = function(){
       if(typeof faceapi === 'undefined'){ rej(new Error('NOFILES')); return; }
-      Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri('/face/models'), faceapi.nets.faceLandmark68Net.loadFromUri('/face/models'), faceapi.nets.faceRecognitionNet.loadFromUri('/face/models')]).then(res, function(){ rej(new Error('NOFILES')); });
+      Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceLandmark68Net.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceRecognitionNet.loadFromUri(FACE_CDN + '/weights')]).then(res, function(){ rej(new Error('NOFILES')); });
     };
     sc.onerror = function(){ rej(new Error('NOFILES')); };
     document.head.appendChild(sc);
@@ -1483,7 +1484,7 @@ async function runFace(id, btn){
     else if(d < 0.6) say('⚠️ Shubhali, o\u2018zingiz tekshiring (~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#E08700');
     else say('❌ Mos kelmaydi (~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#D62F4B');
   }catch(e){
-    say(e.message === 'NOFILES' ? "Model fayllari topilmadi: public/face/ papkasini qo'ying" : 'Xato: ' + e.message, '#D62F4B');
+    say(e.message === 'NOFILES' ? "Modellarni internetdan yuklab bo'lmadi. Aloqani tekshirib, qayta urinib ko'ring" : 'Xato: ' + e.message, '#D62F4B');
   }finally{ btn.disabled = false; }
 }
 function showRetry(msg){
