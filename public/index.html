@@ -1503,5 +1503,27 @@ function showRetry(msg){
   window.addEventListener('touchmove',hide,{passive:true,capture:true});
 })();
 </script>
+<script>
+/* Hujjat rasmlari ilova ichida ochiladi; "Orqaga" bossangiz faqat rasm yopiladi, ilovadan chiqmaydi */
+(function(){
+  var ov=null;
+  function close(fromPop){ if(!ov) return; ov.remove(); ov=null; if(!fromPop && history.state && history.state.zoom) history.back(); }
+  function open(src){
+    if(ov) return;
+    ov=document.createElement('div');
+    ov.style.cssText='position:fixed;left:0;right:0;top:0;bottom:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom';
+    ov.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:100%;object-fit:contain"><button style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;width:44px;height:44px;border:none;border-radius:50%;background:#fff;color:#150F2E;font-size:22px;font-weight:800">\u2715</button>';
+    ov.onclick=function(){ close(false); };
+    document.body.appendChild(ov);
+    try{ history.pushState({zoom:1},''); }catch(e){}
+  }
+  window.addEventListener('popstate',function(){ close(true); });
+  document.addEventListener('click',function(e){
+    var a=e.target.closest&&e.target.closest('a[href*="/doc/"]');
+    if(!a) return;
+    e.preventDefault(); e.stopPropagation(); open(a.getAttribute('href'));
+  },true);
+})();
+</script>
 </body>
 </html>
