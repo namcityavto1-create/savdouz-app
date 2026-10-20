@@ -1452,10 +1452,12 @@ function loadFaceApi(){
   __faceP = new Promise(function(res, rej){
     var sc = document.createElement('script'); sc.src = '/face/face-api.min.js';
     sc.onload = function(){
-      Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri('/face/models'), faceapi.nets.faceLandmark68Net.loadFromUri('/face/models'), faceapi.nets.faceRecognitionNet.loadFromUri('/face/models')]).then(res, rej);
+      if(typeof faceapi === 'undefined'){ rej(new Error('NOFILES')); return; }
+      Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri('/face/models'), faceapi.nets.faceLandmark68Net.loadFromUri('/face/models'), faceapi.nets.faceRecognitionNet.loadFromUri('/face/models')]).then(res, function(){ rej(new Error('NOFILES')); });
     };
     sc.onerror = function(){ rej(new Error('NOFILES')); };
     document.head.appendChild(sc);
+    setTimeout(function(){ rej(new Error('NOFILES')); }, 90000);
   }).catch(function(e){ __faceP = null; throw e; });
   return __faceP;
 }
