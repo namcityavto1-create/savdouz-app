@@ -1,4 +1,4 @@
-// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + xaridorlar va sotuvchilar faolligi
+// SavdoUz backend v4 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + xaridorlar va sotuvchilar faolligi + adminlar huquqlari
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
@@ -257,6 +257,38 @@ async function ensureAdmin(db) {
 }
 const requireAdmin = (req, db) => { const u = getUserFromReq(req, db); return u && u.role === 'admin' ? u : null; };
 
+// ---------- Adminlar huquqlari ----------
+// Asosiy admin (ADMIN_PHONE) hamma huquqqa ega. Boshqa adminlarga huquqlar alohida beriladi.
+// Eski adminlar (perms yo'q) hozirgidek hamma narsani ko'radi, faqat adminlarni boshqara olmaydi.
+const PERM_LIST = [
+  { key: 'sellers', label: "Sotuvchilar" },
+  { key: 'balance', label: "Sotuvchi balansi" },
+  { key: 'products', label: "Mahsulotlar" },
+  { key: 'buyers', label: "Xaridorlar" },
+  { key: 'orders', label: "Buyurtmalar" },
+  { key: 'payments', label: "To'lovlar" },
+  { key: 'ads', label: "Reklamalar" },
+  { key: 'admins', label: "Admin qo'shish" }
+];
+const PERM_KEYS = PERM_LIST.map(p => p.key);
+const isOwner = u => !!u && u.phone === ADMIN_PHONE;
+const permsOf = u => isOwner(u) ? PERM_KEYS : (Array.isArray(u.perms) ? u.perms.filter(k => PERM_KEYS.includes(k)) : PERM_KEYS.filter(k => k !== 'admins'));
+// need — bitta huquq yoki huquqlar ro'yxati (ulardan biri bo'lsa yetarli)
+const hasPerm = (u, need) => !need || (Array.isArray(need) ? need : [need]).some(k => permsOf(u).includes(k));
+// Admin yo'li qaysi huquqni talab qilishini aniqlaydi
+function adminPermFor(p) {
+  if (/^\/api\/admin\/sellers\/\d+\/(deposit|withdraw)$/.test(p)) return 'balance';
+  if (p === '/api/admin/sellers') return ['sellers', 'balance']; // balans oynasi ham shu ro'yxatdan foydalanadi
+  if (/^\/api\/admin\/(pending|sellers)(\/|$)/.test(p)) return 'sellers';
+  if (/^\/api\/admin\/products/.test(p)) return 'products';
+  if (/^\/api\/admin\/buyers/.test(p)) return 'buyers';
+  if (/^\/api\/admin\/orders/.test(p)) return 'orders';
+  if (/^\/api\/admin\/payments/.test(p)) return 'payments';
+  if (/^\/api\/admin\/ads/.test(p)) return 'ads';
+  if (/^\/api\/admin\/admins/.test(p)) return 'admins';
+  return null;
+}
+
 // ---------- Yordamchilar ----------
 function sendJSON(res, status, data) {
   res.writeHead(status, {
@@ -279,6 +311,7 @@ const sellerStatusOf = u => u.sellerStatus || 'faol';
 const publicUser = u => {
   const r = { id: u.id, name: u.name, phone: u.phone, role: u.role };
   if (u.role === 'seller') r.sellerStatus = sellerStatusOf(u);
+  if (u.role === 'admin') r.perms = permsOf(u);
   return r;
 };
 const isSellerActive = (db, sid) => { const s = db.users.find(u => u.id === sid && u.role === 'seller'); return !!s && sellerStatusOf(s) === 'faol'; };
@@ -821,6 +854,7 @@ const server = http.createServer(async (req, res) => {
       const i = db.products.findIndex(p => p.id === Number(m[1]));
       if (i === -1) return sendJSON(res, 404, { error: "Mahsulot topilmadi" });
       if (db.products[i].sellerId !== u.id && u.role !== 'admin') return sendJSON(res, 403, { error: "Bu sizning mahsulotingiz emas" });
+      if (db.products[i].sellerId !== u.id && u.role === 'admin' && !hasPerm(u, 'products')) return sendJSON(res, 403, { error: "Mahsulotlarni boshqarish huquqingiz yo'q" });
       db.products.splice(i, 1); await saveDB(db);
       return sendJSON(res, 200, { ok: true });
     }
@@ -918,6 +952,53 @@ const server = http.createServer(async (req, res) => {
     if (pathname.startsWith('/api/admin/')) {
       const admin = requireAdmin(req, db);
       if (!admin) return sendJSON(res, 403, { error: "Faqat admin uchun" });
+      // Huquq tekshiruvi: admin faqat o'ziga berilgan bo'limlarga kira oladi
+      if (!hasPerm(admin, adminPermFor(pathname))) return sendJSON(res, 403, { error: "Bu bo'lim uchun huquqingiz yo'q" });
+
+      // ---- Adminlarni boshqarish (faqat "Admin qo'shish" huquqi borlar) ----
+      if (pathname === '/api/admin/admins' && M === 'GET') {
+        const admins = db.users.filter(u => u.role === 'admin').map(u => ({
+          id: u.id, name: u.name, phone: u.phone, owner: isOwner(u), perms: permsOf(u), createdAt: u.createdAt || null
+        }));
+        return sendJSON(res, 200, { admins, permList: PERM_LIST, myPerms: permsOf(admin) });
+      }
+      if (pathname === '/api/admin/admins' && M === 'POST') {
+        const { name, phone, password, perms } = await readBody(req);
+        if (!String(name || '').trim()) return sendJSON(res, 400, { error: "Ismni kiriting" });
+        let ph = String(phone || '').replace(/[^\d+]/g, '');
+        if (/^\d{9}$/.test(ph)) ph = '+998' + ph;
+        else if (ph && ph[0] !== '+') ph = '+' + ph;
+        if (!/^\+\d{9,15}$/.test(ph)) return sendJSON(res, 400, { error: "Telefon raqamni to'g'ri kiriting" });
+        if (String(password || '').length < 6) return sendJSON(res, 400, { error: "Parol kamida 6 ta belgi bo'lsin" });
+        if (db.users.find(u => u.phone === ph)) return sendJSON(res, 400, { error: "Bu raqam allaqachon ro'yxatdan o'tgan" });
+        const mine = permsOf(admin);
+        const list = (Array.isArray(perms) ? perms : []).filter(k => PERM_KEYS.includes(k));
+        if (list.some(k => !mine.includes(k))) return sendJSON(res, 403, { error: "O'zingizda yo'q huquqni bera olmaysiz" });
+        const h = hashPassword(String(password));
+        db.users.push({ id: db.nextId.user++, name: String(name).trim(), phone: ph, role: 'admin', salt: h.salt, hash: h.hash, paidCommission: 0, favorites: [], perms: [...new Set(list)], createdAt: new Date().toISOString() });
+        await saveDB(db);
+        return sendJSON(res, 200, { ok: true });
+      }
+      if ((m = pathname.match(/^\/api\/admin\/admins\/(\d+)$/)) && (M === 'PATCH' || M === 'DELETE')) {
+        const target = db.users.find(u => u.id === Number(m[1]) && u.role === 'admin');
+        if (!target) return sendJSON(res, 404, { error: "Admin topilmadi" });
+        if (isOwner(target)) return sendJSON(res, 403, { error: "Asosiy adminni o'zgartirib bo'lmaydi" });
+        if (M === 'DELETE') {
+          if (target.id === admin.id) return sendJSON(res, 400, { error: "O'zingizni o'chira olmaysiz" });
+          db.users.splice(db.users.indexOf(target), 1);
+          await saveDB(db);
+          return sendJSON(res, 200, { ok: true });
+        }
+        const { perms } = await readBody(req);
+        const mine = permsOf(admin);
+        const list = (Array.isArray(perms) ? perms : []).filter(k => PERM_KEYS.includes(k));
+        if (list.some(k => !mine.includes(k))) return sendJSON(res, 403, { error: "O'zingizda yo'q huquqni bera olmaysiz" });
+        // Sizda yo'q huquqlar (agar target'da bo'lsa) o'zgarishsiz qoladi
+        const keep = permsOf(target).filter(k => !mine.includes(k));
+        target.perms = [...new Set([...keep, ...list])];
+        await saveDB(db);
+        return sendJSON(res, 200, { ok: true, perms: target.perms });
+      }
 
       // Tasdiqlashni kutayotgan sotuvchilar soni (admin ekranida belgi va ovoz uchun)
       if (pathname === '/api/admin/pending' && M === 'GET') {
