@@ -234,7 +234,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v5.5';
+const APP_VERSION = 'v5.7';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -1190,7 +1190,7 @@ async function adsAdmin(main){
 }
 
 async function adminsAdmin(main){
-  const { admins, perms } = await api('/api/admin/admins');
+  const ar = await api('/api/admin/admins'); const admins = ar.admins || [], perms = ar.permList || ar.perms || [];
   const mine = new Set((S.user.perms || perms.map(p => p.key)));
   const boxes = (sel, id) => perms.filter(p => mine.has(p.key)).map(p => `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px"><input type="checkbox" data-pk="${p.key}" ${sel.includes(p.key) ? 'checked' : ''} style="width:20px;height:20px;flex:none"><span>${esc(p.label)}</span></label>`).join('');
   main.innerHTML = `<div class="addform">
