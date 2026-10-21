@@ -2,6 +2,7 @@
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
+require('./features-api.js');
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
 const { MongoClient } = require('mongodb');
 
