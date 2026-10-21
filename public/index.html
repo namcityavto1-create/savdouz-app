@@ -1446,23 +1446,44 @@ window.addEventListener('popstate', () => {
   }
   renderAuth();
 })();
-var FACE_CDN = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2';
+var FACE_SRC = ['/face', 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2', 'https://unpkg.com/face-api.js@0.22.2', 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2'];
 var __faceP = null;
+function faceTimeout(p, ms, what){
+  return new Promise(function(res, rej){
+    var t = setTimeout(function(){ rej(new Error(what + ' vaqt tugadi')); }, ms);
+    p.then(function(v){ clearTimeout(t); res(v); }, function(e){ clearTimeout(t); rej(e); });
+  });
+}
+function faceScript(base){
+  return new Promise(function(res, rej){
+    var sc = document.createElement('script');
+    sc.src = base + (base === '/face' ? '/face-api.min.js' : '/dist/face-api.min.js');
+    sc.onload = function(){ if(typeof faceapi === 'undefined'){ sc.remove(); rej(new Error('kutubxona topilmadi')); } else res(); };
+    sc.onerror = function(){ sc.remove(); rej(new Error('kutubxona yuklanmadi')); };
+    document.head.appendChild(sc);
+  });
+}
 function loadFaceApi(){
   if(__faceP) return __faceP;
-  __faceP = new Promise(function(res, rej){
-    var sc = document.createElement('script'); sc.src = FACE_CDN + '/dist/face-api.min.js';
-    sc.onload = function(){
-      if(typeof faceapi === 'undefined'){ rej(new Error('NOFILES')); return; }
-      window.__faceStep = 'Kutubxona yuklandi, modellar olinmoqda';
-      var tf = faceapi.tf, ready = (tf && tf.setBackend) ? Promise.resolve(tf.setBackend('cpu')).then(function(){ return tf.ready(); }) : Promise.resolve();
-      ready.catch(function(){}).then(function(){ return Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceLandmark68Net.loadFromUri(FACE_CDN + '/weights'), faceapi.nets.faceRecognitionNet.loadFromUri(FACE_CDN + '/weights')]); }).then(res, function(){ rej(new Error('NOFILES')); });
-    };
-    sc.onerror = function(){ rej(new Error('NOFILES')); };
-    document.head.appendChild(sc);
-    window.__faceStep = 'Kutubxona yuklanmoqda';
-    setTimeout(function(){ rej(new Error('NOFILES')); }, 60000);
-  }).catch(function(e){ __faceP = null; throw e; });
+  __faceP = (async function(){
+    var errs = [];
+    for(var i = 0; i < FACE_SRC.length; i++){
+      var base = FACE_SRC[i], tag = (i + 1) + '/' + FACE_SRC.length, host = base === '/face' ? 'server' : base.split('/')[2];
+      try{
+        if(typeof faceapi === 'undefined'){
+          window.__faceStep = 'Kutubxona yuklanmoqda (' + tag + ')';
+          await faceTimeout(faceScript(base), 40000, 'Kutubxona');
+        }
+        window.__faceStep = 'Modellar yuklanmoqda (' + tag + ')';
+        var tf = faceapi.tf;
+        try{ if(tf && tf.setBackend){ await tf.setBackend('cpu'); await tf.ready(); } }catch(e){}
+        var w = base + '/weights';
+        await faceTimeout(Promise.all([faceapi.nets.ssdMobilenetv1.loadFromUri(w), faceapi.nets.faceLandmark68Net.loadFromUri(w), faceapi.nets.faceRecognitionNet.loadFromUri(w)]), 150000, 'Modellar');
+        return;
+      }catch(e){ errs.push(host + ': ' + (e && e.message ? e.message : 'xato')); }
+    }
+    var er = new Error('NOFILES'); er.detail = errs.join(' | '); throw er;
+  })().catch(function(e){ __faceP = null; throw e; });
   return __faceP;
 }
 function imgLoad(src){ return new Promise(function(res, rej){ var i = new Image(); i.onload = function(){ res(i); }; i.onerror = function(){ rej(new Error('Rasm yuklanmadi')); }; i.src = src; }); }
@@ -1471,8 +1492,8 @@ async function runFace(id, btn){
   function say(t, c){ out.textContent = t; out.style.color = c || ''; }
   try{
     var t0 = Date.now();
-    var tm = setInterval(function(){ say((window.__faceStep || 'Yuklanmoqda') + '… ' + Math.round((Date.now() - t0) / 1000) + ' s (v5.5)'); }, 1000);
-    say('Yuklanmoqda… (v5.5)');
+    var tm = setInterval(function(){ say((window.__faceStep || 'Yuklanmoqda') + '… ' + Math.round((Date.now() - t0) / 1000) + ' s (v5.6)'); }, 1000);
+    say('Yuklanmoqda… (v5.6)');
     try{ await loadFaceApi(); } finally { clearInterval(tm); }
     say('Rasmlar tekshirilmoqda…');
     var tk = encodeURIComponent(S.token), b = '/api/admin/sellers/' + id + '/doc/';
@@ -1489,7 +1510,7 @@ async function runFace(id, btn){
     else if(d < 0.6) say('⚠️ Shubhali, o\u2018zingiz tekshiring (~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#E08700');
     else say('❌ Mos kelmaydi (~' + pct + '%, masofa ' + d.toFixed(2) + ')', '#D62F4B');
   }catch(e){
-    say(e.message === 'NOFILES' ? "Modellarni internetdan yuklab bo'lmadi. Aloqani tekshirib, qayta urinib ko'ring" : 'Xato: ' + e.message, '#D62F4B');
+    say(e.message === 'NOFILES' ? "Modellarni yuklab bo'lmadi. Aloqani tekshirib, qayta urinib ko'ring. [" + (e.detail || '') + ']' : 'Xato: ' + e.message, '#D62F4B');
   }finally{ btn.disabled = false; }
 }
 function showRetry(msg){
