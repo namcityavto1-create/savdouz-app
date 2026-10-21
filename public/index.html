@@ -240,7 +240,9 @@ const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
 // Profil ichidagi sahifalar (barcha rollar uchun)
 const COMMON_PROFILE = ['profile','settings','notifs','help','contact'];
-const PROFILE_TABS = [...COMMON_PROFILE, 'account', 'ads'];
+const PROFILE_TABS = [...COMMON_PROFILE, 'account', 'ads', 'admins'];
+const PERM_LABELS = { sellers:"Sotuvchilarni ko'rish va tasdiqlash", balance:"Sotuvchi balansini o'zgartirish", products:'Mahsulotlar', buyers:'Xaridorlar', orders:'Buyurtmalar', payments:"To'lovlarni tasdiqlash", ads:'Reklamalar', admins:"Admin qo'shish va boshqarish" };
+const can = k => { const u = S.user; if(!u || u.role !== 'admin' || !Array.isArray(u.perms)) return true; return u.perms.includes(k); };
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2200); }
 
@@ -408,7 +410,7 @@ function renderApp(){
   <button class="logoutbtn" id="logoutBtn" style="display:none">Chiqish</button></header><div class="usdstrip" id="infoBox"></div><div class="usdstrip" id="usdBox"></div><main id="main"></main><nav id="nav"></nav>`;
   $('logoutBtn').onclick = () => logout(false);
   loadUsd(); loadInfo();
-  if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = 'sellers';
+  if(role()==='admin' && !['sellers','products','buyers','orders','payments'].includes(S.tab)) S.tab = ['sellers','products','buyers','orders','payments'].find(can) || 'profile';
   renderNav(); renderTab();
   pushGuard();
 }
@@ -416,7 +418,7 @@ function renderNav(){
   saveCart();
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
   const r = role();
-  const items = r==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','🛍️','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"],['profile','👤','Profil']]
+  const items = r==='admin' ? [['sellers','🏪','Sotuvchilar'],['products','📦','Mahsulotlar'],['buyers','🛍️','Xaridorlar'],['orders','🧾','Buyurtmalar'],['payments','💳',"To'lovlar"],['profile','👤','Profil']].filter(x => x[0]==='profile' || can(x[0]==='sellers' ? 'sellers' : x[0]))
     : r==='seller' ? [['home','🏠','Mahsulotlarim'],['orders','📦','Buyurtmalar'],['add','➕',"Qo'shish"],['pay','💰',"To'lov"],['profile','👤','Profil']]
     : [['home','🏠','Bosh sahifa'],['favorites','❤️','Sevimlilar'],['cart','🛒','Savat'],['profile','👤','Profil']];
   let active = ['detail','store'].includes(S.tab) ? S.prev : S.tab;
@@ -821,7 +823,7 @@ function profileGroups(){
     info
   ];
   return [
-    [['ads','📢','Reklamalar'],['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [...(can('ads') ? [['ads','📢','Reklamalar']] : []), ...(can('admins') ? [['admins','👥','Adminlar']] : []), ['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
     [lang],
     info
   ];
@@ -1187,12 +1189,55 @@ async function adsAdmin(main){
   });
 }
 
+async function adminsAdmin(main){
+  const { admins, perms } = await api('/api/admin/admins');
+  const mine = new Set((S.user.perms || perms.map(p => p.key)));
+  const boxes = (sel, id) => perms.filter(p => mine.has(p.key)).map(p => `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px"><input type="checkbox" data-pk="${p.key}" ${sel.includes(p.key) ? 'checked' : ''} style="width:20px;height:20px;flex:none"><span>${esc(p.label)}</span></label>`).join('');
+  main.innerHTML = `<div class="addform">
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px">Yangi admin qo'shish</div>
+      <div class="field"><label>Ism</label><input id="naName" placeholder="Ism familiya"></div>
+      <div class="field"><label>Telefon raqam</label><input id="naPhone" placeholder="+998901234567" inputmode="tel"></div>
+      <div class="field"><label>Parol (kamida 6 ta belgi)</label><input id="naPass" type="text" placeholder="Parol"></div>
+      <div style="font-size:13px;font-weight:800;margin:8px 0 2px">Qaysi huquqlar beriladi</div>
+      <div id="naPerms">${boxes([])}</div>
+      <button class="primarybtn" id="naSave">Admin qo'shish</button></div>
+    ${admins.map(a => `<div class="oitem" data-aid="${a.id}">
+      <div class="top"><span style="font-weight:700;color:var(--ink)">${esc(a.name)}</span><span>${esc(a.phone)}</span></div>
+      ${a.owner ? `<div class="oline"><span>Holati</span><span class="status" style="background:#E6F4EA;color:var(--grn)">Asosiy admin (barcha huquqlar)</span></div>` : `
+      <div style="margin-top:6px">${boxes(a.perms)}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="addbtn" style="background:var(--grn)" data-asave="${a.id}">Saqlash</button>
+        ${a.id !== S.user.id ? `<button class="addbtn" style="background:var(--red)" data-adel="${a.id}" data-an="${esc(a.name)}">🗑 O'chirish</button>` : ''}
+      </div>`}</div>`).join('')}`;
+  subBack(main, `Adminlar (${admins.length})`);
+  const picked = box => [...box.querySelectorAll('[data-pk]:checked')].map(c => c.dataset.pk);
+  $('naSave').onclick = async () => {
+    const name = $('naName').value.trim(), phone = $('naPhone').value.trim(), password = $('naPass').value;
+    if(!name || !phone || password.length < 6){ toast("Ism, telefon va parolni (6+ belgi) kiriting"); return; }
+    $('naSave').disabled = true;
+    try { await api('/api/admin/admins', { method:'POST', body:JSON.stringify({ name, phone, password, perms: picked($('naPerms')) }) }); toast("Admin qo'shildi ✅"); renderTab(); }
+    catch(e){ toast(e.message); $('naSave').disabled = false; }
+  };
+  main.querySelectorAll('[data-asave]').forEach(b => b.onclick = async () => {
+    try { await api('/api/admin/admins/' + b.dataset.asave, { method:'PATCH', body:JSON.stringify({ perms: picked(b.closest('.oitem')) }) }); toast('Huquqlar saqlandi ✅'); }
+    catch(e){ toast(e.message); }
+  });
+  main.querySelectorAll('[data-adel]').forEach(b => b.onclick = async () => {
+    if(!confirm(b.dataset.an + " admini o'chiriladi. Davom etasizmi?")) return;
+    try { await api('/api/admin/admins/' + b.dataset.adel, { method:'DELETE' }); toast("Admin o'chirildi"); renderTab(); }
+    catch(e){ toast(e.message); }
+  });
+}
+
 // ---- Admin ----
 const SST = { faol: ['#E6F4EA', 'var(--grn)', 'Tasdiqlangan'], kutilmoqda: ['#FFF1E6', 'var(--or)', 'Kutilmoqda'], 'rad etildi': ['#FDEDED', 'var(--red)', 'Rad etilgan'] };
 async function renderAdmin(main){
   const t = S.tab;
   const none = m => `<div class="empty">${m}</div>`;
+  const need = t==='buyers' ? 'buyers' : ['sellers','products','orders','payments','ads','admins'].includes(t) ? t : null;
+  if(need && !can(need)) return main.innerHTML = none("Sizda bu bo'lim uchun ruxsat yo'q");
   if(t==='ads') return adsAdmin(main);
+  if(t==='admins') return adminsAdmin(main);
   if(t==='sellers'){
     const sellersMeta = await api('/api/admin/sellers'); const sellers = sellersMeta.sellers;
     // Tasdiqlashni kutayotganlar eng tepada
@@ -1387,11 +1432,11 @@ setInterval(() => {
 // Ilova ichida bosilsa: ochiq sahifadan bir qadam orqaga qaytadi.
 // Bosh sahifada birinchi bosish ogohlantiradi, 2 soniya ichida ikkinchi bosish ilovani yopadi.
 let guard = false, exitArmed = false, exitTimer = null;
-const homeTab = () => (S.user && role()==='admin') ? 'sellers' : 'home';
+const homeTab = () => (S.user && role()==='admin') ? (['sellers','products','buyers','orders','payments'].find(can) || 'profile') : 'home';
 function parentTab(){
   const t = S.tab;
   if(t==='detail' || t==='store') return S.prev && S.prev!==t ? S.prev : homeTab();
-  if(['settings','notifs','help','contact','account','ads'].includes(t)) return 'profile';
+  if(['settings','notifs','help','contact','account','ads','admins'].includes(t)) return 'profile';
   if(t==='orders' && S.user && role()==='buyer') return 'profile';
   return homeTab();
 }
