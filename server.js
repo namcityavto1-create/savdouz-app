@@ -4,6 +4,7 @@ require('./pwa-patch.js');
 require('./extras.js');
 require('./features.js');
 require('./features-api.js');
+require('./plus.js');
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
 const { MongoClient } = require('mongodb');
 
