@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<style>*{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select{-webkit-user-select:text!important;user-select:text!important}</style>
+<style>*{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select{-webkit-user-select:text!important;user-select:text!important}.gthumbs{display:flex;gap:8px;margin:-6px 0 12px;overflow-x:auto}.gthumbs img{width:56px;height:56px;object-fit:cover;border-radius:10px;border:2px solid transparent;flex:none;cursor:pointer}.gthumbs img.on{border-color:#6C4DF6}
+.fltbtn{display:inline-block;background:var(--vl);color:var(--vt);font-weight:800;font-size:12px;padding:8px 14px;border-radius:12px;margin:0 0 10px;cursor:pointer}
+.fltpanel{background:var(--vl);border-radius:16px;padding:12px;margin-bottom:12px}.fltpanel input,.fltpanel select{width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);font-size:13px;margin-bottom:8px;box-sizing:border-box;background:var(--bg);color:inherit}
+.fltrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fltchk{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:2px 0 10px}.fltchk input{width:auto;margin:0}
+</style>
 <script>document.addEventListener("selectstart",function(e){var t=e.target&&e.target.tagName;if(t!=="INPUT"&&t!=="TEXTAREA"&&t!=="SELECT")e.preventDefault();},true);document.addEventListener("contextmenu",function(e){var t=e.target&&e.target.tagName;if(t!=="INPUT"&&t!=="TEXTAREA")e.preventDefault();},true);</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -217,10 +221,19 @@ function applyTheme(t){ if(t==='light' || t==='dark') document.documentElement.s
 applyTheme(getTheme());
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n || 0).toLocaleString('ru-RU') + " so'm";
-const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none', pend:0 });
+const fresh = () => ({ token:null, user:null, tab:'home', cat:'Barchasi', cart:{}, img:null, imgs:null, edit:null, receipt:null, sel:null, sellerId:null, prev:'home', search:'', sort:'none', pend:0 });
 let S = { ...fresh(), token: localStorage.getItem('savdouz_token') };
 // Savatni telefonda saqlash: sahifa yangilansa yoki ilova yopilsa ham yo'qolmaydi
 try { const c = JSON.parse(localStorage.getItem('savdouz_cart') || '{}'); if(c && typeof c === 'object' && !Array.isArray(c)) S.cart = c; } catch(e){}
+let _cs; function syncCart(){
+  if(!S.token || !S.user || S.user.role !== 'buyer') return;
+  clearTimeout(_cs);
+  _cs = setTimeout(() => { api('/api/cart/sync', { method:'POST', body:JSON.stringify({ ids:Object.keys(S.cart || {}).filter(k => S.cart[k] > 0).map(Number) }) }).catch(() => {}); }, 1500);
+}
+const FLT0 = { min:'', max:'', region:'', rating:0, sale:false };
+let FLT; try { FLT = { ...FLT0, ...JSON.parse(localStorage.getItem('savdouz_flt') || '{}') }; } catch(e){ FLT = { ...FLT0 }; }
+const saveFlt = () => { try { localStorage.setItem('savdouz_flt', JSON.stringify(FLT)); } catch(e){} };
+const fltCount = () => (FLT.min !== '' ? 1 : 0) + (FLT.max !== '' ? 1 : 0) + (FLT.region ? 1 : 0) + (FLT.rating ? 1 : 0) + (FLT.sale ? 1 : 0);
 const saveCart = () => { try { localStorage.setItem('savdouz_cart', JSON.stringify(S.cart || {})); } catch(e){} };
 const CATS = ["Barchasi","Telefon","Kompyuter","Elektronika","Maishiy texnika","Kiyim","Poyabzal","Aksessuarlar","Go'zallik","Oziq-ovqat","Uy-ro'zg'or","Mebel","Bolalar","Sport","Avto","Qurilish","Kitob","Boshqa"];
 const REGIONS = ["Toshkent shahri","Toshkent viloyati","Andijon","Farg'ona","Namangan","Buxoro","Jizzax","Qashqadaryo","Navoiy","Samarqand","Sirdaryo","Surxondaryo","Xorazm","Qoraqalpog'iston"];
@@ -331,9 +344,10 @@ function renderAuth(){
     <div class="field"><label>Telefon raqam</label><input id="fphone" placeholder="+998901234567" inputmode="tel"></div>
     <div class="field"><label>Parol</label><input id="fpass" type="password" placeholder="••••••••"></div>
     <button class="primarybtn" id="submitBtn">${reg ? "Ro'yxatdan o'tish" : "Kirish"}</button>
-    <div class="switchmode">${reg ? `Hisobingiz bormi? <b id="sw">Kiring</b>` : `Hisobingiz yo'qmi? <b id="sw">Ro'yxatdan o'ting</b>`}</div></div>`;
+    ${reg ? '' : '<div class="switchmode" style="margin-top:8px"><b id="forgot">Parolni unutdingizmi?</b></div>'}<div class="switchmode">${reg ? `Hisobingiz bormi? <b id="sw">Kiring</b>` : `Hisobingiz yo'qmi? <b id="sw">Ro'yxatdan o'ting</b>`}</div></div>`;
   document.querySelectorAll('.roletab').forEach(r => r.onclick = () => { authRole = r.dataset.role; renderAuth(); });
   $('sw').onclick = () => { authMode = reg ? 'login' : 'register'; renderAuth(); };
+  if($('forgot')) $('forgot').onclick = () => renderReset();
   $('submitBtn').onclick = submitAuth;
   $('fpass').onkeydown = e => { if(e.key==='Enter') submitAuth(); };
 }
@@ -414,7 +428,7 @@ function renderApp(){
   renderNav(); renderTab();
   pushGuard();
 }
-function renderNav(){
+function renderNav(){ try { syncCart(); } catch(e){}
   saveCart();
   const cnt = Object.values(S.cart).reduce((a,b)=>a+b, 0);
   const r = role();
@@ -631,11 +645,22 @@ setInterval(() => {
 async function renderStore(main){
   if(!S.sellerId){ goBack(); return; }
   const { seller, products } = await api('/api/sellers/' + S.sellerId);
+  const isB = !!(S.user && S.user.role === 'buyer'); let fo = { ids:[], followers:0 };
+  try { fo = await api('/api/following?sid=' + S.sellerId); } catch(e){}
+  let following = (fo.ids || []).includes(S.sellerId);
   main.innerHTML = `<button class="backbtn" id="backBtn">← Orqaga</button>
     <div class="storehead"><div class="storeavatar">${esc(seller.name.charAt(0).toUpperCase())}</div>
-    <div><div style="font-weight:800;font-size:15px">${esc(seller.name)}</div><div style="font-size:11.5px;color:var(--mut);margin-top:2px">${products.length} ta mahsulot</div></div></div>
+    <div><div style="font-weight:800;font-size:15px">${esc(seller.name)}</div><div style="font-size:11.5px;color:var(--mut);margin-top:2px">${products.length} ta mahsulot · <span id="folCnt">${fo.followers || 0}</span> ta obunachi</div></div></div>
+    ${isB ? `<button class="addbtn" id="followBtn" style="margin:0 0 12px">${following ? "✅ Obuna bo'lingan" : "🔔 Obuna bo'lish"}</button>` : ''}
     <div class="grid">${products.length ? products.map(p => card(p, true)).join('') : '<div class="empty" style="grid-column:1/-1">Hozircha mahsulot yo\'q</div>'}</div>`;
   $('backBtn').onclick = goBack;
+  if($('followBtn')) $('followBtn').onclick = async () => {
+    try {
+      const r = await api('/api/follow/toggle', { method:'POST', body:JSON.stringify({ sellerId:S.sellerId }) });
+      following = r.following; $('followBtn').textContent = following ? "✅ Obuna bo'lingan" : "🔔 Obuna bo'lish"; $('folCnt').textContent = r.followers;
+      toast(following ? "Obuna bo'ldingiz: yangi mahsulotda xabar olasiz 🔔" : "Obuna bekor qilindi");
+    } catch(e){ toast(e.message); }
+  };
   wire(main, products);
 }
 
@@ -644,7 +669,7 @@ async function renderDetail(main){
   let reviews = [];
   try { reviews = (await api('/api/products/' + p.id + '/reviews')).reviews || []; } catch(e){}
   main.innerHTML = `<button class="backbtn" id="backBtn">← Orqaga</button>
-    <div class="detailimg">${media(p)}</div><span class="tag">${esc(p.cat)}</span>
+    <div class="detailimg">${media(p).replace('<img ', '<img id="gmain" ')}</div>${(p.images && p.images.length > 1) ? `<div class="gthumbs">${p.images.map((u, i) => `<img src="${esc(u)}" data-g="${i}" class="${i ? '' : 'on'}">`).join('')}</div>` : ''}<span class="tag">${esc(p.cat)}</span>
     <div style="font-size:19px;font-weight:800;margin:6px 0 4px">${esc(p.name)}</div>
     <div class="pseller" id="sellerLink" style="cursor:pointer;text-decoration:underline">${esc(p.sellerName)}</div>
     ${stars(p.avgRating, p.reviewCount)}
@@ -657,6 +682,7 @@ async function renderDetail(main){
     <div class="sectitle" style="margin:20px 0 10px;font-size:14px">Sharhlar (${reviews.length})</div>
     ${reviews.length ? reviews.map(r => `<div class="reviewitem"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700;font-size:12.5px">${esc(r.buyerName)}</span><span style="font-size:11px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></div>${r.comment ? `<div style="font-size:12px;color:var(--mut)">${esc(r.comment)}</div>` : ''}</div>`).join('') : '<div class="empty" style="padding:20px">Hali sharh yo\'q</div>'}`;
   $('backBtn').onclick = goBack;
+  main.querySelectorAll('[data-g]').forEach(t => t.onclick = () => { const g = $('gmain'); if(g) g.src = t.src; main.querySelectorAll('[data-g]').forEach(x => x.classList.toggle('on', x === t)); });
   $('sellerLink').onclick = () => { S.sellerId = p.sellerId; S.prev = 'home'; S.tab = 'store'; renderTab(); };
   $('detailAdd').onclick = () => addToCart(p, $('detailAdd'));
 }
@@ -715,24 +741,41 @@ async function buyerHome(main){
     ${weekly.length ? `<div id="weekly" class="weekbox"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px"><div class="sectitle" style="color:#fff;margin:0">🔥 Hafta chegirmalari (${weekly.length})</div>${weekly.length > 2 ? '<button class="seeall" id="weekAll">Hammasi ›</button>' : ''}</div><div class="hscroll" id="weekScroll">${weekly.map(p => card(p, true)).join('')}</div></div>` : ''}
     <div class="cats">${CATS.map(c => `<div class="cat ${c===S.cat?'active':''}" data-cat="${esc(c)}">${CI[c] || ''} ${esc(c)}</div>`).join('')}</div>
     <div class="sortrow">${[['none','Odatiy'],['priceAsc','Arzon→Qimmat'],['priceDesc','Qimmat→Arzon'],['rating','Reyting']].map(([k,l]) => `<div class="sortchip ${S.sort===k?'active':''}" data-sort="${k}">${l}</div>`).join('')}</div>
+    <div class="fltbtn" id="fltToggle">⚙️ Filtr${fltCount() ? ' (' + fltCount() + ')' : ''}</div>
+    <div class="fltpanel" id="fltPanel" style="display:none">
+      <div class="fltrow"><input id="fMin" type="number" inputmode="numeric" placeholder="Narx: dan" value="${esc(FLT.min)}"><input id="fMax" type="number" inputmode="numeric" placeholder="Narx: gacha" value="${esc(FLT.max)}"></div>
+      <select id="fReg"><option value="">Barcha viloyatlar</option>${REGIONS.map(r => `<option ${r === FLT.region ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
+      <select id="fRat"><option value="0">Har qanday reyting</option><option value="3" ${FLT.rating === 3 ? 'selected' : ''}>3★ va yuqori</option><option value="4" ${FLT.rating === 4 ? 'selected' : ''}>4★ va yuqori</option></select>
+      <label class="fltchk"><input type="checkbox" id="fSale" ${FLT.sale ? 'checked' : ''}> Faqat chegirmadagilar</label>
+      <button class="addbtn" id="fClear" style="background:var(--bg);color:var(--mut)">Tozalash</button></div>
     <div class="grid" id="plist"></div>`;
   const draw = () => {
     const q = S.search.trim().toLowerCase();
     let list = S.cat==='Barchasi' ? products : products.filter(p => p.cat===S.cat);
     if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q));
+    if(FLT.min !== '') list = list.filter(p => p.price >= Number(FLT.min));
+    if(FLT.max !== '') list = list.filter(p => p.price <= Number(FLT.max));
+    if(FLT.region) list = list.filter(p => (p.deliveryRegions || []).some(r => r === 'barchasi' || r === FLT.region));
+    if(FLT.rating) list = list.filter(p => (p.avgRating || 0) >= FLT.rating);
+    if(FLT.sale) list = list.filter(p => p.onSale);
     list = [...list];
     if(S.sort==='priceAsc') list.sort((a,b) => a.price-b.price);
     else if(S.sort==='priceDesc') list.sort((a,b) => b.price-a.price);
     else if(S.sort==='rating') list.sort((a,b) => (b.avgRating||0)-(a.avgRating||0));
     $('plist').innerHTML = list.length ? list.map(p => card(p, true)).join('') : `<div class="empty" style="grid-column:1/-1">${q ? 'Hech narsa topilmadi' : "Bu kategoriyada mahsulot yo'q"}</div>`;
     wire($('plist'), products);
-    if($('weekly')){ $('weekly').style.display = (q || S.cat!=='Barchasi') ? 'none' : 'block'; wire($('weekly'), products); }
+    if($('weekly')){ $('weekly').style.display = (q || S.cat!=='Barchasi' || fltCount()) ? 'none' : 'block'; wire($('weekly'), products); }
   };
   draw();
   const wa = $('weekAll');
   if(wa) wa.onclick = () => { const on = $('weekScroll').classList.toggle('wrap'); wa.textContent = on ? "‹ Yig'ish" : 'Hammasi ›'; };
   main.querySelectorAll('.cat').forEach(c => c.onclick = () => { S.cat = c.dataset.cat; renderTab(); });
   main.querySelectorAll('[data-sort]').forEach(c => c.onclick = () => { S.sort = c.dataset.sort; renderTab(); });
+  const fl = () => { FLT.min = $('fMin').value.trim(); FLT.max = $('fMax').value.trim(); FLT.region = $('fReg').value; FLT.rating = Number($('fRat').value); FLT.sale = $('fSale').checked; saveFlt(); $('fltToggle').textContent = '⚙️ Filtr' + (fltCount() ? ' (' + fltCount() + ')' : ''); draw(); };
+  $('fltToggle').onclick = () => { const pn = $('fltPanel'); pn.style.display = pn.style.display === 'none' ? 'block' : 'none'; };
+  ['fMin','fMax'].forEach(i => $(i).oninput = () => { clearTimeout(window._ft); window._ft = setTimeout(fl, 300); });
+  ['fReg','fRat','fSale'].forEach(i => $(i).onchange = fl);
+  $('fClear').onclick = () => { Object.assign(FLT, FLT0); saveFlt(); renderTab(); };
   let tm; $('searchInput').oninput = e => { clearTimeout(tm); const v = e.target.value; tm = setTimeout(() => { S.search = v; draw(); }, 250); };
   loadAds();
 }
@@ -1036,6 +1079,7 @@ async function sellerAdd(main){
   const ed = S.edit, allR = !ed || (ed.deliveryRegions || ['barchasi']).includes('barchasi');
   main.innerHTML = `<div class="sectitle">${ed ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}</div><div class="addform">
     <div class="field"><label>Mahsulot rasmi</label><div class="imgpreview" id="imgPreview">${S.img ? `<img src="${esc(S.img)}">` : '<span>Rasm tanlanmagan</span>'}</div><input id="pimageFile" type="file" accept="image/*"></div>
+    <div class="field"><label>Qo'shimcha rasmlar (3 tagacha, ixtiyoriy)</label><div id="imgsPrev" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:11px;color:var(--mut)">${(S.imgs && S.imgs.length) ? S.imgs.map(u => `<img src="${u}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`).join('') : (ed && ed.images && ed.images.length > 1 ? 'Hozir ' + (ed.images.length - 1) + " ta qo'shimcha rasm bor (yangi tanlasangiz almashadi)" : 'Tanlanmagan')}</div><input id="pimgsFile" type="file" accept="image/*" multiple></div>
     <div class="field"><label>Nomi</label><input id="pname" placeholder="Masalan: Samsung Galaxy" value="${ed ? esc(ed.name) : ''}"></div>
     <div class="field"><label>Kategoriya</label><select id="pcat">${CATS.filter(c => c!=='Barchasi').map(c => `<option ${ed && ed.cat===c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
     <div class="field"><label>Narxi (so'm)</label><input id="pprice" type="number" inputmode="numeric" value="${ed ? (ed.regularPrice ?? ed.price) : ''}"></div>
@@ -1054,8 +1098,13 @@ async function sellerAdd(main){
     try { toast('Rasm tayyorlanmoqda...'); S.img = await readImage(f); $('imgPreview').innerHTML = `<img src="${S.img}">`; }
     catch(err){ toast("Rasmni yuklab bo'lmadi: " + err.message); }
   };
+  $('pimgsFile').onchange = async e => {
+    const fs = [...e.target.files].slice(0, 3); if(!fs.length) return;
+    try { toast('Rasmlar tayyorlanmoqda...'); S.imgs = []; for(const f of fs) S.imgs.push(await readImage(f)); $('imgsPrev').innerHTML = S.imgs.map(u => `<img src="${u}" style="width:60px;height:60px;object-fit:cover;border-radius:8px">`).join(''); }
+    catch(err){ S.imgs = null; toast("Rasmni yuklab bo'lmadi: " + err.message); }
+  };
   $('pall').onchange = e => { $('regionList').style.display = e.target.checked ? 'none' : 'grid'; };
-  if(ed) $('cancelBtn').onclick = () => { S.edit = null; S.img = null; S.tab = 'home'; renderNav(); renderTab(); };
+  if(ed) $('cancelBtn').onclick = () => { S.edit = null; S.img = null; S.imgs = null; S.tab = 'home'; renderNav(); renderTab(); };
   $('saveBtn').onclick = async () => {
     const name = $('pname').value.trim(), price = $('pprice').value, stock = $('pstock').value;
     const all = $('pall').checked;
@@ -1065,11 +1114,11 @@ async function sellerAdd(main){
     if(!all && !deliveryRegions.length){ toast("Kamida bitta hududni tanlang yoki 'Barcha viloyatlar'ni belgilang"); return; }
     const saleOn = $('psale').checked, salePrice = $('psaleprice').value;
     if(saleOn && (!salePrice || Number(salePrice) <= 0 || Number(salePrice) >= Number(price))){ toast("Chegirma narxi asl narxdan past bo'lishi kerak"); return; }
-    const body = JSON.stringify({ name, cat:$('pcat').value, price, desc:$('pdesc').value.trim(), stock, image:S.img, deliveryRegions, deliveryPrice:$('pdp').value || 0, oldPrice:$('poldprice').value || '', saleOn, salePrice });
+    const body = JSON.stringify({ name, cat:$('pcat').value, price, desc:$('pdesc').value.trim(), stock, image:S.img, images:S.imgs, deliveryRegions, deliveryPrice:$('pdp').value || 0, oldPrice:$('poldprice').value || '', saleOn, salePrice });
     $('saveBtn').disabled = true;
     try {
       if(ed) await api('/api/products/' + ed.id, { method:'PATCH', body }); else await api('/api/products', { method:'POST', body });
-      toast(ed ? 'Mahsulot yangilandi! ✅' : "Mahsulot qo'shildi! ✅");
+      toast(ed ? 'Mahsulot yangilandi! ✅' : "Mahsulot qo'shildi! ✅"); S.imgs = null;
       S.img = null; S.edit = null; S.tab = 'home'; renderNav(); renderTab();
     } catch(e){ toast(e.message); $('saveBtn').disabled = false; }
   };
@@ -1597,6 +1646,78 @@ function showRetry(msg){
     if(!a) return;
     e.preventDefault(); e.stopPropagation(); open(a.getAttribute('href'));
   },true);
+})();
+</script>
+<script>
+// ---- Telegram orqali parolni tiklash ----
+async function renderReset(){
+  let info = { enabled:false, bot:'Savol_24bot' };
+  try { info = await api('/api/tg-reset/info'); } catch(e){}
+  $('app').innerHTML = `<div class="authwrap"><img class="authlogo" src="${LOGO}" alt="SavdoUz"><div class="authtitle">Parolni tiklash</div><div class="authsub">Telegram orqali</div>
+    <div class="errmsg" id="errmsg"></div>
+    ${info.enabled ? `<div style="font-size:12.5px;line-height:1.6;margin-bottom:12px">1) <a href="https://t.me/${esc(info.bot)}" target="_blank" style="font-weight:800">@${esc(info.bot)}</a> ni oching va /start bosing<br>2) «📱 Raqamimni yuborish» tugmasini bosing<br>3) Bot yuborgan 6 xonali kodni pastga kiriting</div>
+      <div class="field"><label>Telefon raqam</label><input id="rtPhone" placeholder="+998901234567" inputmode="tel"></div>
+      <div class="field"><label>Telegramdan kelgan kod</label><input id="rtCode" inputmode="numeric" maxlength="6" placeholder="123456"></div>
+      <div class="field"><label>Yangi parol (kamida 6 belgi)</label><input id="rtPass" type="password" placeholder="••••••••"></div>
+      <button class="primarybtn" id="rtSave">Parolni almashtirish</button>` : '<div class="empty">Bu imkoniyat hozircha ishlamayapti</div>'}
+    <div class="switchmode"><b id="rtBack">‹ Kirishga qaytish</b></div></div>`;
+  $('rtBack').onclick = () => { authMode = 'login'; renderAuth(); };
+  if(!$('rtSave')) return;
+  $('rtSave').onclick = async () => {
+    const err = $('errmsg'), btn = $('rtSave'); err.style.display = 'none'; btn.disabled = true;
+    try {
+      await api('/api/tg-reset/confirm', { method:'POST', body:JSON.stringify({ phone:$('rtPhone').value.trim(), code:$('rtCode').value.trim(), password:$('rtPass').value }) });
+      toast('Parol almashtirildi ✅ Endi kiring'); authMode = 'login'; renderAuth();
+    } catch(e){ err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; }
+  };
+}
+
+// ---- Xaridor uchun push (ilova yopiq bo'lsa ham) va buyurtma holati ovozi ----
+(function(){
+  function b64u(s){ var p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), a = new Uint8Array(r.length); for(var i = 0; i < r.length; i++) a[i] = r.charCodeAt(i); return a; }
+  var pushDone = null, busy = false, fcmDone = null, fcmHook = false, fcmBusy = false;
+  function isBuyer(){ return !!(S && S.token && S.user && S.user.role === 'buyer'); }
+  function webPush(){
+    if(busy || !isBuyer() || pushDone === S.token) return;
+    if(!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) return;
+    var t = S.token; busy = true;
+    Promise.resolve(Notification.permission === 'default' ? Notification.requestPermission() : Notification.permission).then(function(p){
+      if(p !== 'granted') return;
+      return navigator.serviceWorker.register('/sw.js').then(function(){ return navigator.serviceWorker.ready; }).then(function(reg){
+        return api('/api/push/key').then(function(k){
+          if(!k.key) return;
+          return reg.pushManager.getSubscription().then(function(sub){ return sub || reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64u(k.key) }); })
+            .then(function(sub){ return api('/api/push/subscribe', { method:'POST', body:JSON.stringify({ subscription:JSON.parse(JSON.stringify(sub)) }) }); })
+            .then(function(){ pushDone = t; });
+        });
+      });
+    }).catch(function(){}).then(function(){ busy = false; });
+  }
+  function fcm(){
+    try {
+      var C = window.Capacitor; if(!C || !C.Plugins || !C.Plugins.PushNotifications) return;
+      if(typeof C.isNativePlatform === 'function' && !C.isNativePlatform()) return;
+      if(fcmBusy || !isBuyer() || fcmDone === S.token) return;
+      var PN = C.Plugins.PushNotifications; fcmBusy = true;
+      if(!fcmHook){ fcmHook = true; PN.addListener('registration', function(r){ if(!r || !r.value || !isBuyer()) return; var t2 = S.token; api('/api/push/fcm', { method:'POST', body:JSON.stringify({ token:r.value }) }).then(function(){ fcmDone = t2; }).catch(function(){}); }); }
+      PN.requestPermissions().then(function(p){ if(p.receive !== 'granted') return; return PN.register(); }).catch(function(){}).then(function(){ fcmBusy = false; });
+    } catch(e){ fcmBusy = false; }
+  }
+  document.addEventListener('click', webPush);
+  setInterval(function(){ webPush(); fcm(); }, 6000);
+  // Ilova ochiq paytda buyurtma holati o'zgarsa ovoz + xabar
+  var sig = null, tk = null, ac = null;
+  ['click','touchstart'].forEach(function(ev){ document.addEventListener(ev, function(){ try { if(!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if(ac.state === 'suspended') ac.resume(); } catch(e){} }, { passive:true }); });
+  function beep(){ try { if(!ac) return; [880, 660, 880].forEach(function(f, i){ var o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * 0.22; o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.22); }); if(navigator.vibrate) navigator.vibrate([200,100,200]); } catch(e){} }
+  setInterval(function(){
+    if(!isBuyer()){ sig = null; tk = null; return; }
+    if(tk !== S.token){ tk = S.token; sig = null; }
+    api('/api/orders/mine').then(function(r){
+      var s = (r.orders || []).map(function(o){ return o.id + ':' + o.status + ':' + o.paymentStatus; }).join('|');
+      if(sig !== null && s !== sig){ beep(); toast('Buyurtma holati yangilandi 🔔'); }
+      sig = s;
+    }).catch(function(){});
+  }, 15000);
 })();
 </script>
 </body>
