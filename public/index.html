@@ -344,10 +344,9 @@ function renderAuth(){
     <div class="field"><label>Telefon raqam</label><input id="fphone" placeholder="+998901234567" inputmode="tel"></div>
     <div class="field"><label>Parol</label><input id="fpass" type="password" placeholder="••••••••"></div>
     <button class="primarybtn" id="submitBtn">${reg ? "Ro'yxatdan o'tish" : "Kirish"}</button>
-    ${reg ? '' : '<div class="switchmode" style="margin-top:8px"><b id="forgot">Parolni unutdingizmi?</b></div>'}<div class="switchmode">${reg ? `Hisobingiz bormi? <b id="sw">Kiring</b>` : `Hisobingiz yo'qmi? <b id="sw">Ro'yxatdan o'ting</b>`}</div></div>`;
+    <div class="switchmode">${reg ? `Hisobingiz bormi? <b id="sw">Kiring</b>` : `Hisobingiz yo'qmi? <b id="sw">Ro'yxatdan o'ting</b>`}</div></div>`;
   document.querySelectorAll('.roletab').forEach(r => r.onclick = () => { authRole = r.dataset.role; renderAuth(); });
   $('sw').onclick = () => { authMode = reg ? 'login' : 'register'; renderAuth(); };
-  if($('forgot')) $('forgot').onclick = () => renderReset();
   $('submitBtn').onclick = submitAuth;
   $('fpass').onkeydown = e => { if(e.key==='Enter') submitAuth(); };
 }
@@ -1718,6 +1717,20 @@ async function renderReset(){
       sig = s;
     }).catch(function(){});
   }, 15000);
+})();
+</script>
+<script>
+// "Parolni unutdingizmi?" yozuvini ko'k qiladi; Telegram yoqilgan bo'lsa shu havola Telegram orqali tiklashni ochadi
+(function(){
+  var T = 'Parolni unutdingizmi?', on = false;
+  function isLink(el){ return el && el.children && el.children.length === 0 && String(el.textContent).trim() === T; }
+  function paint(){ var all = document.querySelectorAll('a,b,span,div,button,p'); for(var i = 0; i < all.length; i++) if(isLink(all[i])) all[i].style.setProperty('color', '#2F5BE8', 'important'); }
+  try { new MutationObserver(paint).observe(document.documentElement, { childList:true, subtree:true }); } catch(e){}
+  paint();
+  fetch('/api/tg-reset/info').then(function(r){ return r.json(); }).then(function(d){ on = !!(d && d.enabled); }).catch(function(){});
+  document.addEventListener('click', function(e){
+    if(on && isLink(e.target) && typeof renderReset === 'function'){ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); renderReset(); }
+  }, true);
 })();
 </script>
 </body>
