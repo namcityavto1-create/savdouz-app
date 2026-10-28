@@ -50,7 +50,7 @@ function sendImg(res, dataUrl, cache) {
 // ---- Eski va yangi rasmlarni klasterga ko'chirish ----
 let busy = false, again = false;
 async function sweep() {
-  const SV = global.SV;
+  const SV = global.SVI || global.SV;
   if (!SV || (!dbs.products && !dbs.receipts)) return;
   if (busy) { again = true; return; }
   busy = true;
@@ -82,7 +82,7 @@ async function sweep() {
 
 // ---- Keraksiz (o'chirilgan mahsulot / eskirgan chek) rasmlarni tozalash ----
 async function gc() {
-  const SV = global.SV; if (!SV) return;
+  const SV = global.SVI || global.SV; if (!SV) return;
   try {
     const db = await SV.loadDB();
     if (dbs.products) {
@@ -119,7 +119,7 @@ async function migrateDocs() {
 
 // ---- So'rovlar: rasmlarni klasterdan beradi ----
 async function handle(req, res, orig) {
-  const SV = global.SV;
+  const SV = global.SVI || global.SV;
   if (!SV || !String(req.url).startsWith('/api/')) return orig(req, res);
   const u = new URL(req.url, 'http://x'), p = u.pathname, M = req.method;
   if (!req._q) req._q = Object.fromEntries(u.searchParams);
