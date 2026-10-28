@@ -624,25 +624,55 @@ function sendDataImage(res, dataUrl, cacheCtl) {
   res.writeHead(200, { 'Content-Type': d[1], 'Cache-Control': cacheCtl });
   res.end(Buffer.from(d[2], 'base64'));
 }
-let usdCache = { t: 0, data: null };
-async function getUsd() {
-  if (usdCache.data && Date.now() - usdCache.t < 5 * 60 * 1000) return usdCache.data;
-  let data = null;
-  try {
-    const list = await (await fetch('https://nbu.uz/uz/exchange-rates/json/')).json();
-    const d = list.find(x => x.code === 'USD');
+
+// ---------- Dollar kursi (3 ta manba + bazada oxirgi kurs saqlanadi) ----------
+let usdCache = { t: 0, data: null, failT: 0 };
+const getJson = async (u, ms) => {
+  const r = await fetch(u, { signal: AbortSignal.timeout(ms || 6000), headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+};
+const USD_SOURCES = [
+  async () => {
+    const d = (await getJson('https://nbu.uz/uz/exchange-rates/json/')).find(x => x.code === 'USD');
     const buy = Math.round(parseFloat(d.nbu_buy_price)), sell = Math.round(parseFloat(d.nbu_cell_price));
-    if (buy && sell) data = { rate: Math.round((buy + sell) / 2), buy, sell };
-  } catch (e) {}
-  if (!data) {
+    return buy && sell ? { rate: Math.round((buy + sell) / 2), buy, sell } : null;
+  },
+  async () => {
+    const [d] = await getJson('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/');
+    const rate = Math.round(parseFloat(d.Rate));
+    return rate ? { rate, buy: rate - 50, sell: rate + 50 } : null;
+  },
+  async () => {
+    const rate = Math.round((await getJson('https://open.er-api.com/v6/latest/USD')).rates.UZS);
+    return rate ? { rate, buy: rate - 50, sell: rate + 50 } : null;
+  }
+];
+const usdMeta = () => mongoClient.db('savdouz').collection('meta');
+async function getUsd() {
+  // 1) Yangi kesh (5 daqiqa)
+  if (usdCache.data && Date.now() - usdCache.t < 5 * 60 * 1000) return usdCache.data;
+  // 2) Yaqinda muvaffaqiyatsiz bo'lgan bo'lsa, 30 soniya qayta urinmaymiz (eski qiymat beriladi)
+  if (usdCache.data && Date.now() - usdCache.failT < 30 * 1000) return usdCache.data;
+  let data = null;
+  for (const src of USD_SOURCES) {
+    try { data = await src(); } catch (e) { data = null; }
+    if (data) break;
+  }
+  if (data) {
+    usdCache = { t: Date.now(), data, failT: 0 };
+    usdMeta().replaceOne({ _id: 'usd' }, { _id: 'usd', ...data, savedAt: new Date().toISOString() }, { upsert: true }).catch(() => {});
+    return data;
+  }
+  usdCache.failT = Date.now();
+  // 3) Hech qaysi manba javob bermasa — bazadagi oxirgi saqlangan kurs (server qayta ishga tushganda ham yo'qolmaydi)
+  if (!usdCache.data) {
     try {
-      const [d] = await (await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/')).json();
-      const rate = Math.round(parseFloat(d.Rate));
-      if (rate) data = { rate, buy: rate - 50, sell: rate + 50 };
+      const s = await usdMeta().findOne({ _id: 'usd' });
+      if (s && s.rate) usdCache.data = { rate: s.rate, buy: s.buy, sell: s.sell };
     } catch (e) {}
   }
-  if (data) usdCache = { t: Date.now(), data };
-  return data || usdCache.data;
+  return usdCache.data;
 }
 
 // ---------- Ob-havo va namoz vaqti (keshlanadi) ----------
