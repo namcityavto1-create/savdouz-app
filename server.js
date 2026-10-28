@@ -1,9 +1,9 @@
 // SavdoUz backend v5 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + faollik + adminlar huquqlari + parol tiklash + promokod + statistika + buyurtma tarixi
-require('./imgstore.js');
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
 require('./features.js');
+require('./imgstore.js');
 require('./features-api.js');
 require('./plus.js');
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), url = require('url');
