@@ -247,7 +247,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v5.8';
+const APP_VERSION = 'v5.9';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -1321,6 +1321,7 @@ async function renderAdmin(main){
         ${s.sellerStatus !== 'faol' ? `<button class="addbtn" style="background:var(--grn)" data-sst="${s.id}" data-st="faol" data-sname="${esc(s.name)}">Tasdiqlash</button>` : ''}
         ${s.sellerStatus !== 'rad etildi' ? `<button class="addbtn" style="background:var(--or)" data-sst="${s.id}" data-st="rad etildi" data-sname="${esc(s.name)}">${s.sellerStatus === 'faol' ? 'Bloklash' : 'Rad etish'}</button>` : ''}
       </div>
+      ${s.sellerStatus === 'faol' ? `<button class="addbtn" style="background:var(--grn);margin-top:8px" data-free="${s.id}" data-sname="${esc(s.name)}">🎁 Komissiyasiz muddat berish</button>` : ''}
       <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; };
     const row = s => `<div class="oitem" data-row="${s.id}" style="display:flex;align-items:center;gap:12px;cursor:pointer"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(s.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(s.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(s.phone)}</div><div style="font-size:11px;color:var(--mut)">Mahsulot: ${s.productCount} ta · Buyurtma: ${s.orderCount} ta${s.freeDaysLeft > 0 ? ' · 🎁 ' + s.freeDaysLeft + ' kun' : ''}</div></div><div style="font-size:11.5px;color:${s.online?'#1E7E34':'var(--mut)'};font-weight:${s.online?800:500};text-align:right">${s.online?'● Onlayn':esc(ago(s.lastSeen))}</div></div>`;
     const recent = [...sellers].sort((x,y) => (y.id - x.id));
@@ -1348,6 +1349,14 @@ async function renderAdmin(main){
       const ok = b.dataset.st === 'faol' ? `"${b.dataset.sname}" ni tasdiqlaysizmi? Rasmlarni tekshirdingizmi?` : `"${b.dataset.sname}" ni ${b.textContent.toLowerCase()}ni tasdiqlaysizmi? Mahsulotlari ko'rinmay qoladi.`;
       if(!confirm(ok)) return;
       try { await api('/api/admin/sellers/' + b.dataset.sst + '/status', { method:'POST', body:JSON.stringify({ status:b.dataset.st }) }); toast('Bajarildi ✅'); renderTab(); }
+      catch(e){ toast(e.message); }
+    });
+    main.querySelectorAll('[data-free]').forEach(b => b.onclick = async () => {
+      const d = prompt('"' + b.dataset.sname + '" ga necha kun komissiyasiz bo\'lsin? (30 = 1 oy, 0 = bekor qilish)', '30');
+      if(d === null) return;
+      const days = Number(String(d).trim());
+      if(!Number.isFinite(days) || days < 0 || days > 365){ toast("0 dan 365 gacha kun kiriting"); return; }
+      try { await api('/api/admin/sellers/' + b.dataset.free + '/free', { method:'POST', body:JSON.stringify({ days }) }); toast(days > 0 ? days + ' kun komissiyasiz berildi ✅' : 'Komissiyasiz muddat bekor qilindi'); renderTab(); }
       catch(e){ toast(e.message); }
     });
     main.querySelectorAll('[data-delseller]').forEach(b => b.onclick = async () => {
