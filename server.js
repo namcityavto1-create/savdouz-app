@@ -1119,6 +1119,19 @@ const server = http.createServer(async (req, res) => {
         const d = await mongoClient.db('savdouz').collection('sellerdocs').findOne({ _id: Number(m[1]) });
         return sendDataImage(res, d && (m[2] === 'id' ? d.idDoc : d.selfie), 'private, max-age=3600');
       }
+      // Sotuvchiga komissiyasiz muddat berish (days=0 bo'lsa bekor qilinadi). Faqat yangi buyurtmalarga ta'sir qiladi.
+      if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/free$/)) && M === 'POST') {
+        const s = db.users.find(u => u.id === Number(m[1]) && u.role === 'seller');
+        if (!s) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
+        const body = await readBody(req);
+        const days = Math.floor(Number(body.days));
+        if (!Number.isFinite(days) || days < 0 || days > 365) return sendJSON(res, 400, { error: "Kun soni 0 dan 365 gacha bo'lishi kerak" });
+        s.freeGranted = true;
+        s.freeUntil = days > 0 ? new Date(Date.now() + days * 864e5).toISOString() : null;
+        await saveDB(db);
+        if (days > 0) pushNotify(db, [s.id], { title: 'Komissiyasiz muddat', body: days + " kun komissiyasiz sotishingiz mumkin!", tag: 'free' });
+        return sendJSON(res, 200, { ok: true, freeDaysLeft: freeDaysLeft(s) });
+      }
       // Sotuvchini tasdiqlash / rad etish / bloklash
       if ((m = pathname.match(/^\/api\/admin\/sellers\/(\d+)\/status$/)) && M === 'POST') {
         const s = db.users.find(u => u.id === Number(m[1]) && u.role === 'seller');
