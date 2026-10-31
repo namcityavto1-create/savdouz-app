@@ -1101,7 +1101,7 @@ const server = http.createServer(async (req, res) => {
           const ls = seenMap.get(s.id) || null;
           return {
             hasDocs: docIds.has(s.id), sellerStatus: sellerStatusOf(s), id: s.id, name: s.name, phone: s.phone, accountNumber: s.accountNumber, balance: s.balance || 0,
-            createdAt: s.createdAt || null, lastSeen: ls, online: !!ls && now - ls < ONLINE_MS,
+            createdAt: s.createdAt || null, freeDaysLeft: freeDaysLeft(s), lastSeen: ls, online: !!ls && now - ls < ONLINE_MS,
             productCount: db.products.filter(p => p.sellerId === s.id).length,
             orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === s.id)).length,
             totalSales: all.reduce((x, it) => x + (it.subtotal || it.price * it.qty), 0),
