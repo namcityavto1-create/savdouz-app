@@ -1,4 +1,4 @@
-// SavdoUz backend v5 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + faollik + adminlar huquqlari + parol tiklash + promokod + statistika + buyurtma tarixi
+// SavdoUz backend v5 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + faollik + adminlar huquqlari + parol tiklash + promokod + statistika + buyurtma tarixi + yangi sotuvchiga 1 oy komissiyasiz
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
@@ -98,6 +98,10 @@ const PAYOUT_CARD = { number: "9860 1901 0557 8776", name: "IZZATILLO V." };
 const DEBT_LIMIT = 10000;
 const ADMIN_PHONE = '+998774071234';
 const WEEK = 7 * 864e5;
+// Yangi tasdiqlangan sotuvchiga 1 oy komissiya olinmaydi, keyin avtomatik 1% boshlanadi
+const FREE_DAYS = 30;
+const commissionFree = u => !!u && !!u.freeUntil && Date.now() < new Date(u.freeUntil).getTime();
+const freeDaysLeft = u => commissionFree(u) ? Math.max(1, Math.ceil((new Date(u.freeUntil).getTime() - Date.now()) / 864e5)) : 0;
 const CAT_ICON = { "Telefon": "phone", "Kompyuter": "laptop", "Elektronika": "laptop", "Maishiy texnika": "laptop", "Kiyim": "shirt", "Poyabzal": "shirt", "Aksessuarlar": "shirt", "Go'zallik": "shirt", "Oziq-ovqat": "sofa", "Uy-ro'zg'or": "sofa", "Mebel": "sofa", "Bolalar": "shirt", "Sport": "shirt", "Avto": "car", "Qurilish": "car", "Kitob": "laptop", "Boshqa": "laptop" };
 const REGIONS = ["Toshkent shahri", "Toshkent viloyati", "Andijon", "Farg'ona", "Namangan", "Buxoro", "Jizzax", "Qashqadaryo", "Navoiy", "Samarqand", "Sirdaryo", "Surxondaryo", "Xorazm", "Qoraqalpog'iston"];
 class UserErr extends Error {}
@@ -1121,9 +1125,15 @@ const server = http.createServer(async (req, res) => {
         if (!s) return sendJSON(res, 404, { error: "Sotuvchi topilmadi" });
         const { status } = await readBody(req);
         if (!['faol', 'rad etildi', 'kutilmoqda'].includes(status)) return sendJSON(res, 400, { error: "Noto'g'ri holat" });
+        const wasPending = sellerStatusOf(s) === 'kutilmoqda';
         s.sellerStatus = status;
+        // Birinchi marta tasdiqlanganda 1 oy komissiyasiz davr boshlanadi (faqat bir marta)
+        if (status === 'faol' && wasPending && !s.freeGranted) {
+          s.freeGranted = true;
+          s.freeUntil = new Date(Date.now() + FREE_DAYS * 864e5).toISOString();
+        }
         await saveDB(db);
-        if (status === 'faol') pushNotify(db, [s.id], { title: 'Hisobingiz tasdiqlandi', body: "Endi mahsulot qo'shishingiz mumkin", tag: 'approved' });
+        if (status === 'faol') pushNotify(db, [s.id], { title: 'Hisobingiz tasdiqlandi', body: wasPending && s.freeUntil ? "1 oy komissiyasiz sotishingiz mumkin!" : "Endi mahsulot qo'shishingiz mumkin", tag: 'approved' });
         return sendJSON(res, 200, { ok: true, status });
       }
       // Balansga pul qo'shish va ayirish.
@@ -1218,7 +1228,8 @@ const server = http.createServer(async (req, res) => {
         if (!deliversTo(p, region)) throw new UserErr(`"${p.name}" "${region}" hududiga yetkazilmaydi`);
         if (method === 'karta') { const s = db.users.find(x => x.id === p.sellerId); if (!s || !s.card) throw new UserErr(`"${p.name}" sotuvchisi karta kiritmagan. Naqd to'lovni tanlang`); }
         const unit = curPrice(p);
-        const subtotal = unit * qty, commission = Math.round(subtotal * COMMISSION_RATE), deliveryFee = p.deliveryPrice || 0;
+        const sellerU = db.users.find(x => x.id === p.sellerId);
+        const subtotal = unit * qty, commission = commissionFree(sellerU) ? 0 : Math.round(subtotal * COMMISSION_RATE), deliveryFee = p.deliveryPrice || 0;
         total += subtotal; deliveryTotal += deliveryFee;
         return { productId: p.id, name: p.name, price: unit, qty, sellerId: p.sellerId, subtotal, commission, payout: subtotal - commission, deliveryFee, charge: true };
       });
@@ -1256,7 +1267,7 @@ const server = http.createServer(async (req, res) => {
         totalSales: all.reduce((s, it) => s + (it.subtotal || it.price * it.qty), 0), totalCommission,
         totalPayout: all.reduce((s, it) => s + (it.payout || it.price * it.qty), 0),
         orderCount: db.orders.filter(o => o.items.some(it => it.sellerId === u.id)).length,
-        commissionRate: COMMISSION_RATE, payoutCard: { number: PAYOUT_CARD.number, name: initials(PAYOUT_CARD.name) }, paidCommission: paid, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
+        commissionRate: COMMISSION_RATE, freeUntil: commissionFree(u) ? u.freeUntil : null, freeDaysLeft: freeDaysLeft(u), payoutCard: { number: PAYOUT_CARD.number, name: initials(PAYOUT_CARD.name) }, paidCommission: paid, debt, debtLimit: DEBT_LIMIT, restricted: debt > DEBT_LIMIT
       });
     }
 
