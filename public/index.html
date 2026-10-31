@@ -247,7 +247,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v5.7';
+const APP_VERSION = 'v5.8';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -1055,9 +1055,11 @@ async function sellerAccount(main){
   wireCard(main);
 }
 
+// ---- Sotuvchi: mahsulotlarim (komissiyasiz kunlar bannerli) ----
 async function sellerHome(main){
   const [{ products }, earn] = await Promise.all([api('/api/my-products'), api('/api/earnings').catch(() => null)]);
   main.innerHTML = '<div class="sectitle">Mening mahsulotlarim</div>' +
+    (earn && earn.freeDaysLeft > 0 ? `<div class="banner"><div class="btitle">🎁 Komissiyasiz: ${earn.freeDaysLeft} kun qoldi</div><div class="bsub">Shundan keyin ${Math.round((earn.commissionRate || 0) * 100)}% komissiya olinadi</div></div>` : '') +
     (earn && earn.restricted ? `<div class="warn">⚠️ Qarzingiz limitdan (${fmt(earn.debtLimit)}) oshgan! Mahsulotlaringiz xaridorlarga ko'rinmayapti. "To'lov" bo'limidan to'lov yuboring.</div>` : '') +
     (products.length ? `<div class="grid">${products.map(p => `<div class="pcard"><div class="pimg">${media(p)}</div><div class="pbody">
       <span class="tag">${esc(p.cat)}</span><div class="pname">${esc(p.name)}</div>${priceHtml(p)}${p.onSale ? `<div style="font-size:10.5px;color:var(--or);font-weight:700;margin-bottom:4px">🔥 Hafta chegirmasi: ${p.daysLeft} kun qoldi</div>` : ''}
@@ -1151,10 +1153,14 @@ async function sellerOrders(main){
   wireChat(main);
 }
 
+// ---- Sotuvchi: komissiya va to'lov (komissiyasiz kunlar bannerli) ----
 async function sellerPayments(main){
   const [earn, pay] = await Promise.all([api('/api/earnings').catch(() => null), api('/api/payments/mine').catch(() => ({ payments: [] }))]);
   const myPay = pay.payments || [];
   const rate = earn ? Math.round((earn.commissionRate || 0) * 100) : 0;
+  const freeBox = earn && earn.freeDaysLeft > 0
+    ? `<div class="banner"><div class="btitle">🎁 Komissiyasiz muddat</div><div class="bsub">${earn.freeDaysLeft} kun qoldi. Keyin ${rate}% komissiya olinadi</div></div>`
+    : '';
   const summary = earn ? `<div class="summary">
     <div class="sumrow"><span>Jami savdo</span><span>${fmt(earn.totalSales)}</span></div>
     <div class="sumrow"><span>Platforma komissiyasi (${rate}%)</span><span>−${fmt(earn.totalCommission)}</span></div>
@@ -1165,7 +1171,7 @@ async function sellerPayments(main){
     ${earn.payoutCard ? `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)"><div style="font-size:11px;color:var(--mut);margin-bottom:6px">Komissiyani shu kartaga o'tkazing:</div><div style="background:var(--vl);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:14px;color:var(--vt)">${esc(earn.payoutCard.number)}</div><div style="font-size:11px;color:var(--mut);margin-top:2px">${esc(earn.payoutCard.name)}</div></div></div>` : ''}</div>`
     : '<div class="warn">Daromad ma\'lumotlarini yuklab bo\'lmadi</div>';
   const stc = s => s==='tasdiqlandi' ? ['#E6F4EA','var(--grn)'] : s==='rad etildi' ? ['#FDEDED','var(--red)'] : ['var(--vl)','var(--vd)'];
-  main.innerHTML = '<div class="sectitle">Komissiya va to\'lov</div>' + summary + `<div class="addform"><div class="sectitle" style="font-size:14px">To'lov yuborish</div>
+  main.innerHTML = '<div class="sectitle">Komissiya va to\'lov</div>' + freeBox + summary + `<div class="addform"><div class="sectitle" style="font-size:14px">To'lov yuborish</div>
     <div class="field"><label>To'langan summa (so'm)</label><input id="payAmount" type="number" inputmode="numeric" placeholder="Masalan: 50000"></div>
     <div class="field"><label>Chek yoki skrinshot</label><div class="imgpreview" id="receiptPreview"><span>Rasm tanlanmagan</span></div><input id="payReceipt" type="file" accept="image/*"></div>
     <button class="primarybtn" id="sendPay">Yuborish</button></div>` +
@@ -1299,6 +1305,7 @@ async function renderAdmin(main){
       <div class="top" data-close="${s.id}" style="cursor:pointer"><span style="font-weight:700;color:var(--ink)">${esc(s.name)} ${s.restricted ? '<span style="color:var(--red);font-size:10.5px">🚫 Qarz limiti</span>' : ''}</span><span>${esc(s.phone)}</span></div>
       <div class="oline"><span>Holati</span><span class="status" style="background:${c[0]};color:${c[1]}">${c[2]}</span></div>
       <div class="oline"><span>Hisob raqami</span><span>${esc(s.accountNumber || '—')}</span></div>
+      <div class="oline"><span>Komissiyasiz muddat</span><span style="font-weight:800;color:${s.freeDaysLeft>0?'var(--grn)':'var(--mut)'}">${s.freeDaysLeft > 0 ? s.freeDaysLeft + ' kun qoldi' : 'tugagan / berilmagan'}</span></div>
       <div class="oline"><span>Hujjatlar</span><span>${s.hasDocs ? `<a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank">Pasport/ID</a> · <a href="/api/admin/sellers/${s.id}/doc/selfie?t=${encodeURIComponent(S.token)}" target="_blank">Selfi</a>` : 'yuklanmagan'}</span></div>
       ${s.hasDocs ? `<div style="margin:6px 0 10px"><div style="display:flex;gap:8px">
         <div style="flex:1;min-width:0;text-align:center"><div style="font-size:11.5px;font-weight:700;opacity:.7;margin-bottom:4px">Pasport / ID</div><a href="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" target="_blank"><img id="fi-${s.id}" loading="lazy" src="/api/admin/sellers/${s.id}/doc/id?t=${encodeURIComponent(S.token)}" style="width:100%;height:210px;object-fit:contain;background:#F1EDFE;border-radius:12px"></a></div>
@@ -1315,7 +1322,7 @@ async function renderAdmin(main){
         ${s.sellerStatus !== 'rad etildi' ? `<button class="addbtn" style="background:var(--or)" data-sst="${s.id}" data-st="rad etildi" data-sname="${esc(s.name)}">${s.sellerStatus === 'faol' ? 'Bloklash' : 'Rad etish'}</button>` : ''}
       </div>
       <button class="addbtn" style="background:var(--red);margin-top:8px" data-delseller="${s.id}" data-sname="${esc(s.name)}">🗑 Sotuvchini o'chirish</button></div>`; };
-    const row = s => `<div class="oitem" data-row="${s.id}" style="display:flex;align-items:center;gap:12px;cursor:pointer"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(s.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(s.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(s.phone)}</div><div style="font-size:11px;color:var(--mut)">Mahsulot: ${s.productCount} ta · Buyurtma: ${s.orderCount} ta</div></div><div style="font-size:11.5px;color:${s.online?'#1E7E34':'var(--mut)'};font-weight:${s.online?800:500};text-align:right">${s.online?'● Onlayn':esc(ago(s.lastSeen))}</div></div>`;
+    const row = s => `<div class="oitem" data-row="${s.id}" style="display:flex;align-items:center;gap:12px;cursor:pointer"><div style="width:42px;height:42px;border-radius:50%;background:#F1EDFE;color:#4E2FD9;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">${esc(ini(s.name))}</div><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--ink)">${esc(s.name)}</div><div style="font-size:12px;color:var(--mut)">${esc(s.phone)}</div><div style="font-size:11px;color:var(--mut)">Mahsulot: ${s.productCount} ta · Buyurtma: ${s.orderCount} ta${s.freeDaysLeft > 0 ? ' · 🎁 ' + s.freeDaysLeft + ' kun' : ''}</div></div><div style="font-size:11.5px;color:${s.online?'#1E7E34':'var(--mut)'};font-weight:${s.online?800:500};text-align:right">${s.online?'● Onlayn':esc(ago(s.lastSeen))}</div></div>`;
     const recent = [...sellers].sort((x,y) => (y.id - x.id));
     const pending = sellers.filter(x => x.sellerStatus === 'kutilmoqda');
     let all = false; const opened = new Set();
