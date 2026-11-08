@@ -69,6 +69,22 @@ async function orderInfo(C, id) {
 }
 const bearer = req => { const h = req.headers.authorization; return h && h.startsWith('Bearer ') ? h.slice(7) : ''; };
 
+// ---------- "Kuryer admin" huquqi (courier.js ga tegmasdan tekshiriladi) ----------
+let ADM = { t: 0, map: new Map() };
+async function courierAdminOk(id) {
+  const d = await db();
+  if (Date.now() - ADM.t > 30000) {
+    const st = await d.collection('state').findOne({ _id: 'main' }, { projection: { 'users.id': 1, 'users.role': 1, 'users.phone': 1, 'users.perms': 1 } });
+    ADM = { t: Date.now(), map: new Map(((st && st.users) || []).filter(u => u.role === 'admin').map(u => [u.id, u])) };
+  }
+  const u = ADM.map.get(id);
+  if (!u) return false;
+  if (u.phone === OWNER_PHONE) return true;               // asosiy admin
+  if (!Array.isArray(u.perms)) return true;                // eski adminlar (huquqlar belgilanmagan) hozirgidek kira oladi
+  return u.perms.includes('courier');
+}
+const OWNER_PHONE = '+998774071234';
+
 async function handle(req, res) {
   const u = new URL(req.url, 'http://x'), P = u.pathname, M = req.method;
   let m;
@@ -89,9 +105,26 @@ async function handle(req, res) {
     res.end(PAGE);
     return true;
   }
+  // Kuryer admin sahifasi API si: faqat 'courier' huquqi borlar (asosiy admin ham)
+  if (P.startsWith('/api/c/')) {
+    const p = parseTok(bearer(req) || u.searchParams.get('t'));
+    if (p && p.kind === 'u' && !(await courierAdminOk(p.id))) throw new E("Kuryer admin huquqingiz yo'q", 403);
+    return false;
+  }
   if (!P.startsWith('/api/trk/')) return false;
   const D = await db();
   const C = n => D.collection(n);
+
+  // Admin uchun: tasdiqlashni kutayotgan kuryer/hamkorlar
+  if (M === 'GET' && P === '/api/trk/pending') {
+    const p = parseTok(bearer(req) || u.searchParams.get('t'));
+    if (!p || p.kind !== 'u' || !(await courierAdminOk(p.id))) throw new E("Ruxsat yo'q", 403);
+    const pick = a => a.map(x => ({ id: x._id, name: x.name }));
+    const cs = await C('couriers').find({ status: 'kutilmoqda' }, { projection: { name: 1 } }).limit(50).toArray();
+    const ps = await C('partners').find({ status: 'kutilmoqda' }, { projection: { name: 1 } }).limit(50).toArray();
+    send(res, 200, { couriers: pick(cs), partners: pick(ps), topups: await C('topups').countDocuments({ status: 'kutilmoqda' }), withdrawals: await C('withdrawals').countDocuments({ status: 'kutilmoqda' }) });
+    return true;
+  }
 
   // Kuryer GPS yuboradi
   if (M === 'POST' && P === '/api/trk/loc') {
@@ -152,6 +185,24 @@ async function handle(req, res) {
   }
   throw new E("Bunday so'rov yo'q", 404);
 }
+
+// ---------- Yangi kuryer / hamkor ro'yxatdan o'tsa, "Kuryer admin" huquqi borlarga bildirishnoma ----------
+async function notifyNew() {
+  try {
+    const SVI = global.SVI;
+    if (!SVI || !SVI.pushNotify || !SVI.loadDB) return;
+    const d = await db();
+    for (const [col, title] of [['couriers', 'Yangi kuryer'], ['partners', "Yangi hamkor (do'kon/kafe)"]]) {
+      const list = await d.collection(col).find({ status: 'kutilmoqda', notified: { $ne: true } }, { projection: { name: 1 } }).limit(20).toArray();
+      if (!list.length) continue;
+      const sdb = await SVI.loadDB();
+      const ids = sdb.users.filter(u => u.role === 'admin' && SVI.hasPerm(u, 'courier')).map(u => u.id);
+      for (const x of list) SVI.pushNotify(sdb, ids, { title, body: String(x.name || '') + ' tasdiqlashni kutmoqda', tag: col, url: '/kuryer-admin' });
+      await d.collection(col).updateMany({ _id: { $in: list.map(x => x._id) } }, { $set: { notified: true } });
+    }
+  } catch (e) { console.error('tracking.js bildirishnoma xatosi:', e.message); }
+}
+setInterval(notifyNew, 15000).unref();
 
 // ---------- server.js ga ulanish ----------
 const origCreate = http.createServer;
@@ -219,7 +270,7 @@ function patchHtml(html, P) {
   // 3) PWA manifest (courier.js dagi kabi)
   return html.replace('</head>', () => '<link rel="manifest" href="/' + (P === '/hamkor' ? 'hamkor' : 'kuryer') + '.webmanifest"></head>');
 }
-module.exports = { patchHtml };
+module.exports = { patchHtml, notifyNew };
 
 // ---------- Mijoz sahifasi ----------
 const PAGE = `<!DOCTYPE html>

@@ -270,14 +270,15 @@ const requireAdmin = (req, db) => { const u = getUserFromReq(req, db); return u 
 // Asosiy admin (ADMIN_PHONE) hamma huquqqa ega. Boshqa adminlarga huquqlar alohida beriladi.
 // Eski adminlar (perms yo'q) hozirgidek hamma narsani ko'radi, faqat adminlarni boshqara olmaydi.
 const PERM_LIST = [
-  { key: 'sellers', label: "Sotuvchilar" },
-  { key: 'balance', label: "Sotuvchi balansi" },
+  { key: 'sellers', label: "Sotuvchilarni ko'rish va tasdiqlash" },
+  { key: 'balance', label: "Sotuvchi balansini o'zgartirish" },
   { key: 'products', label: "Mahsulotlar" },
   { key: 'buyers', label: "Xaridorlar" },
   { key: 'orders', label: "Buyurtmalar" },
-  { key: 'payments', label: "To'lovlar" },
+  { key: 'payments', label: "To'lovlarni tasdiqlash" },
   { key: 'ads', label: "Reklamalar" },
-  { key: 'admins', label: "Admin qo'shish" }
+  { key: 'courier', label: "Kuryer admin (kuryer, hamkor, hisob to'ldirish — tasdiqlash)" },
+  { key: 'admins', label: "Admin qo'shish va boshqarish" }
 ];
 const PERM_KEYS = PERM_LIST.map(p => p.key);
 const isOwner = u => !!u && u.phone === ADMIN_PHONE;
@@ -1336,7 +1337,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-global.SVI = { loadDB, saveDB, getUserFromReq };
+global.SVI = { loadDB, saveDB, getUserFromReq, pushNotify, hasPerm };
 connectMongo().then(() => {
   server.listen(PORT, () => console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`));
   loadSeen(); setInterval(flushSeen, 60 * 1000); // faollik ma'lumotini har daqiqada saqlaydi
