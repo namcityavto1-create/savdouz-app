@@ -116,7 +116,7 @@ const pubD = d => ({
 const ordD = (o, full) => {
   const x = {
     id: o._id, status: o.status, km: o.km, fee: o.fee, tariff: tariffOf(o.tariff), tariffName: TARIFFS[tariffOf(o.tariff)].name, note: o.note || '',
-    from: { lat: o.from.lat, lng: o.from.lng, address: o.from.address }, to: { lat: o.to.lat, lng: o.to.lng, address: o.to.address }
+    from: { lat: o.from.lat, lng: o.from.lng, address: o.from.address }, to: o.to ? { lat: o.to.lat, lng: o.to.lng, address: o.to.address } : null, open: !!o.open
   };
   if (full) { x.name = o.userName; x.phone = o.userPhone; }
   return x;
@@ -174,25 +174,28 @@ async function handle(req, res) {
     let etaMin = null;
     if (dr && dr.lat != null) {
       if (o.status === 'qabul') etaMin = eta(dr, o.from);
-      else if (o.status === 'yolda') etaMin = eta(dr, o.to);
+      else if (o.status === 'yolda' && o.to) etaMin = eta(dr, o.to);
     }
-    return { id: o._id, status: o.status, from: o.from, to: o.to, km: o.km, fee: o.fee, tariff: tariffOf(o.tariff), tariffName: TARIFFS[tariffOf(o.tariff)].name, driver: dr, etaMin, reason: o.reason || null };
+    return { id: o._id, status: o.status, from: o.from, to: o.to, km: o.km, fee: o.fee, tariff: tariffOf(o.tariff), tariffName: TARIFFS[tariffOf(o.tariff)].name, driver: dr, etaMin, reason: o.reason || null, open: !!o.open };
   };
   if (R('POST', /^\/quote$/)) {
     await mainUser(req, u.searchParams);
-    const f = pt(b.from), t = pt(b.to), r = price(f, t, 'start'), r2 = price(f, t, 'komfort');
+    const f = pt(b.from);
+    if (!b.to) return ok({ open: true, km: 0, max: CFG.maxKm, fees: { start: TARIFFS.start.base, komfort: TARIFFS.komfort.base }, perKm: { start: TARIFFS.start.km, komfort: TARIFFS.komfort.km } });
+    const t = pt(b.to), r = price(f, t, 'start'), r2 = price(f, t, 'komfort');
     return ok({ km: r.k, max: CFG.maxKm, fees: { start: r.fee, komfort: r2.fee } });
   }
   if (R('POST', /^\/order$/)) {
     const user = await mainUser(req, u.searchParams);
     if (user.role === 'admin') throw new E("Admin taksi chaqira olmaydi");
-    const tariff = tariffOf(b.tariff), f = pt(b.from), t = pt(b.to), { k, fee } = price(f, t, tariff);
+    const tariff = tariffOf(b.tariff), f = pt(b.from), t = b.to ? pt(b.to) : null, open = !t;
+    const { k, fee } = open ? { k: 0, fee: TARIFFS[tariff].base } : price(f, t, tariff);
     if (fee === null) throw new E(`Masofa ${CFG.maxKm} km dan oshmasin`);
-    if (k < 1 || dist(f, t) < 0.1) throw new E("Manzillar juda yaqin");
+    if (!open && (k < 1 || dist(f, t) < 0.1)) throw new E("Manzillar juda yaqin");
     if (await C('taxiorders').findOne({ userId: user.id, status: { $in: ACTIVE } })) throw new E("Sizda faol taksi buyurtmasi bor");
     const o = {
       _id: await nextId('taxiorder'), userId: user.id, userName: user.name || 'Yo\'lovchi', userPhone: user.phone || '',
-      from: f, to: t, km: k, fee, tariff, note: String(b.note || '').trim().slice(0, 200), status: 'yangi', createdAt: iso()
+      from: f, to: t, open, km: k, fee, tariff, note: String(b.note || '').trim().slice(0, 200), status: 'yangi', createdAt: iso()
     };
     await C('taxiorders').insertOne(o);
     return ok({ order: await view(o) });
@@ -201,6 +204,11 @@ async function handle(req, res) {
     const user = await mainUser(req, u.searchParams);
     const o = await C('taxiorders').findOne({ userId: user.id, status: { $in: ACTIVE } }, { sort: { _id: -1 } });
     return ok({ order: o ? await view(o) : null });
+  }
+  if (R('GET', /^\/history$/)) {
+    const user = await mainUser(req, u.searchParams);
+    const list = await C('taxiorders').find({ userId: user.id }).sort({ _id: -1 }).limit(30).toArray();
+    return ok({ orders: list.map(o => ({ id: o._id, status: o.status, km: o.km, fee: o.fee, tariffName: TARIFFS[tariffOf(o.tariff)].name, createdAt: o.createdAt, reason: o.reason || '', open: !!o.open })) });
   }
   if (R('GET', /^\/o\/(\d+)$/)) {
     const user = await mainUser(req, u.searchParams);
@@ -292,9 +300,17 @@ async function handle(req, res) {
       return ok();
     }
     if (act === 'done') {
-      const o = await fu('taxiorders', Object.assign({ status: 'yolda' }, mineQ), { $set: { status: 'yetkazildi', doneAt: now } });
+      const cur = await C('taxiorders').findOne(Object.assign({ status: 'yolda' }, mineQ));
+      if (!cur) throw new E("Safar hali boshlanmagan");
+      const set = { status: 'yetkazildi', doneAt: now };
+      if (cur.open) {
+        const amt = Math.round(Number(b.amount) / 1000) * 1000;
+        if (!Number.isFinite(amt) || amt < cur.fee || amt > 500000) throw new E(`Summani kiriting (${cur.fee} so'mdan kam bo'lmasin)`);
+        set.fee = amt;
+      }
+      const o = await fu('taxiorders', Object.assign({ status: 'yolda' }, mineQ), { $set: set });
       if (!o) throw new E("Safar hali boshlanmagan");
-      const com = Math.round(o.fee * rateOf(d));
+      const com = Math.round((set.fee || o.fee) * rateOf(d));
       await C('taxidrivers').updateOne({ _id: d._id }, { $inc: { balance: -com, doneCount: 1 } });
       await C('taxidrivers').updateOne({ _id: d._id, firstDoneAt: { $exists: false } }, { $set: { firstDoneAt: now } });
       await C('taxiorders').updateOne({ _id: id }, { $set: { commission: com } });
