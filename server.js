@@ -1337,7 +1337,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-global.SVI = { loadDB, saveDB, getUserFromReq, pushNotify, hasPerm };
+global.SVI = { loadDB, saveDB, getUserFromReq, pushNotify, hasPerm, settle };
 connectMongo().then(() => {
   server.listen(PORT, () => console.log(`SavdoUz server ishga tushdi: http://localhost:${PORT}`));
   loadSeen(); setInterval(flushSeen, 60 * 1000); // faollik ma'lumotini har daqiqada saqlaydi

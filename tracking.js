@@ -139,6 +139,38 @@ const ADMIN_FIX = `<script>
   fix();
 })();
 </script>`;
+function hookCourierOrders(req, res) {
+  delete req.headers['accept-encoding'];
+  const ow = res.writeHead, oe = res.end, owr = res.write;
+  let head = null; const chunks = [];
+  res.writeHead = function (code, a, b) { head = { code, h: (a && typeof a === 'object') ? a : (b && typeof b === 'object' ? b : null), msg: typeof a === 'string' ? a : undefined }; return res; };
+  res.write = function (c, enc) { if (c) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(String(c), typeof enc === 'string' ? enc : 'utf8')); return true; };
+  res.end = function (c, enc) {
+    if (c && typeof c !== 'function') chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(String(c), typeof enc === 'string' ? enc : 'utf8'));
+    res.writeHead = ow; res.end = oe; res.write = owr;
+    (async () => {
+      let body = Buffer.concat(chunks);
+      const code = head ? head.code : res.statusCode;
+      try {
+        if (code === 200) {
+          const j = JSON.parse(body.toString('utf8'));
+          const all = [].concat(j.open || [], j.mine || []);
+          if (all.length) {
+            const d = await db();
+            const pre = new Set((await d.collection('corders').find({ _id: { $in: all.map(x => x.id) }, prepaid: true }, { projection: { _id: 1 } }).toArray()).map(x => x._id));
+            all.forEach(x => { if (pre.has(x.id)) x.prepaid = true; });
+            body = Buffer.from(JSON.stringify(j), 'utf8');
+            if (head && head.h) for (const x in head.h) if (x.toLowerCase() === 'content-length') delete head.h[x];
+            res.removeHeader('content-length'); res.setHeader('Content-Length', body.length);
+          }
+        }
+      } catch (e) { /* o'zgartirmasdan yuboramiz */ }
+      if (head) { if (head.msg) ow.call(res, head.code, head.msg, head.h || undefined); else ow.call(res, head.code, head.h || undefined); }
+      oe.call(res, body);
+    })();
+    return res;
+  };
+}
 function hookAdminPage(req, res) {
   delete req.headers['accept-encoding'];
   const ow = res.writeHead, oe = res.end, owr = res.write;
@@ -163,6 +195,241 @@ function hookAdminPage(req, res) {
     return oe.call(res, body);
   };
 }
+
+// ---------- SOTUVCHI KURYER CHAQIRADI (do'kon buyurtmasi -> kuryer tizimi) ----------
+// Narx formulasi courier.js dagi CFG bilan bir xil bo'lishi shart (o'zgartirsangiz ikkalasini ham o'zgartiring)
+const SCFG = { baseFee: 8000, kmFee: 2000, maxKm: 15, routeK: 1.3, maxProduct: 300000 };
+function shopPrice(a, b) {
+  const k = Math.max(1, Math.ceil(dist(a, b) * SCFG.routeK));
+  if (k > SCFG.maxKm) return { k, fee: null };
+  return { k, fee: Math.round((SCFG.baseFee + (k - 1) * SCFG.kmFee) / 1000) * 1000 };
+}
+const unwrap = r => (r && typeof r === 'object' && 'lastErrorObject' in r) ? r.value : r;
+async function nextOrderId(C) {
+  const r = unwrap(await C('counters').findOneAndUpdate({ _id: 'order' }, { $inc: { seq: 1 } }, { upsert: true, returnDocument: 'after' }));
+  return r.seq;
+}
+const okLL = (la, ln) => Number.isFinite(la) && Number.isFinite(ln) && la >= 36 && la <= 46 && ln >= 55 && ln <= 74;
+async function mainUser(req, u) {
+  const p = parseTok(bearer(req) || u.searchParams.get('t'));
+  if (!p || p.kind !== 'u') throw new E('Kirish kerak', 401);
+  const SVI = global.SVI;
+  if (!SVI || !SVI.loadDB) throw new E('Server tayyor emas', 503);
+  const sdb = await SVI.loadDB();
+  const user = sdb.users.find(x => x.id === p.id);
+  if (!user) throw new E('Kirish kerak', 401);
+  return { sdb, user };
+}
+// sotuvchining shu buyurtmadagi ulushi: mahsulotlar + o'zi belgilagan yetkazish haqi (xaridor shuncha to'laydi)
+function sellerShare(o, sid) {
+  const its = (o.items || []).filter(i => i.sellerId === sid);
+  if (!its.length) return null;
+  const single = new Set(o.items.map(i => i.sellerId)).size === 1;
+  return single ? o.total : its.reduce((s, i) => s + (i.subtotal || i.price * i.qty) + (i.deliveryFee || 0), 0);
+}
+async function shopQuote(C, sdb, user, b, commit) {
+  const o = sdb.orders.find(x => x.id === Number(b.orderId));
+  if (!o) throw new E('Buyurtma topilmadi', 404);
+  const share = sellerShare(o, user.id);
+  if (share === null) throw new E("Bu sizning buyurtmangiz emas", 403);
+  if (user.role !== 'seller') throw new E("Faqat sotuvchi kuryer chaqira oladi", 403);
+  const card = o.paymentMethod === 'karta';
+  if (card && o.paymentStatus !== 'tasdiqlandi') throw new E("Xaridor to'lovi hali tasdiqlanmagan");
+  if (!card && o.paymentMethod !== 'naqd') throw new E("To'lov usuli noma'lum");
+  if (o.status !== 'tasdiqlandi') throw new E(o.status === 'yangi' ? 'Avval buyurtmani tasdiqlang' : "Bu holatdagi buyurtmaga kuryer chaqirib bo'lmaydi");
+  const active = await C('corders').findOne({ shopOrderId: o.id, sellerId: user.id, status: { $in: ['yangi', 'qabul', 'oldi'] } }, { projection: { _id: 1 } });
+  if (active) throw new E('Bu buyurtmaga kuryer allaqachon chaqirilgan');
+  const D0 = await db();
+  let shop = await D0.collection('shoploc').findOne({ _id: user.id });
+  const sLat = Number(b.shopLat), sLng = Number(b.shopLng);
+  if (okLL(sLat, sLng)) shop = { _id: user.id, lat: sLat, lng: sLng, address: String(b.shopAddress || (shop && shop.address) || user.shopName || user.name || '').slice(0, 200) };
+  if (!shop) throw new E("Avval do'koningiz joyini xaritada belgilang");
+  const lat = Number(b.lat), lng = Number(b.lng);
+  if (!okLL(lat, lng)) throw new E("Xaridor manzilini xaritadan belgilang");
+  const { k, fee } = shopPrice(shop, { lat, lng });
+  if (fee === null) throw new E("Masofa " + SCFG.maxKm + " km dan oshmasin");
+  // naqd: kuryer xaridordan pul oladi, sotuvchiga mahsulot pulini beradi. Karta: xaridor oldindan to'lagan, kuryer haqini sotuvchi to'laydi
+  const productSum = card ? 0 : Math.round(share - fee);
+  if (!card && productSum < 0) throw new E("Buyurtma summasi kuryer haqidan kam, kuryer chaqirib bo'lmaydi");
+  if (productSum > SCFG.maxProduct) throw new E("Buyurtma summasi " + SCFG.maxProduct + " so'mdan oshmasligi kerak (kuryer cheklovi)");
+  if (card && (user.balance || 0) < fee) throw new E("Hisobingizda mablag' yetarli emas. Kuryer haqi: " + fee + " so'm, hisobingiz: " + (user.balance || 0) + " so'm");
+  const quote = { km: k, fee, productSum, total: Math.round(share), mode: card ? 'karta' : 'naqd', balance: user.balance || 0 };
+  if (!commit) return quote;
+  await D0.collection('shoploc').updateOne({ _id: user.id }, { $set: { lat: shop.lat, lng: shop.lng, address: shop.address } }, { upsert: true });
+  const doc = {
+    _id: await nextOrderId(C), partnerId: -user.id, partnerName: user.name, partnerType: 'dokon', ready: true,
+    pickup: { address: shop.address || user.name, lat: shop.lat, lng: shop.lng, phone: user.phone },
+    customer: { name: o.buyerName, phone: o.phone, address: (o.region ? o.region + ', ' : '') + o.address, lat, lng },
+    productSum, km: k, fee, status: 'yangi', callCount: 0, calls: [], createdBy: 'sotuvchi', createdAt: new Date().toISOString(),
+    shopOrderId: o.id, sellerId: user.id, buyerId: o.buyerId, prepaid: card, shopCharged: card ? fee : 0
+  };
+  const SVI = global.SVI;
+  if (card) {
+    if ((user.balance || 0) < fee) throw new E("Hisobingizda mablag' yetarli emas");
+    user.balance -= fee;
+    if (!user.txs) user.txs = [];
+    user.txs.push({ id: Date.now(), amount: -fee, note: 'Kuryer haqi — buyurtma #' + o.id, createdAt: new Date().toISOString() });
+    await SVI.saveDB(sdb);
+  }
+  try { await C('corders').insertOne(doc); }
+  catch (e) { if (card) { user.balance += fee; user.txs.push({ id: Date.now(), amount: fee, note: 'Kuryer haqi qaytarildi — buyurtma #' + o.id, createdAt: new Date().toISOString() }); await SVI.saveDB(sdb); } throw e; }
+  return Object.assign(quote, { id: doc._id });
+}
+async function refundSeller(sdb, o) {
+  if (!o || !o.prepaid || !o.shopCharged || o.shopRefunded) return;
+  const D1 = await db();
+  const m = unwrap(await D1.collection('corders').findOneAndUpdate({ _id: o._id, shopRefunded: { $ne: true } }, { $set: { shopRefunded: true } }, { returnDocument: 'after' }));
+  if (!m) return;
+  const s = sdb.users.find(x => x.id === o.sellerId);
+  if (!s) return;
+  s.balance = (s.balance || 0) + o.shopCharged;
+  if (!s.txs) s.txs = [];
+  s.txs.push({ id: Date.now(), amount: o.shopCharged, note: 'Kuryer haqi qaytarildi — buyurtma #' + o.shopOrderId, createdAt: new Date().toISOString() });
+  await global.SVI.saveDB(sdb);
+}
+// ---------- KURYER PUL YECHISH (admin "Yechish" bo'limida hamkorlar bilan bir ro'yxatda chiqadi) ----------
+const WD = { rate: 0.01, min: 50000, keep: 10000 }; // komissiya 1%, eng kam 50 000, balansda kamida 10 000 qoladi
+async function courierWd(req, res, u, P, M, C) {
+  const p = parseTok(bearer(req) || u.searchParams.get('t'));
+  if (!p || p.kind !== 'c') throw new E('Kirish kerak', 401);
+  if (M === 'GET' && P === '/api/trk/cwithdrawals') {
+    const list = await C('withdrawals').find({ courierId: p.id }, { projection: { amount: 1, fee: 1, status: 1, card: 1, createdAt: 1 } }).sort({ _id: -1 }).limit(15).toArray();
+    send(res, 200, { list });
+    return true;
+  }
+  if (M === 'POST' && P === '/api/trk/cwithdraw') {
+    const b = await readBody(req), amount = Math.round(Number(b.amount)), card = String(b.card || '').replace(/\D/g, '');
+    if (!(amount >= WD.min)) throw new E("Eng kam summa: " + WD.min + " so'm");
+    if (card.length !== 16) throw new E("Karta raqami 16 ta raqam bo'lsin");
+    const fee = Math.round(amount * WD.rate / 100) * 100, cardF = card.replace(/(.{4})/g, '$1 ').trim();
+    const cur = await C('couriers').findOne({ _id: p.id }, { projection: { name: 1, status: 1 } });
+    if (!cur || cur.status !== 'faol') throw new E('Hisobingiz faol emas');
+    const x = unwrap(await C('couriers').findOneAndUpdate({ _id: p.id, status: 'faol', balance: { $gte: amount + fee + WD.keep } }, { $inc: { balance: -(amount + fee) }, $set: { card: cardF } }, { returnDocument: 'after' }));
+    if (!x) throw new E("Balansda yetarli mablag' yo'q. Komissiya (" + fee + " so'm) bilan kerak: " + (amount + fee) + " so'm, hisobda kamida " + WD.keep + " so'm qolishi kerak");
+    const id = unwrap(await C('counters').findOneAndUpdate({ _id: 'withdraw' }, { $inc: { seq: 1 } }, { upsert: true, returnDocument: 'after' })).seq;
+    // partnerId manfiy: courier.js admin "rad etish" bosilsa hamkorga pul qaytarmasligi uchun; kuryerga qaytarishni quyidagi sinxronlash qiladi
+    await C('withdrawals').insertOne({ _id: id, partnerId: -(1e6 + p.id), partnerName: 'Kuryer: ' + cur.name, courierId: p.id, amount, fee, card: cardF, status: 'kutilmoqda', createdAt: new Date().toISOString() });
+    send(res, 200, { ok: true });
+    return true;
+  }
+  return false;
+}
+async function syncWd() {
+  try {
+    const d = await db();
+    const rows = await d.collection('withdrawals').find({ courierId: { $exists: true }, status: 'rad etildi', refunded: { $ne: true } }).limit(20).toArray();
+    for (const w of rows) {
+      const g = unwrap(await d.collection('withdrawals').findOneAndUpdate({ _id: w._id, refunded: { $ne: true } }, { $set: { refunded: true } }, { returnDocument: 'after' }));
+      if (g) await d.collection('couriers').updateOne({ _id: w.courierId }, { $inc: { balance: w.amount + w.fee } });
+    }
+  } catch (e) { console.error('tracking.js yechish sinxron xatosi:', e.message); }
+}
+setInterval(syncWd, 10000).unref();
+
+async function shopRoutes(req, res, u, P, M, C) {
+  let m;
+  if (M === 'GET' && P === '/api/trk/shop/list') {
+    const { user } = await mainUser(req, u);
+    const q = user.role === 'seller' ? { sellerId: user.id } : { buyerId: user.id };
+    const rows = await C('corders').find(Object.assign({ shopOrderId: { $exists: true } }, q)).sort({ _id: -1 }).limit(60).toArray();
+    const loc = user.role === 'seller' ? await C('shoploc').findOne({ _id: user.id }) : null;
+    send(res, 200, {
+      shop: loc ? { lat: loc.lat, lng: loc.lng, address: loc.address } : null,
+      list: rows.map(o => ({
+        id: o._id, orderId: o.shopOrderId, status: o.status, mine: user.role === 'seller', fee: o.fee, productSum: o.productSum, km: o.km, prepaid: !!o.prepaid, token: trkToken(o._id),
+        courier: o.courierId && ['qabul', 'oldi', 'yetkazildi'].includes(o.status) ? { name: String(o.courierName || '').split(' ')[0], phone: o.courierPhone || '' } : null,
+        url: (o.status === 'qabul' || o.status === 'oldi') ? '/kuzat/' + trkToken(o._id) : null
+      }))
+    });
+    return true;
+  }
+  if (M === 'POST' && P === '/api/trk/shop/loc') {
+    const { user } = await mainUser(req, u);
+    if (user.role !== 'seller') throw new E('Ruxsat yoq', 403);
+    const b = await readBody(req), lat = Number(b.lat), lng = Number(b.lng);
+    if (!okLL(lat, lng)) throw new E("Joylashuv noto'g'ri");
+    await C('shoploc').updateOne({ _id: user.id }, { $set: { lat, lng, address: String(b.address || user.name || '').slice(0, 200) } }, { upsert: true });
+    send(res, 200, { ok: true });
+    return true;
+  }
+  if (M === 'POST' && (P === '/api/trk/shop/quote' || P === '/api/trk/shop/call')) {
+    const { sdb, user } = await mainUser(req, u);
+    const b = await readBody(req);
+    const r = await shopQuote(C, sdb, user, b, P.endsWith('/call'));
+    send(res, 200, r);
+    return true;
+  }
+  if (M === 'POST' && P === '/api/trk/shop/cancel') {
+    const { sdb, user } = await mainUser(req, u);
+    const b = await readBody(req);
+    const r = unwrap(await C('corders').findOneAndUpdate({ shopOrderId: Number(b.orderId), sellerId: user.id, status: { $in: ['yangi', 'qabul'] } }, { $set: { status: 'bekor', doneAt: new Date().toISOString() } }, { returnDocument: 'after' }));
+    if (!r) throw new E("Bekor qilib bo'lmaydi (kuryer mahsulotni olgan bo'lishi mumkin)");
+    await refundSeller(sdb, r);
+    send(res, 200, { ok: true });
+    return true;
+  }
+  return false;
+}
+
+// Kuryer holati o'zgarsa: sotuvchi va xaridorga bildirishnoma, do'kon buyurtma holati yangilanadi
+async function syncShop() {
+  try {
+    const SVI = global.SVI;
+    if (!SVI || !SVI.pushNotify || !SVI.loadDB) return;
+    const d = await db();
+    const sdb0 = await SVI.loadDB();
+    // do'kon buyurtmasi bekor qilingan bo'lsa, kuryer chaqiruvi ham bekor bo'ladi va kuryer haqi qaytariladi
+    const act = await d.collection('corders').find({ shopOrderId: { $exists: true }, status: { $in: ['yangi', 'qabul'] } }).limit(50).toArray();
+    for (const o of act) {
+      const ord0 = sdb0.orders.find(x => x.id === o.shopOrderId);
+      if (ord0 && ord0.status === 'bekor qilindi') {
+        const r = unwrap(await d.collection('corders').findOneAndUpdate({ _id: o._id, status: { $in: ['yangi', 'qabul'] } }, { $set: { status: 'bekor', doneAt: new Date().toISOString() } }, { returnDocument: 'after' }));
+        if (r) await refundSeller(sdb0, r);
+      }
+    }
+    const rows = await d.collection('corders').find({ shopOrderId: { $exists: true }, status: { $ne: 'yangi' }, $expr: { $ne: ['$status', { $ifNull: ['$shopSynced', ''] }] } }).limit(20).toArray();
+    const fresh = await d.collection('corders').find({ shopOrderId: { $exists: true }, status: 'yangi', shopSynced: { $nin: ['yangi'] } }).limit(20).toArray();
+    for (const o of fresh) await d.collection('corders').updateOne({ _id: o._id }, { $set: { shopSynced: 'yangi' } });
+    if (!rows.length) return;
+    const sdb = await SVI.loadDB();
+    let dirty = false;
+    for (const o of rows) {
+      const ord = sdb.orders.find(x => x.id === o.shopOrderId);
+      const single = ord && new Set(ord.items.map(i => i.sellerId)).size === 1;
+      const nm = String(o.courierName || 'Kuryer').split(' ')[0];
+      const toS = (title, body) => SVI.pushNotify(sdb, [o.sellerId], { title, body, tag: 'kuryer' + o._id, url: '/' });
+      const toB = (title, body) => ord && SVI.pushNotify(sdb, [ord.buyerId], { title, body, tag: 'kuryer' + o._id, url: '/' });
+      if (o.status === 'qabul') {
+        toS('Kuryer topildi', nm + ' №' + o.shopOrderId + ' buyurtmani olishga yo\'lga chiqdi');
+        toB('Kuryer tayinlandi', nm + ' buyurtmangizni olib keladi. Xaritada kuzating');
+      } else if (o.status === 'oldi') {
+        if (single && ord && ['yangi', 'tasdiqlandi'].includes(ord.status)) { ord.status = 'kuryerga topshirildi'; dirty = true; }
+        toS('Kuryer mahsulotni oldi', '№' + o.shopOrderId + ' buyurtma yo\'lda');
+        toB("Buyurtmangiz yo'lda", nm + ' buyurtmangizni olib yo\'lga chiqdi. Xaritada kuzating');
+      } else if (o.status === 'yetkazildi') {
+        if (o.prepaid && o.courierId) {
+          // xaridor pul bermagan: kuryer haqi sotuvchi hisobidan olingan, kuryerga hamyoniga o'tkaziladi (courier.js yozgan "naqd"dan ayriladi)
+          const g = unwrap(await d.collection('corders').findOneAndUpdate({ _id: o._id, prepaidSettled: { $ne: true } }, { $set: { prepaidSettled: true } }, { returnDocument: 'after' }));
+          if (g) await d.collection('couriers').updateOne({ _id: o.courierId }, { $inc: { cash: -o.fee, balance: o.fee } });
+        }
+        if (single && ord && ord.status !== 'yetkazildi' && ord.status !== 'bekor qilindi' && SVI.settle) {
+          ord.status = 'yetkazildi'; ord.deliveredAt = new Date().toISOString();
+          const s = sdb.users.find(x => x.id === o.sellerId); if (s) SVI.settle(sdb, s);
+          dirty = true;
+        }
+        toS('Buyurtma yetkazildi', '№' + o.shopOrderId + ' buyurtmani kuryer topshirdi');
+        toB('Buyurtma yetkazildi', ord && ord.status !== 'yetkazildi' ? "«Mahsulotni oldim» tugmasini bosing" : 'Xaridingiz uchun rahmat!');
+      } else if (o.status === 'javob_yoq') {
+        if (single && ord && ord.status === 'kuryerga topshirildi') { ord.status = 'tasdiqlandi'; dirty = true; }
+        toS('Xaridor javob bermadi', '№' + o.shopOrderId + ': kuryer mahsulotni sizga qaytaradi');
+        toB('Kuryer sizga yetib bora olmadi', "Sotuvchi bilan bog'laning");
+      }
+      await d.collection('corders').updateOne({ _id: o._id }, { $set: { shopSynced: o.status } });
+    }
+    if (dirty) await SVI.saveDB(sdb);
+  } catch (e) { console.error('tracking.js do\'kon sinxron xatosi:', e.message); }
+}
+setInterval(syncShop, 8000).unref();
 
 async function handle(req, res) {
   const u = new URL(req.url, 'http://x'), P = u.pathname, M = req.method;
@@ -191,11 +458,15 @@ async function handle(req, res) {
   if (P.startsWith('/api/c/')) {
     const p = parseTok(bearer(req) || u.searchParams.get('t'));
     if (p && p.kind === 'u' && !(await courierAdminOk(p.id))) throw new E("Kuryer admin huquqingiz yo'q", 403);
+    if (M === 'GET' && P === '/api/c/courier/orders') hookCourierOrders(req, res);
     return false;
   }
   if (!P.startsWith('/api/trk/')) return false;
   const D = await db();
   const C = n => D.collection(n);
+
+  if (P.startsWith('/api/trk/shop/') && await shopRoutes(req, res, u, P, M, C)) return true;
+  if ((P === '/api/trk/cwithdraw' || P === '/api/trk/cwithdrawals') && await courierWd(req, res, u, P, M, C)) return true;
 
   // Admin uchun: tasdiqlashni kutayotgan kuryer/hamkorlar
   if (M === 'GET' && P === '/api/trk/pending') {
@@ -327,6 +598,34 @@ const INJECT = `<script>
       if(GPS.lock){GPS.lock.release().catch(function(){});GPS.lock=null;}
     }
   }
+  // Kuryer hamyonida "Pulni yechib olish" bo'limi
+  var CWD=null,CWDJ='';
+  function loadCwd(){
+    if(MODE!=='courier'||!TOKEN)return;
+    fetch('/api/trk/cwithdrawals',{headers:{Authorization:'Bearer '+TOKEN}}).then(function(r){return r.json();}).then(function(j){
+      var t=JSON.stringify(j.list||[]); if(t!==CWDJ){CWDJ=t;CWD=j.list||[];if(TAB==='wallet')render();}
+    }).catch(function(){});
+  }
+  if(MODE==='courier'&&typeof walletView==='function'){
+    var _wv=walletView;
+    walletView=function(){
+      var h=_wv.apply(this,arguments); loadCwd();
+      var c=INFO.cfg||{};
+      var rows=(CWD||[]).map(function(x){return '<div class="note">'+fmt(x.amount)+' (komissiya '+fmt(x.fee)+') · <b>'+esc(x.status)+'</b></div>';}).join('')||'<div class="note">Hali yo\\'q</div>';
+      var blk='<div class="card"><b>Pulni yechib olish</b><div class="note">Komissiya '+Math.round((c.withdrawRate||0.01)*100)+'%: balansdan summa + komissiya yechiladi. Eng kam: '+fmt(c.minWithdraw||50000)+'. Balansda kamida '+fmt(c.minBalance||10000)+' qoladi.</div>'
+        +'<label>Summa</label><input id="w_amt" inputmode="numeric"><label>Karta raqami</label><input id="w_card" inputmode="numeric" placeholder="8600 0000 0000 0000"><button class="btn" data-act="cWithdraw">Yechib olishni so\\'rash</button></div>'
+        +'<div class="card"><b>Yechib olishlar</b>'+rows+'</div>';
+      var tail='<p class="c"><a href="#" data-act="out">Chiqish</a></p>';
+      return h.endsWith(tail)?h.slice(0,h.length-tail.length)+blk+tail:h+blk;
+    };
+    ACT.cWithdraw=function(){
+      var a=document.getElementById('w_amt').value,cd=document.getElementById('w_card').value;
+      fetch('/api/trk/cwithdraw',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify({amount:a,card:cd})})
+      .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Xato');return j;});})
+      .then(function(){toast("So'rov yuborildi");CWDJ='';load();loadCwd();})
+      .catch(function(e){toast(e.message);});
+    };
+  }
   setInterval(push,1000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&GPS.id!==null){wake();push();}});
   var _r=render; render=function(){_r.apply(this,arguments);sync();};
@@ -341,7 +640,12 @@ const INJECT = `<script>
   };
 })();
 </script>`;
+const MONEY_OLD = "Sotuvchiga to'lanadi: <b>${fmt(o.productSum)}</b><br>Mijozdan olinadi: <b>${fmt(o.productSum + o.fee)}</b><br>Sizning haqingiz: <b>${fmt(o.fee)}</b>";
+const MONEY_NEW = "${o.prepaid ? 'Oldindan to‘langan: mijozdan pul <b>olinmaydi</b>.<br>' : 'Sotuvchiga to‘lanadi: <b>' + fmt(o.productSum) + '</b><br>Mijozdan olinadi: <b>' + fmt(o.productSum + o.fee) + '</b><br>'}Sizning haqingiz: <b>${fmt(o.fee)}</b>${o.prepaid ? ' (hamyoningizga tushadi)' : ''}";
 function patchHtml(html, P) {
+  if (html.includes(MONEY_OLD)) html = html.replace(MONEY_OLD, () => MONEY_NEW);
+  else console.warn("tracking.js: kuryer sahifasidagi summa matni topilmadi (oldindan to'langan buyurtma matni qo'shilmadi)");
+  html = html.replace('>Yetkazdim, pulni oldim<', () => ">${o.prepaid ? 'Yetkazdim' : 'Yetkazdim, pulni oldim'}<");
   // 1) Hamkor buyurtma kartasiga tugma
   const k = html.indexOf('data-act="pCancel"');
   const st = k > -1 ? html.lastIndexOf('${', k) : -1;
