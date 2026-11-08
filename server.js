@@ -1,5 +1,6 @@
 // SavdoUz backend v5 — MongoDB Atlas + hafta chegirmasi + ovozli/push bildirishnoma + sotuvchini admin tasdiqlashi + reklama (banner) + faollik + adminlar huquqlari + parol tiklash + promokod + statistika + buyurtma tarixi + yangi sotuvchiga 1 oy komissiyasiz
 require('./tracking.js');
+require('./taxi.js');
 require('./courier.js');
 require('./pwa-patch.js');
 require('./extras.js');
