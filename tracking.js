@@ -85,9 +85,91 @@ async function courierAdminOk(id) {
 }
 const OWNER_PHONE = '+998774071234';
 
+
+// ---------- /kuryer-admin sahifasiga tuzatishlar (courier.js ga tegmasdan, javobga qo'shiladi) ----------
+const ADMIN_FIX = `<script>
+(function(){
+  var css='.sv-nav::-webkit-scrollbar{display:none}#svBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px;z-index:99999;background:#0b6b55;color:#fff;border:0;border-radius:999px;padding:9px 16px;font:600 14px/1 system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+  if(!document.querySelector('meta[name=viewport]')){var m=document.createElement('meta');m.name='viewport';m.content='width=device-width,initial-scale=1,viewport-fit=cover';document.head.appendChild(m);}
+  // 1) Orqaga tugmasi (kirish oynasida ham, ichida ham) -> asosiy ilovaga
+  var b=document.createElement('button');b.id='svBack';b.type='button';b.textContent='\\u2190 Ortga';
+  b.onclick=function(){location.href='/';};
+  document.body.appendChild(b);
+  // 2) Chiqish bosilsa, asosiy ilovaga qaytariladi
+  document.addEventListener('click',function(e){
+    var t=e.target&&e.target.closest?e.target.closest('a,button,span,div'):null;
+    if(t&&t.children.length===0&&(t.textContent||'').trim()==='Chiqish'){setTimeout(function(){location.href='/';},300);}
+  },true);
+  // 3) Pastdagi bo'limlar sig'ishi uchun: yonga surish o'rniga qatorlarga bo'linadi
+  function find(){
+    var all=document.body.querySelectorAll('*');
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      if(el.children.length===0&&(el.textContent||'').trim()==='Hamkorlar'){
+        var n=el;
+        while(n.parentElement&&n.parentElement!==document.body&&n.parentElement.children.length<4)n=n.parentElement;
+        return n.parentElement&&n.parentElement!==document.body?n.parentElement:null;
+      }
+    }
+    return null;
+  }
+  function imp(el,k,v){el.style.setProperty(k,v,'important');}
+  function fix(){
+    var nav=find();if(!nav)return;
+    nav.classList.add('sv-nav');
+    imp(nav,'display','flex');imp(nav,'flex-wrap','nowrap');imp(nav,'justify-content','flex-start');
+    imp(nav,'overflow-x','auto');imp(nav,'overflow-y','hidden');imp(nav,'-webkit-overflow-scrolling','touch');
+    imp(nav,'touch-action','pan-x');imp(nav,'overscroll-behavior-x','contain');imp(nav,'scrollbar-width','none');
+    imp(nav,'box-sizing','border-box');imp(nav,'width','100%');imp(nav,'max-width','100vw');
+    imp(nav,'padding-bottom','calc(env(safe-area-inset-bottom,0px) + 4px)');
+    var cs=nav.children;
+    for(var i=0;i<cs.length;i++){
+      var c=cs[i];
+      imp(c,'flex','0 0 auto');imp(c,'box-sizing','border-box');
+      imp(c,'padding','12px 14px');imp(c,'white-space','nowrap');
+    }
+    var pad=(nav.offsetHeight+20)+'px';
+    if(document.body.style.paddingBottom!==pad)document.body.style.paddingBottom=pad;
+  }
+  var tm=null;
+  function later(){clearTimeout(tm);tm=setTimeout(fix,60);}
+  new MutationObserver(later).observe(document.body,{childList:true,subtree:true});
+  window.addEventListener('resize',later);
+  fix();
+})();
+</script>`;
+function hookAdminPage(req, res) {
+  delete req.headers['accept-encoding'];
+  const ow = res.writeHead, oe = res.end, owr = res.write;
+  let head = null; const chunks = [];
+  res.writeHead = function (code, a, b) { head = { code, h: (a && typeof a === 'object') ? a : (b && typeof b === 'object' ? b : null), msg: typeof a === 'string' ? a : undefined }; return res; };
+  res.write = function (c, enc) { if (c) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(String(c), typeof enc === 'string' ? enc : 'utf8')); return true; };
+  res.end = function (c, enc) {
+    if (c && typeof c !== 'function') chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(String(c), typeof enc === 'string' ? enc : 'utf8'));
+    res.writeHead = ow; res.end = oe; res.write = owr;
+    let body = Buffer.concat(chunks);
+    const code = head ? head.code : res.statusCode;
+    const hv = k => { if (head && head.h) for (const x in head.h) if (x.toLowerCase() === k) return String(head.h[x]); return String(res.getHeader(k) || ''); };
+    if (code === 200 && /text\/html/i.test(hv('content-type')) && !hv('content-encoding')) {
+      let html = body.toString('utf8');
+      html = html.includes('</body>') ? html.replace('</body>', () => ADMIN_FIX + '</body>') : html + ADMIN_FIX;
+      body = Buffer.from(html, 'utf8');
+      if (head && head.h) for (const x in head.h) if (x.toLowerCase() === 'content-length') delete head.h[x];
+      res.removeHeader('content-length');
+      res.setHeader('Content-Length', body.length);
+    }
+    if (head) { if (head.msg) ow.call(res, head.code, head.msg, head.h || undefined); else ow.call(res, head.code, head.h || undefined); }
+    return oe.call(res, body);
+  };
+}
+
 async function handle(req, res) {
   const u = new URL(req.url, 'http://x'), P = u.pathname, M = req.method;
   let m;
+
+  // Kuryer admin sahifasi (courier.js beradi): javobga orqaga tugmasi va pastki menyu tuzatishi qo'shiladi
+  if (M === 'GET' && /^\/kuryer-admin\/?$/.test(P)) { hookAdminPage(req, res); return false; }
 
   // Kuryer va Hamkor sahifalari: courier.html ga GPS va "kuzatuv havolasi" avtomatik qo'shiladi
   if (M === 'GET' && (P === '/kuryer' || P === '/hamkor')) {
