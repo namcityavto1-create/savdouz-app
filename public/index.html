@@ -254,7 +254,7 @@ const CONTACT_BOT = '@Savol_24bot';
 // Profil ichidagi sahifalar (barcha rollar uchun)
 const COMMON_PROFILE = ['profile','settings','notifs','help','contact'];
 const PROFILE_TABS = [...COMMON_PROFILE, 'account', 'ads', 'admins'];
-const PERM_LABELS = { sellers:"Sotuvchilarni ko'rish va tasdiqlash", balance:"Sotuvchi balansini o'zgartirish", products:'Mahsulotlar', buyers:'Xaridorlar', orders:'Buyurtmalar', payments:"To'lovlarni tasdiqlash", ads:'Reklamalar', admins:"Admin qo'shish va boshqarish" };
+const PERM_LABELS = { sellers:"Sotuvchilarni ko'rish va tasdiqlash", balance:"Sotuvchi balansini o'zgartirish", products:'Mahsulotlar', buyers:'Xaridorlar', orders:'Buyurtmalar', payments:"To'lovlarni tasdiqlash", ads:'Reklamalar', admins:"Admin qo'shish va boshqarish", courier:"Kuryer admin (kuryer, hamkor, hisob to'ldirish — tasdiqlash)" };
 const can = k => { const u = S.user; if(!u || u.role !== 'admin' || !Array.isArray(u.perms)) return true; return u.perms.includes(k); };
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2200); }
@@ -865,7 +865,7 @@ function profileGroups(){
     info
   ];
   return [
-    [...(can('ads') ? [['ads','📢','Reklamalar']] : []), ...(can('admins') ? [['admins','👥','Adminlar']] : []), ['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [...(can('ads') ? [['ads','📢','Reklamalar']] : []), ...(can('courier') ? [['courieradmin','🛵','Kuryer admin']] : []), ...(can('admins') ? [['admins','👥','Adminlar']] : []), ['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
     [lang],
     info
   ];
@@ -883,6 +883,7 @@ function renderProfile(main){
   main.querySelectorAll('[data-go]').forEach(row => row.onclick = () => {
     const to = row.dataset.go;
     if(to === 'lang'){ if(window.openLangPicker) window.openLangPicker(); return; }
+    if(to === 'courieradmin'){ location.href = '/kuryer-admin'; return; }
     if(to === 'sell'){
       if(confirm("Sotuvchi hisobi alohida ochiladi. Hozirgi hisobdan chiqib, sotuvchi sifatida ro'yxatdan o'tasizmi?")){ authMode = 'register'; authRole = 'seller'; logout(false); }
       return;
@@ -890,6 +891,10 @@ function renderProfile(main){
     if(to === 'account' && (u.sellerStatus || 'faol') !== 'faol'){ toast('Hisobingiz hali tasdiqlanmagan'); return; }
     S.prev = 'profile'; S.tab = to; renderNav(); renderTab();
   });
+  if(r === 'admin' && can('courier')) api('/api/trk/pending').then(x => {
+    const n = (x.couriers || []).length + (x.partners || []).length, row = main.querySelector('[data-go="courieradmin"]');
+    if(row && n){ const b = document.createElement('span'); b.className = 'mval'; b.style.color = 'var(--red)'; b.textContent = n + ' ta kutmoqda'; row.insertBefore(b, row.querySelector('.marr')); }
+  }).catch(() => {});
   $('profLogout').onclick = () => { if(confirm('Hisobdan chiqasizmi?')) logout(false); };
 }
 function renderSettings(main){
@@ -925,13 +930,20 @@ async function renderNotifs(main){
     const TXT = { 'yangi':'Yangi buyurtma', 'tasdiqlandi':'Buyurtmani tasdiqladingiz', 'kuryerga topshirildi':'Kuryerga topshirildi', 'yetkazildi':'Buyurtma yetkazildi', 'bekor qilindi':'Buyurtma bekor qilindi' };
     main.innerHTML = orders.length ? orders.slice(0, 30).map(o => { const sum = (o.items || []).reduce((s, i) => s + (i.subtotal || i.price * i.qty), 0); return `<div class="qa"><b>№${o.id} · ${esc(TXT[o.status] || o.status)}</b><span>${date(o.createdAt)} · ${fmt(sum)} · ${payLabel(o)}</span></div>`; }).join('') : none;
   } else {
-    const [pd, pay] = await Promise.all([api('/api/admin/pending'), api('/api/admin/payments')]);
+    const [pd, pay, cp] = await Promise.all([api('/api/admin/pending'), api('/api/admin/payments'), can('courier') ? api('/api/trk/pending').catch(() => null) : null]);
     const wait = (pay.payments || []).filter(p => p.status === 'kutilmoqda');
     let html = '';
     if(pd.count > 0) html += `<div class="qa" data-go="sellers" style="cursor:pointer"><b>🏪 ${pd.count} ta sotuvchi tasdiqlashni kutmoqda</b><span>${esc((pd.sellers || []).map(s => s.name).join(', '))}</span></div>`;
     if(wait.length) html += `<div class="qa" data-go="payments" style="cursor:pointer"><b>💳 ${wait.length} ta to'lov tekshirishni kutmoqda</b><span>Jami: ${fmt(wait.reduce((s, p) => s + p.amount, 0))}</span></div>`;
+    if(cp){
+      const nc = (cp.couriers || []).length, np = (cp.partners || []).length;
+      if(nc) html += `<div class="qa" data-go="courieradmin" style="cursor:pointer"><b>🛵 ${nc} ta kuryer tasdiqlashni kutmoqda</b><span>${esc(cp.couriers.map(s => s.name).join(', '))}</span></div>`;
+      if(np) html += `<div class="qa" data-go="courieradmin" style="cursor:pointer"><b>🏬 ${np} ta hamkor tasdiqlashni kutmoqda</b><span>${esc(cp.partners.map(s => s.name).join(', '))}</span></div>`;
+      if(cp.topups) html += `<div class="qa" data-go="courieradmin" style="cursor:pointer"><b>💰 ${cp.topups} ta hisob to'ldirish kutmoqda</b><span>Kuryer admin sahifasida tasdiqlang</span></div>`;
+      if(cp.withdrawals) html += `<div class="qa" data-go="courieradmin" style="cursor:pointer"><b>💸 ${cp.withdrawals} ta pul yechish so'rovi kutmoqda</b><span>Kuryer admin sahifasida o'tkazing</span></div>`;
+    }
     main.innerHTML = html || none;
-    main.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { S.tab = el.dataset.go; renderNav(); renderTab(); });
+    main.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { if(el.dataset.go === 'courieradmin'){ location.href = '/kuryer-admin'; return; } S.tab = el.dataset.go; renderNav(); renderTab(); });
   }
   subBack(main, 'Bildirishnomalar');
 }
@@ -1246,7 +1258,7 @@ async function adsAdmin(main){
 async function adminsAdmin(main){
   const ar = await api('/api/admin/admins'); const admins = ar.admins || [], perms = ar.permList || ar.perms || [];
   const mine = new Set((S.user.perms || perms.map(p => p.key)));
-  const boxes = (sel, id) => perms.filter(p => mine.has(p.key)).map(p => `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px"><input type="checkbox" data-pk="${p.key}" ${sel.includes(p.key) ? 'checked' : ''} style="width:20px;height:20px;flex:none"><span>${esc(p.label)}</span></label>`).join('');
+  const boxes = (sel, id) => perms.filter(p => mine.has(p.key)).map(p => `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px"><input type="checkbox" data-pk="${p.key}" ${sel.includes(p.key) ? 'checked' : ''} style="width:20px;height:20px;flex:none"><span>${esc(PERM_LABELS[p.key] || p.label)}</span></label>`).join('');
   main.innerHTML = `<div class="addform">
       <div style="font-size:14px;font-weight:800;margin-bottom:10px">Yangi admin qo'shish</div>
       <div class="field"><label>Ism</label><input id="naName" placeholder="Ism familiya"></div>
