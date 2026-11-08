@@ -204,22 +204,22 @@ function dHome() {
   if (live) h += `<h1>Joriy safar</h1>` + liveCard(live);
   if (m.online && !live) h += `<h1>Yangi buyurtmalar</h1>` + (OPEN.length ? OPEN.map(openCard).join('') : '<div class="note">Hozircha buyurtma yo\'q. Yangisi kelsa ovoz chiqadi.</div>');
   const done = ORD.filter(o => ['yetkazildi', 'bekor'].includes(o.status)).slice(0, 5);
-  if (done.length) h += `<h1>Oxirgilar</h1>` + done.map(o => `<div class="card"><div class="top"><b>№${o.id} · ${o.km} km</b><span class="st">${ST[o.status]}</span></div><div class="note">${fmt(o.fee)}</div></div>`).join('');
+  if (done.length) h += `<h1>Oxirgilar</h1>` + done.map(o => `<div class="card"><div class="top"><b>№${o.id} · ${o.open ? 'manzilsiz' : o.km + ' km'}</b><span class="st">${ST[o.status]}</span></div><div class="note">${fmt(o.fee)}</div></div>`).join('');
   return h + `<p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
 }
 const addr = p => esc(p.address || 'Xaritadagi nuqta');
 function openCard(o) {
-  return `<div class="card"><div class="top"><b>№${o.id} · ${o.km} km</b><span class="st">${fmt(o.fee)}</span></div>
-  <div class="note"><b>Tarif: ${esc(o.tariffName)}</b><br>${o.pickupKm != null ? '📍 Sizdan ' + o.pickupKm + ' km<br>' : ''}Qayerdan: ${addr(o.from)}<br>Qayerga: ${addr(o.to)}${o.note ? '<br>Izoh: ' + esc(o.note) : ''}</div>
+  return `<div class="card"><div class="top"><b>№${o.id} · ${o.open ? 'manzilsiz' : o.km + ' km'}</b><span class="st">${o.open ? fmt(o.fee) + ' dan' : fmt(o.fee)}</span></div>
+  <div class="note"><b>Tarif: ${esc(o.tariffName)}</b><br>${o.pickupKm != null ? '📍 Sizdan ' + o.pickupKm + ' km<br>' : ''}Qayerdan: ${addr(o.from)}<br>Qayerga: ${o.to ? addr(o.to) : "yo'lovchi o'zi aytadi"}${o.note ? '<br>Izoh: ' + esc(o.note) : ''}</div>
   <div class="note"><b>To'lov: naqd</b></div><button class="btn" data-act="accept" data-id="${o.id}">Qabul qilish</button></div>`;
 }
 function liveCard(o) {
   let h = `<div class="card"><div class="top"><b>№${o.id} · ${esc(o.name)}</b><span class="st">${ST[o.status]}</span></div>
-  <div class="note">Yo'lovchi: <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a><br>Qayerdan: ${addr(o.from)}<br>Qayerga: ${addr(o.to)}${o.note ? '<br>Izoh: ' + esc(o.note) : ''}</div>
-  <div class="note">Tarif: <b>${esc(o.tariffName)}</b> · Narx: <b>${fmt(o.fee)}</b> · ${o.km} km · <b>naqd</b></div>`;
+  <div class="note">Yo'lovchi: <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a><br>Qayerdan: ${addr(o.from)}<br>Qayerga: ${o.to ? addr(o.to) : "yo'lovchi o'zi aytadi"}${o.note ? '<br>Izoh: ' + esc(o.note) : ''}</div>
+  <div class="note">Tarif: <b>${esc(o.tariffName)}</b> · Narx: <b>${o.open ? fmt(o.fee) + ' dan (yo\'lga qarab)' : fmt(o.fee)}</b>${o.open ? '' : ' · ' + o.km + ' km'} · <b>naqd</b></div>`;
   if (o.status === 'qabul') h += `<a class="btn ghost" href="${gmap(o.from)}" target="_blank">🧭 Yo'lovchigacha yo'l</a><button class="btn" data-act="arrived" data-id="${o.id}">Yetib keldim</button><button class="btn ghost" data-act="release" data-id="${o.id}">Buyurtmani bekor qilish</button>`;
   else if (o.status === 'keldi') h += `<button class="btn" data-act="start" data-id="${o.id}">Safarni boshlash</button><button class="btn ghost" data-act="release" data-id="${o.id}">Buyurtmani bekor qilish</button>`;
-  else if (o.status === 'yolda') h += `<a class="btn ghost" href="${gmap(o.to)}" target="_blank">🧭 Manzilgacha yo'l</a><button class="btn" data-act="done" data-id="${o.id}">Safar tugadi, ${fmt(o.fee)} oldim</button>`;
+  else if (o.status === 'yolda') h += `${o.to ? `<a class="btn ghost" href="${gmap(o.to)}" target="_blank">🧭 Manzilgacha yo'l</a>` : ''}<button class="btn" data-act="done" data-id="${o.id}" ${o.open ? `data-open="1" data-min="${o.fee}"` : ''}>${o.open ? 'Safar tugadi, summani kiritish' : 'Safar tugadi, ' + fmt(o.fee) + ' oldim'}</button>`;
   return h + '</div>';
 }
 
@@ -321,7 +321,16 @@ const ACT = {
   accept(d) { go('/d/orders/' + d.id + '/accept', {}, 'Buyurtma sizniki'); },
   arrived(d) { go('/d/orders/' + d.id + '/arrived', {}, "Yo'lovchiga xabar berildi"); },
   start(d) { go('/d/orders/' + d.id + '/start', {}, 'Safar boshlandi'); },
-  done(d) { if (confirm("Safar tugadimi va naqd pulni oldingizmi?")) go('/d/orders/' + d.id + '/done', {}, 'Safar tugadi'); },
+  done(d) {
+    if (d.open) {
+      const v = prompt("Yo'lovchidan olgan naqd summani kiriting (so'm). Kamida " + d.min, d.min);
+      if (v === null) return;
+      const amount = Math.round(Number(String(v).replace(/\D/g, '')));
+      if (!amount || amount < Number(d.min)) return alert("Summa " + d.min + " so'mdan kam bo'lmasin");
+      return go('/d/orders/' + d.id + '/done', { amount }, 'Safar tugadi');
+    }
+    if (confirm("Safar tugadimi va naqd pulni oldingizmi?")) go('/d/orders/' + d.id + '/done', {}, 'Safar tugadi');
+  },
   release(d) { if (confirm("Buyurtmani bekor qilasizmi? Ko'p bekor qilsangiz cheklanasiz")) go('/d/orders/' + d.id + '/release'); },
   dAct(d) { go('/admin/driver/' + d.id, { action: d.a }, 'Bajarildi'); },
   tAct(d) { go('/admin/topup/' + d.id, { action: d.a }, 'Bajarildi'); }
