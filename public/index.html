@@ -1003,6 +1003,7 @@ async function buyerOrders(main){
       ${(o.sellers||[]).map(s => `<div style="margin-bottom:6px"><div style="font-weight:800;font-size:14px;color:var(--vt)">${s.card ? esc(s.card.number) : "Karta kiritilmagan"}</div><div style="font-size:11px;color:var(--mut)">${esc(s.name)}${s.card ? ' · ' + esc(s.card.holder) : ''} · ${esc(s.phone)}</div></div>`).join('')}
       <label style="margin-top:8px">Chek yoki skrinshot yuklang</label><input type="file" accept="image/*" data-rfile="${o.id}"></div>` : ''}
     ${o.hasReceipt && !needRcpt ? `<img src="${rcpUrl(o.id)}" data-fullimg="1" style="width:100%;max-height:160px;object-fit:contain;border-radius:12px;margin-top:8px;cursor:pointer;background:var(--vl)">` : ''}
+    ${kBox(o,'buyer')}
     ${canRecv ? `<button class="checkout" style="margin-top:10px" data-recv="${o.id}">✅ Mahsulotni oldim</button>` : ''}
     ${chatBtn(o.id)}</div>`; }).join('');
   subBack(main, 'Buyurtmalarim');
@@ -1153,6 +1154,7 @@ async function sellerOrders(main){
       <div class="oline" style="color:var(--red)"><span>Komissiya${rate ? ' (' + rate + '%)' : ''}</span><span>−${fmt(com)}</span></div>
       <div class="ototal"><span>Sizga tushum</span><span>${fmt(out)}</span></div>
       ${sellerPay(o)}
+      ${kBox(o,'seller')}
       <select class="statusSel" data-order="${o.id}" ${done ? 'disabled' : ''}>${opts.map(s => `<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select>
       ${!done ? '<div style="font-size:10.5px;color:var(--mut);margin-top:5px">«Yetkazildi» holatini xaridor «Oldim» tugmasi bilan qo\'yadi</div>' : ''}${chatBtn(o.id)}</div>`;
   }).join('');
@@ -1447,6 +1449,7 @@ setInterval(() => {
   if(!S.user || S.tab !== 'orders' || document.hidden) return;
   if(document.querySelector('input:focus,textarea:focus,select:focus')) return;
   if(document.querySelector('[data-chatbox][style*="block"]')) return;
+  if(document.querySelector('[data-kbox] iframe')) return;
   renderTab(true);
 }, 12000);
 
@@ -1759,6 +1762,206 @@ async function renderReset(){
   document.addEventListener('click', function(e){
     if(on && isLink(e.target) && typeof renderReset === 'function'){ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); renderReset(); }
   }, true);
+})();
+</script>
+<script>
+// ===== Kuryer chaqirish: sotuvchi chaqiradi, sotuvchi va xaridor kuryerni xaritada kuzatadi =====
+(function(){
+  var KZ = { list: [], shop: null, t: 0, loading: false };
+  var NAM = [40.9983, 71.6726];
+  var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  var F = function(n){ return Number(n || 0).toLocaleString('ru-RU') + " so'm"; };
+  var say = function(m){ try { toast(m); } catch(e){ alert(m); } };
+  window.kBox = function(o, role){
+    return '<div class="kbox" data-kbox="' + o.id + '" data-role="' + role + '" data-st="' + E(o.status) + '" data-pay="' + E(o.paymentMethod) + '" data-addr="' + E((o.region ? o.region + ', ' : '') + (o.address || '')) + '"></div>';
+  };
+  var css = document.createElement('style');
+  css.textContent = '.kbox{margin-top:10px}.kcard{background:var(--vl);border-radius:13px;padding:11px 12px;font-size:12.5px;line-height:1.5}.kcard b{color:var(--vt)}.kbtn{width:100%;border:0;border-radius:13px;padding:11px 0;font:800 13px/1 inherit;background:linear-gradient(135deg,var(--v),var(--vd));color:#fff;margin-top:8px}.kbtn.l{background:var(--vl);color:var(--vt)}'
+  + '.kmap{position:fixed;inset:0;z-index:99998;background:var(--bg);display:flex;flex-direction:column}.kmap .h{padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 8px;font-weight:800;font-size:15px}.kmap .h small{display:block;font-weight:500;color:var(--mut);font-size:12px;margin-top:2px}.kmap #kmapEl{flex:1}.kmap .f{display:flex;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 12px)}.kmap .f button{flex:1;border:0;border-radius:13px;padding:13px 0;font:800 14px/1 inherit}'
+  + '.ktr{position:fixed;inset:0;z-index:99997;background:var(--bg);display:flex;flex-direction:column}.ktm{flex:1;min-height:0}.ktback{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;z-index:1000;width:46px;height:46px;border-radius:50%;border:0;background:#fff;color:#111;font-size:24px;box-shadow:0 2px 10px rgba(0,0,0,.25)}'
+  + '.ktsheet{background:var(--card);color:var(--ink);border-radius:24px 24px 0 0;margin-top:-20px;position:relative;z-index:1000;padding:10px 18px calc(env(safe-area-inset-bottom,0px) + 18px);text-align:center;box-shadow:0 -4px 18px rgba(0,0,0,.14)}.kthandle{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}.ktl{color:var(--mut);font-size:15px}.ktt{font-size:36px;font-weight:800;margin:6px 0 16px;letter-spacing:-.5px}'
+  + '.ktsteps{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}.ktdot{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:var(--line);color:var(--mut)}.ktdot.d{background:var(--vl);color:var(--vt)}.ktdot.a{background:var(--v);color:#fff;transform:scale(1.18)}.ktln{width:22px;height:3px;border-radius:2px;background:var(--line)}.ktln.d{background:var(--v)}.ktst{color:var(--mut);font-size:15px;min-height:22px}'
+  + '.ktc{display:flex;align-items:center;gap:12px;margin-top:16px;text-align:left}.ktav{width:52px;height:52px;border-radius:50%;background:var(--vl);color:var(--vt);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px}.ktc .n{font-weight:800;font-size:18px}.ktc .s{color:var(--mut);font-size:14px}.ktfull{display:flex;flex-direction:column;flex:1;min-height:0}.ktin{border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--line);margin-top:8px}.ktin .ktm{height:230px;flex:none}.ktin .ktsheet{margin-top:0;border-radius:0;box-shadow:none;padding:12px 14px 14px}.ktin .ktt{font-size:28px;margin:4px 0 12px}.ktin .ktl{font-size:13px}.ktcall{margin-left:auto;background:var(--vl);color:var(--ink);border-radius:30px;padding:14px 20px;font-weight:700;font-size:15px;text-decoration:none;white-space:nowrap}';
+  document.head.appendChild(css);
+
+  function loadLeaflet(){
+    return new Promise(function(ok, no){
+      if(window.L) return ok();
+      if(!document.getElementById('kLeafCss')){ var l = document.createElement('link'); l.id = 'kLeafCss'; l.rel = 'stylesheet'; l.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(l); }
+      var s = document.createElement('script'); s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; s.onload = function(){ ok(); }; s.onerror = function(){ no(new Error('Xarita yuklanmadi, internetni tekshiring')); };
+      document.head.appendChild(s);
+    });
+  }
+  // Xaritadan joy tanlash: {lat,lng} yoki null qaytaradi
+  function pickOnMap(title, hint, center, init){
+    return loadLeaflet().then(function(){ return new Promise(function(done){
+      var w = document.createElement('div'); w.className = 'kmap';
+      w.innerHTML = '<div class="h">' + E(title) + '<small>' + E(hint) + '</small></div><div id="kmapEl"></div><div class="f"><button style="background:var(--vl);color:var(--vt)" id="kNo">Bekor</button><button style="background:var(--v);color:#fff;opacity:.5" id="kOk" disabled>Tasdiqlash</button></div>';
+      document.body.appendChild(w);
+      var m = L.map('kmapEl').setView(center || NAM, init ? 16 : 13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+      var mk = init ? L.marker(init).addTo(m) : null, pt = init ? { lat: init[0], lng: init[1] } : null;
+      function en(){ var b = w.querySelector('#kOk'); b.disabled = !pt; b.style.opacity = pt ? 1 : .5; }
+      en();
+      m.on('click', function(e){ if(mk) mk.setLatLng(e.latlng); else mk = L.marker(e.latlng).addTo(m); pt = { lat: e.latlng.lat, lng: e.latlng.lng }; en(); });
+      function close(r){ try { m.remove(); } catch(e){} w.remove(); done(r); }
+      w.querySelector('#kNo').onclick = function(){ close(null); };
+      w.querySelector('#kOk').onclick = function(){ if(pt) close(pt); };
+      setTimeout(function(){ m.invalidateSize(); }, 150);
+    }); });
+  }
+
+  // ---- Kuzatuv oynasi: tepada xarita, pastda kuryer va vaqt ----
+  var STEPS = ['🕐', '📦', '🛵', '✓'];
+  var STIDX = { yangi: 0, qabul: 1, oldi: 2, yetkazildi: 3 };
+  var STTXT = { yangi: 'Kuryer qidirilmoqda…', qabul: "Kuryer mahsulotni olishga ketyapti", oldi: "Kuryer siz tomon yo'lga chiqdi", yetkazildi: 'Buyurtma yetkazildi ✅', javob_yoq: 'Xaridor javob bermadi', bekor: 'Kuryer chaqiruvi bekor qilingan' };
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function hm(ms){ var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function pin(emoji, bg, size){ return L.divIcon({ className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2], html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(size * .5) + 'px;box-shadow:0 2px 8px rgba(0,0,0,.35);border:2px solid #fff">' + emoji + '</div>' }); }
+  // Kuzatuv ko'rinishi (kartaning ichida doim ko'rinadi; "katta ekran" bosilsa to'liq ochiladi)
+  function makeTracker(token, full){
+    var el = document.createElement('div'); el.className = full ? 'ktfull' : 'ktin';
+    el.innerHTML = '<div class="ktm"></div><div class="ktsheet"><div class="ktl">Yetkazib beradigan vaqtimiz:</div><div class="ktt">…</div><div class="ktsteps"></div><div class="ktst"></div><div class="ktc" style="display:none"></div></div>';
+    var $ = function(c){ return el.querySelector(c); };
+    var T = { el: el, map: null, dead: false, tm: null, invalidate: function(){ if(T.map) try { T.map.invalidateSize(); } catch(e){} } };
+    var mDest = null, mShop = null, mCour = null, fitted = false;
+    function draw(j){
+      var st = j.status, idx = STIDX[st] == null ? 0 : STIDX[st], map = T.map;
+      if(j.dest && !mDest) mDest = L.marker([j.dest.lat, j.dest.lng], { icon: pin('🏠', '#2b2b2b', 40) }).addTo(map);
+      if(j.pickup && st !== 'oldi' && st !== 'yetkazildi'){ if(!mShop) mShop = L.marker([j.pickup.lat, j.pickup.lng], { icon: pin('🏪', '#F59E0B', 34) }).addTo(map); }
+      else if(mShop){ map.removeLayer(mShop); mShop = null; }
+      var c = j.courier;
+      if(c && c.fresh && c.lat != null){
+        if(!mCour) mCour = L.marker([c.lat, c.lng], { icon: pin('🛵', '#6C4BF4', 44), zIndexOffset: 1000 }).addTo(map); else mCour.setLatLng([c.lat, c.lng]);
+      } else if(mCour){ map.removeLayer(mCour); mCour = null; }
+      if(!fitted || (mCour && fitted === 'nocour')){
+        var pts = []; if(mDest) pts.push(mDest.getLatLng()); if(mShop) pts.push(mShop.getLatLng()); if(mCour) pts.push(mCour.getLatLng());
+        if(pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 16 }); else if(pts.length) map.setView(pts[0], 15);
+        fitted = mCour ? true : 'nocour';
+      }
+      var L1 = $('.ktl'), Tm = $('.ktt');
+      if(st === 'yetkazildi'){ L1.textContent = 'Buyurtma'; Tm.textContent = 'Yetkazildi'; }
+      else if(st === 'bekor' || st === 'javob_yoq'){ L1.textContent = 'Holat'; Tm.textContent = '—'; }
+      else if(j.etaMin != null){ L1.textContent = 'Yetkazib beradigan vaqtimiz:'; var now = Date.now(); Tm.textContent = hm(now + j.etaMin * 60000) + ' – ' + hm(now + (j.etaMin + 10) * 60000); }
+      else { L1.textContent = 'Yetkazib beradigan vaqtimiz:'; Tm.textContent = st === 'yangi' ? 'Kuryer kutilmoqda' : 'Hisoblanmoqda…'; }
+      var s = '';
+      for(var i = 0; i < 4; i++){ s += (i ? '<div class="ktln' + (i <= idx ? ' d' : '') + '"></div>' : '') + '<div class="ktdot' + (i === idx ? ' a' : (i < idx ? ' d' : '')) + '">' + STEPS[i] + '</div>'; }
+      $('.ktsteps').innerHTML = s;
+      $('.ktst').textContent = STTXT[st] || '';
+      var cb = $('.ktc');
+      if(c){
+        cb.style.display = 'flex';
+        cb.innerHTML = '<div class="ktav">' + E((c.name || 'K').charAt(0).toUpperCase()) + '</div><div><div class="n">' + E(c.name) + '</div><div class="s">Kuryer' + (c.transport ? ' · ' + E(c.transport) : '') + '</div></div>' + (c.phone ? '<a class="ktcall" href="tel:' + E(c.phone) + '">📞 Qo\'ng\'iroq</a>' : '');
+      } else cb.style.display = 'none';
+    }
+    function poll(){
+      if(T.dead || !T.map || !el.isConnected || document.hidden) return;
+      fetch('/api/trk/o/' + encodeURIComponent(token), { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(j){ if(!T.dead && j && j.status) draw(j); }).catch(function(){});
+    }
+    loadLeaflet().then(function(){
+      if(T.dead) return;
+      T.map = L.map($('.ktm'), { zoomControl: false, dragging: full || !L.Browser.mobile, scrollWheelZoom: false }).setView(NAM, 13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(T.map);
+      setTimeout(function(){ T.invalidate(); poll(); }, 250);
+      T.tm = setInterval(poll, 3000);
+    }).catch(function(){ $('.ktm').innerHTML = '<div style="padding:20px;color:var(--mut);font-size:12px">Xarita yuklanmadi, internetni tekshiring</div>'; });
+    T.destroy = function(){ T.dead = true; clearInterval(T.tm); try { if(T.map) T.map.remove(); } catch(e){} };
+    return T;
+  }
+  var MINI = {};
+  function getMini(token){ return MINI[token] || (MINI[token] = makeTracker(token, false)); }
+  function openTracker(token){
+    var w = document.createElement('div'); w.className = 'ktr';
+    var T = makeTracker(token, true); w.appendChild(T.el);
+    var b = document.createElement('button'); b.className = 'ktback'; b.setAttribute('aria-label', 'Orqaga'); b.textContent = '←';
+    b.onclick = function(){ T.destroy(); w.remove(); };
+    w.appendChild(b); document.body.appendChild(w);
+    return Promise.resolve();
+  }
+
+  function post(path, body){ return api(path, { method: 'POST', body: JSON.stringify(body || {}) }); }
+  function fetchList(force){
+    if(KZ.loading || (!force && Date.now() - KZ.t < 2500)) return Promise.resolve();
+    KZ.loading = true;
+    return api('/api/trk/shop/list').then(function(r){ KZ.list = r.list || []; KZ.shop = r.shop || null; KZ.t = Date.now(); }).catch(function(){}).then(function(){ KZ.loading = false; });
+  }
+
+  function html(box){
+    var id = Number(box.dataset.kbox), role = box.dataset.role, st = box.dataset.st;
+    var items = KZ.list.filter(function(x){ return x.orderId === id; });
+    var active = items.filter(function(x){ return ['yangi','qabul','oldi'].indexOf(x.status) > -1; });
+    var h = '';
+    items.slice(0, role === 'seller' ? 1 : 3).forEach(function(x){
+      h += '<div class="kcard">🛵 <b>' + STTXT[x.status] + '</b>';
+      if(x.courier) h += '<br>Kuryer: ' + E(x.courier.name) + (x.courier.phone && x.status !== 'yetkazildi' ? ' · <a href="tel:' + E(x.courier.phone) + '">' + E(x.courier.phone) + '</a>' : '');
+      if(role === 'seller' && x.status !== 'bekor'){
+        h += '<br>Kuryer haqi ' + F(x.fee) + ' · ' + x.km + ' km';
+        if(x.prepaid) h += '<br>Xaridor oldindan to\'lagan · kuryer haqi hisobingizdan yechilgan';
+        else if(x.status !== 'yetkazildi') h += '<br>Kuryer sizga ' + F(x.productSum) + ' to\'laydi';
+      }
+      h += '</div>';
+      if(['yangi','qabul','oldi'].indexOf(x.status) > -1) h += '<div data-ktslot="' + E(x.token) + '"></div><button class="kbtn l" data-ktrack="' + E(x.token) + '">⤢ Katta ekranda ochish</button>';
+      if(role === 'seller' && (x.status === 'yangi' || x.status === 'qabul')) h += '<button class="kbtn l" data-kcancel="' + id + '">Kuryerni bekor qilish</button>';
+    });
+    if(role === 'seller' && !active.length){
+      if(st === 'tasdiqlandi') h += '<button class="kbtn" data-kcall="' + id + '">🛵 Kuryer chaqirish</button>';
+      else if(st === 'yangi') h += '<div style="font-size:11px;color:var(--mut);margin-top:8px">Kuryer chaqirish uchun avval buyurtmani tasdiqlang</div>';
+    }
+    if(role === 'seller' && KZ.shop && st === 'tasdiqlandi' && !active.length) h += '<button class="kbtn l" style="background:none;font-weight:600;font-size:11.5px" data-kshop="1">📍 Do\'kon joyini o\'zgartirish</button>';
+    return h;
+  }
+  function fill(){
+    document.querySelectorAll('[data-kbox]').forEach(function(box){
+      var sig = JSON.stringify([KZ.list.filter(function(x){ return x.orderId === Number(box.dataset.kbox); }).map(function(x){ return [x.id, x.status]; }), !!KZ.shop, box.dataset.st]);
+      if(box.dataset.kd === sig) return;
+      box.dataset.kd = sig; box.innerHTML = html(box);
+      box.querySelectorAll('[data-ktslot]').forEach(function(sl){ var T = getMini(sl.dataset.ktslot); sl.appendChild(T.el); setTimeout(T.invalidate, 60); });
+    });
+    var live = {};
+    KZ.list.forEach(function(x){ if(['yangi','qabul','oldi'].indexOf(x.status) > -1) live[x.token] = 1; });
+    Object.keys(MINI).forEach(function(k){ if(!live[k]){ MINI[k].destroy(); delete MINI[k]; } });
+  }
+  function refresh(force){
+    if(!document.querySelector('[data-kbox]')) return;
+    fetchList(force).then(fill);
+  }
+  async function call(id, addr){
+    try {
+      var shop = KZ.shop;
+      if(!shop){
+        var sp = await pickOnMap("Do'koningiz joyini belgilang", "Kuryer mahsulotni shu yerdan oladi (bir marta so'raladi)", NAM, null);
+        if(!sp) return;
+        shop = { lat: sp.lat, lng: sp.lng };
+      }
+      var dp = await pickOnMap('Xaridor manzilini belgilang', addr, [shop.lat, shop.lng], null);
+      if(!dp) return;
+      var b = { orderId: id, lat: dp.lat, lng: dp.lng, shopLat: shop.lat, shopLng: shop.lng };
+      var q = await post('/api/trk/shop/quote', b);
+      var msg = q.mode === 'karta'
+        ? 'Masofa: ' + q.km + ' km\nKuryer haqi: ' + F(q.fee) + '\nXaridor oldindan karta bilan to\'lagan, shu sababli kuryer haqi hisobingizdan yechiladi (hisobingiz: ' + F(q.balance) + ').\n\nKuryer chaqiramizmi?'
+        : 'Masofa: ' + q.km + ' km\nKuryer haqi: ' + F(q.fee) + '\nXaridor kuryerga: ' + F(q.total) + ' to\'laydi\nKuryer sizga: ' + F(q.productSum) + ' to\'laydi\n\nKuryer chaqiramizmi?';
+      if(!confirm(msg)) return;
+      await post('/api/trk/shop/call', b);
+      say('Kuryer chaqirildi 🛵');
+      await fetchList(true); fill();
+    } catch(e){ say(e.message || 'Xato'); }
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target.closest && e.target.closest('[data-kcall],[data-kcancel],[data-kshop],[data-ktrack]');
+    if(!t) return;
+    var box = t.closest('[data-kbox]');
+    if(t.dataset.ktrack){ openTracker(t.dataset.ktrack).catch(function(er){ say(er.message); }); }
+    else if(t.dataset.kcall){ call(Number(t.dataset.kcall), box ? box.dataset.addr : ''); }
+    else if(t.dataset.kcancel){ if(confirm('Kuryerni bekor qilasizmi?')) post('/api/trk/shop/cancel', { orderId: Number(t.dataset.kcancel) }).then(function(){ say('Bekor qilindi'); return fetchList(true); }).then(fill).catch(function(er){ say(er.message); }); }
+    else if(t.dataset.kshop){
+      pickOnMap("Do'koningiz joyi", "Kuryer mahsulotni shu yerdan oladi", KZ.shop ? [KZ.shop.lat, KZ.shop.lng] : NAM, KZ.shop ? [KZ.shop.lat, KZ.shop.lng] : null).then(function(p){
+        if(p) return post('/api/trk/shop/loc', { lat: p.lat, lng: p.lng }).then(function(){ say('Saqlandi'); return fetchList(true); }).then(fill);
+      }).catch(function(er){ say(er.message); });
+    }
+  });
+  var mt = null;
+  new MutationObserver(function(){ clearTimeout(mt); mt = setTimeout(function(){ if(document.querySelector('[data-kbox]:not([data-kd])')){ if(KZ.t) fill(); refresh(false); } }, 80); }).observe(document.body, { childList: true, subtree: true });
+  setInterval(function(){ if(!document.hidden && typeof S !== 'undefined' && S.user) refresh(true); }, 7000);
 })();
 </script>
 <script src="/plus-ui.js?v=1"></script>
