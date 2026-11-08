@@ -1,4 +1,4 @@
-// ===== SavdoUz Taksi: yo'lovchi ekrani (yangi dizayn v2). index.html ga <script src="/taxi-ui.js?v=2"></script> bilan ulanadi =====
+// ===== SavdoUz Taksi: yo'lovchi ekrani (rasmdagi dizayn v3). index.html ga <script src="/taxi-ui.js?v=3"></script> bilan ulanadi =====
 (function(){
   'use strict';
   if(window.__taxiUI) return; window.__taxiUI = 1;
@@ -22,24 +22,29 @@
   var CHIP = { yangi: 'Qidirilmoqda', qabul: "Yo'lda", keldi: 'Keldi', yolda: 'Safarda', yetkazildi: 'Tugadi', bekor: 'Bekor' };
   var FABTXT = { yangi: 'Haydovchi qidirilmoqda', qabul: "Taksi yo'lda", keldi: 'Taksi keldi!', yolda: 'Safarda' };
 
-  var CAR_SVG = '<svg viewBox="0 0 230 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="txcg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd84a"/><stop offset="1" stop-color="#f2a500"/></linearGradient></defs>'
-    + '<ellipse cx="115" cy="90" rx="105" ry="7" fill="#000" opacity=".35"/>'
-    + '<path d="M10 70 L22 46 Q27 38 38 37 L66 34 L84 16 Q89 11 97 11 L142 11 Q151 11 156 17 L172 35 L200 41 Q220 46 222 62 L222 72 Q222 77 216 77 L16 77 Q8 77 10 70Z" fill="url(#txcg)"/>'
-    + '<path d="M90 18 L141 18 L155 35 L74 35Z" fill="#13224f"/><path d="M116 18 L116 35" stroke="#f2a500" stroke-width="3"/>'
-    + '<rect x="100" y="2" width="30" height="10" rx="3" fill="#fff" stroke="#111" stroke-width="1.5"/><text x="115" y="10" font-size="7" font-weight="800" text-anchor="middle" fill="#111" font-family="sans-serif">TAXI</text>'
-    + '<rect x="176" y="49" width="38" height="9" rx="4" fill="#fff8d6"/><rect x="14" y="54" width="14" height="6" rx="3" fill="#ff4b3a"/>'
-    + '<path d="M16 66 L216 66" stroke="#111" stroke-width="3" opacity=".8"/>'
-    + '<circle cx="58" cy="77" r="16" fill="#111"/><circle cx="58" cy="77" r="8" fill="#c9ccd6"/><circle cx="176" cy="77" r="16" fill="#111"/><circle cx="176" cy="77" r="8" fill="#c9ccd6"/></svg>';
-  var SKY_SVG = '<svg viewBox="0 0 400 220" preserveAspectRatio="xMaxYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="txg" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#7a6bff" stop-opacity=".7"/><stop offset="1" stop-color="#7a6bff" stop-opacity="0"/></radialGradient></defs>'
-    + '<circle cx="250" cy="70" r="60" fill="url(#txg)"/>'
-    + '<rect x="248" y="20" width="4" height="150" fill="#9b8cff"/><ellipse cx="250" cy="78" rx="12" ry="5" fill="#b9aeff"/><ellipse cx="250" cy="96" rx="8" ry="3" fill="#8f82ff"/>'
-    + '<g fill="#101d4f"><rect x="290" y="110" width="30" height="80"/><rect x="326" y="95" width="26" height="95"/><rect x="358" y="120" width="42" height="70"/><rect x="170" y="130" width="28" height="60"/><rect x="205" y="120" width="24" height="70"/><rect x="120" y="140" width="40" height="50"/></g>'
-    + '<g fill="#ffd84a" opacity=".55"><rect x="296" y="120" width="3" height="3"/><rect x="306" y="132" width="3" height="3"/><rect x="332" y="108" width="3" height="3"/><rect x="342" y="124" width="3" height="3"/><rect x="366" y="132" width="3" height="3"/><rect x="380" y="146" width="3" height="3"/><rect x="176" y="142" width="3" height="3"/><rect x="210" y="132" width="3" height="3"/></g>'
-    + '<rect x="0" y="185" width="400" height="35" fill="#0a1128"/></svg>';
+  // ---- SVG ikonkalar (rasmdagi dizayn uchun) ----
+  function carIco(c, k){ return '<svg viewBox="0 0 48 48"><rect x="19" y="4" width="10" height="4.5" rx="1.6" fill="' + c + '"/><path d="M13.5 24.5 16.8 12.6Q17.4 10 20 10H28Q30.6 10 31.2 12.6L34.5 24.5Z" fill="' + c + '"/><path d="M17.6 22.6 19.6 13.6H28.4L30.4 22.6Z" fill="' + k + '"/><rect x="6.5" y="22" width="35" height="15" rx="5.5" fill="' + c + '"/><rect x="9" y="35" width="6.5" height="6" rx="2.4" fill="' + c + '"/><rect x="32.5" y="35" width="6.5" height="6" rx="2.4" fill="' + c + '"/><circle cx="13.5" cy="29" r="2.5" fill="' + k + '"/><circle cx="34.5" cy="29" r="2.5" fill="' + k + '"/><rect x="20" y="30.2" width="8" height="2.4" rx="1.2" fill="' + k + '"/></svg>'; }
+  var IC = {
+    home: '<svg viewBox="0 0 48 48"><path d="M24 5 3 24h6v17h10V30h10v11h10V24h6z"/></svg>',
+    work: '<svg viewBox="0 0 48 48"><rect x="4" y="14" width="40" height="27" rx="5"/><path d="M17 14v-3a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3" fill="none" stroke="currentColor" stroke-width="4"/><rect x="4" y="25" width="40" height="3.5" fill="#1f2d5e"/><rect x="20.5" y="22.5" width="7" height="9" rx="1.8" fill="#ffc400" stroke="#1f2d5e" stroke-width="2"/></svg>',
+    air: '<svg viewBox="-3 -3 30 30"><g transform="rotate(45 12 12)"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></g></svg>',
+    route: '<svg viewBox="0 0 52 48"><path d="M18 3a10 10 0 0 0-10 10c0 8 10 19 10 19s10-11 10-19A10 10 0 0 0 18 3zm0 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/><path d="M10 43h18q9 0 9-7t8-7h3" fill="none" stroke="#ffc400" stroke-width="3.6" stroke-dasharray="4.5 4.5" stroke-linecap="round"/></svg>',
+    shield: '<svg viewBox="0 0 24 24"><path d="M12 1.5 3.5 5v6.2c0 5.2 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6.1 8.5-11.3V5z"/><path d="M8 11.8l3 3 5-5.6" fill="none" stroke="#121e34" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    bolt: '<svg viewBox="0 0 24 24"><path d="M13.5 1 5 13.2h5.7L9.5 23 19 10.2h-5.8z"/></svg>',
+    like: '<svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>',
+    head: '<svg viewBox="0 0 24 24"><path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z"/></svg>',
+    chev: '<svg viewBox="0 0 24 24"><path d="M9 4.5l7.5 7.5L9 19.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    from: '<svg viewBox="0 0 24 24"><path fill="#2f80ed" d="M21.5 2.5 3 10.6l7.2 2.2 2.2 7.2z"/><path fill="#1c5fc4" d="M21.5 2.5 10.2 12.8l2.2 7.2z"/></svg>',
+    to: '<svg viewBox="0 0 24 24"><path fill="#e53935" d="M12 1.5C8.13 1.5 5 4.63 5 8.5c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="8.5" r="2.7" fill="#fff"/></svg>',
+    bell: '<svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
+    navHome: '<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+    wallet: '<svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>',
+    user: '<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'
+  };
 
   var css = document.createElement('style');
   css.textContent =
-    '#taxiFab{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:9000;border:0;border-radius:26px;padding:12px 16px;font:800 14px/1 inherit;background:#FFC529;color:#1b1b1b;box-shadow:0 4px 14px rgba(0,0,0,.28)}'
+    '#taxiFab{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);z-index:9000;border:0;border-radius:26px;padding:12px 16px;font-weight:800;font-size:14px;line-height:1;font-family:inherit;background:#FFC529;color:#1b1b1b;box-shadow:0 4px 14px rgba(0,0,0,.28)}'
   // ---- xarita ekrani ----
   + '.txo{position:fixed;inset:0;z-index:99996;background:var(--bg,#f3f5f2);display:flex;flex-direction:column;color:var(--ink,#14201b)}'
   + '.txh{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;font-weight:800;font-size:17px;background:var(--card,#fff)}'
@@ -47,12 +52,12 @@
   + '.txmap{flex:1;min-height:0}'
   + '.txs{background:var(--card,#fff);border-radius:22px 22px 0 0;margin-top:-18px;position:relative;z-index:1000;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 16px);box-shadow:0 -4px 18px rgba(0,0,0,.15)}'
   + '.txchips{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}'
-  + '.txchip{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:14px;border:2px solid var(--line,#e1e7e3);background:var(--card,#fff);font:700 14px/1.2 inherit;text-align:left;color:inherit}'
+  + '.txchip{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:14px;border:2px solid var(--line,#e1e7e3);background:var(--card,#fff);font-weight:700;font-size:14px;line-height:1.2;font-family:inherit;text-align:left;color:inherit}'
   + '.txchip.on{border-color:#FFC529;background:#FFF6D6;color:#1b1b1b}'
   + '.txchip small{display:block;font-weight:500;color:var(--mut,#667);font-size:12px}'
   + '.txchip.on small{color:#665}'
   + '.txin{width:100%;padding:11px 12px;border:1.5px solid var(--line,#e1e7e3);border-radius:12px;font:inherit;background:var(--card,#fff);color:inherit;margin-bottom:8px}'
-  + '.txb{display:block;width:100%;border:0;border-radius:14px;padding:15px 0;font:800 15px/1 inherit;background:#FFC529;color:#1b1b1b;margin-top:6px}'
+  + '.txb{display:block;width:100%;border:0;border-radius:14px;padding:15px 0;font-weight:800;font-size:15px;line-height:1;font-family:inherit;background:#FFC529;color:#1b1b1b;margin-top:6px}'
   + '.txb:disabled{opacity:.45}.txb.g{background:var(--vl,#eef3ff);color:var(--vt,#2a4fd0)}.txb.r{background:#fadbd8;color:#7a160d}'
   + '.txtar{display:flex;gap:8px;margin-bottom:8px}.txt{flex:1;border:2px solid var(--line,#e1e7e3);background:var(--card,#fff);border-radius:14px;padding:10px 6px;font:inherit;color:inherit;text-align:center}.txt.on{border-color:#FFC529;background:#FFF6D6;color:#1b1b1b}.txt b{display:block;font-size:15px}.txt small{display:block;font-size:12.5px;color:inherit;opacity:.75;margin-top:2px}'
   + '.txp{font-size:15px;margin:2px 0 8px}.txp b{font-size:22px}'
@@ -62,42 +67,70 @@
   + '.txcall{margin-left:auto;background:var(--vl,#eef3ff);color:inherit;border-radius:28px;padding:13px 18px;font-weight:700;text-decoration:none;white-space:nowrap}'
   + '.txm{font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}'
   + '.txplate{display:inline-block;background:#fff;border:2px solid #222;border-radius:6px;padding:1px 8px;font-weight:800;color:#222;font-size:13px}'
-  // ---- bosh sahifa (yangi dizayn: sariq-qora premium) ----
-  + '.hm{position:fixed;inset:0;z-index:99990;background:#0b1430;color:#fff;display:flex;flex-direction:column;font-family:inherit}'
-  + '.hms{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:12px}'
-  + '.hmh{position:relative;min-height:330px;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 0;background:linear-gradient(180deg,#0a1a55 0%,#0b1430 100%);overflow:hidden}'
-  + '.hmsky{position:absolute;inset:0;opacity:.9}.hmsky svg{width:100%;height:100%}'
-  + '.hmtop{position:relative;z-index:2;display:flex;justify-content:space-between}'
-  + '.hmx,.hmbell{width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:19px;position:relative}'
-  + '.hmbell i{position:absolute;top:-3px;right:-3px;background:#ff3b30;color:#fff;border-radius:50%;width:19px;height:19px;font:700 12px/19px sans-serif;font-style:normal}'
-  + '.hmlogo{position:relative;z-index:2;display:flex;align-items:center;gap:10px;margin-top:6px}'
-  + '.hmpin{width:62px;height:62px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);background:#FFC529;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.4)}.hmpin span{transform:rotate(45deg);font-size:28px}'
-  + '.hmlogo .t1{font:900 38px/1 inherit;font-style:italic;letter-spacing:-1px}.hmlogo .t1 span{color:#FFC529}.hmlogo .t2{font:900 40px/1 inherit;font-style:italic;letter-spacing:-1px}'
-  + '.hmtag{position:relative;z-index:2;margin-top:12px;font:800 19px/1 inherit;font-style:italic}.hmtag i{color:#FFC529;margin:0 5px}'
-  + '.hmcar{position:absolute;z-index:1;right:-18px;bottom:-4px;width:70%;max-width:340px}.hmcar svg{width:100%;display:block}'
-  + '.hmcard{position:relative;z-index:3;margin:-8px 12px 0;background:#f4f6ff;color:#111;border-radius:24px;padding:8px 6px 8px 0;display:flex;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.35)}'
-  + '.hmcard .ic{flex:none;width:58px;height:58px;border-radius:50%;background:#FFC529;margin:0 8px 0 14px;display:flex;align-items:center;justify-content:center;font-size:28px}'
-  + '.hmcard .rows{flex:1;min-width:0}'
-  + '.hmr{display:flex;align-items:center;gap:10px;width:100%;padding:11px 8px;border:0;background:none;text-align:left;color:#111;font:inherit}'
-  + '.hmr+.hmr{border-top:1px solid #d9dcec}.hmr .pi{font-size:22px}.hmr b{display:block;font-size:19px}.hmr small{display:block;font-size:14px;color:#556}.hmr .ch{margin-left:auto;font-size:26px;color:#333}'
-  + '.hmgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 12px 0}'
-  + '.hmtile{border:0;background:#15234d;color:#fff;border-radius:18px;padding:12px 2px;font:700 13px/1.15 inherit;text-align:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}.hmtile span{display:block;font-size:28px;margin-bottom:5px}'
-  + '.hmpromo{margin:12px 12px 0;border-radius:22px;padding:12px 14px;background:linear-gradient(90deg,#ffd43b,#ffb300);color:#111;display:flex;align-items:center;gap:12px}'
-  + '.hmpromo .g{font-size:46px}.hmpromo .tx{flex:1;min-width:0}.hmpromo b{display:block;font-size:23px;font-weight:900}.hmpromo em{display:block;font-size:16px;font-weight:700}'
-  + '.hmpromo button{border:0;background:#0b1430;color:#fff;border-radius:24px;padding:12px 16px;font:800 16px/1 inherit;white-space:nowrap}'
-  + '.hmfeat{margin:12px 12px 0;background:#15234d;border-radius:20px;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0}'
-  + '.hmfeat div{text-align:center;font:700 12.5px/1.2 inherit;padding:2px 2px;border-left:1px solid rgba(255,255,255,.12)}.hmfeat div:first-child{border-left:0}.hmfeat span{display:block;font-size:24px;margin-bottom:4px}'
-  + '.hmcta{display:flex;align-items:center;justify-content:center;gap:10px;width:calc(100% - 24px);margin:12px 12px 0;border:0;border-radius:32px;padding:17px 0;background:linear-gradient(90deg,#ffd43b,#ffb300);color:#111;font:900 22px/1 inherit;box-shadow:0 6px 18px rgba(255,180,0,.35)}'
-  + '.hmn{display:flex;background:#0e1a3d;border-radius:22px 22px 0 0;padding:8px 4px calc(env(safe-area-inset-bottom,0px) + 8px);box-shadow:0 -4px 16px rgba(0,0,0,.4)}'
-  + '.hmn button{flex:1;border:0;background:none;color:#fff;font:700 14px/1.2 inherit;padding:6px 0 7px;position:relative}.hmn button span{display:block;font-size:24px;margin-bottom:2px}'
-  + '.hmn button.on{color:#FFC529}.hmn button.on:after{content:"";position:absolute;left:22%;right:22%;bottom:0;height:3px;border-radius:3px;background:#FFC529}'
-  + '.hmpg{padding:calc(env(safe-area-inset-top,0px) + 16px) 14px 8px}.hmpg h2{font:900 26px/1.1 inherit;margin:4px 2px 14px}'
-  + '.hmo{display:flex;align-items:center;gap:10px;background:#15234d;border-radius:16px;padding:13px 14px;margin-bottom:10px;width:100%;border:0;color:#fff;text-align:left;font:inherit}.hmo b{display:block;font-size:16px}.hmo small{display:block;color:#aab3d6;font-size:13px;margin-top:2px}.hmo .r{margin-left:auto;text-align:right}'
-  + '.hmchip{display:inline-block;border-radius:10px;padding:3px 9px;font:700 12px/1.3 inherit;background:#2a3a73;color:#fff;margin-top:4px}.hmchip.ok{background:#1f7a46}.hmchip.no{background:#7a2a2a}.hmchip.go{background:#FFC529;color:#111}'
-  + '.hmbox{background:#15234d;border-radius:18px;padding:16px;margin-bottom:12px}.hmbox .l{color:#aab3d6;font-size:14px}.hmbox .v{font:900 26px/1.2 inherit;margin-top:4px}.hmbox p{color:#c9d0ee;font-size:14px;margin:8px 0 0}'
-  + '.hm2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.hm2 .hmbox{margin:0}'
-  + '.hmbtn{display:block;width:100%;border:0;border-radius:14px;padding:14px 0;background:#15234d;color:#fff;font:700 15px/1 inherit;margin-bottom:10px}.hmbtn.y{background:#FFC529;color:#111}'
-  + '.hmem{text-align:center;color:#aab3d6;padding:30px 10px}';
+  // ---- bosh sahifa (rasmdagi dizayn) ----
+  + ".hm{--u:calc(min(100vw,480px) / 1080);position:fixed;inset:0;z-index:99990;background:#080f1f;color:#fff;display:flex;flex-direction:column;font-family:inherit;-webkit-tap-highlight-color:transparent}"
+  + ".hm *{box-sizing:border-box}"
+  + ".hm button{font-family:inherit;cursor:pointer}"
+  + ".hms{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}"
+  + ".hmw{width:min(100vw,480px);margin:0 auto;padding-bottom:calc(var(--u)*24);flex:1 0 auto;display:flex;flex-direction:column}"
+  + ".hmsp{flex:1 1 0;min-height:0;max-height:calc(var(--u)*62)}"
+  + ".hmh{position:relative;background:#02102f;padding-top:env(safe-area-inset-top,0px);overflow:hidden}"
+  + ".hmh img{display:block;width:100%;height:auto;-webkit-user-drag:none;user-select:none}"
+  + ".hmfb{display:none;padding:calc(var(--u)*70) calc(var(--u)*50) calc(var(--u)*60);font-size:calc(var(--u)*90);font-weight:900;font-style:italic;line-height:1.05}"
+  + ".hmfb span{color:#ffc400}.hmfb small{display:block;margin-top:calc(var(--u)*30);font-size:calc(var(--u)*44);font-weight:700}"
+  + ".hmh.nof .hmfb{display:block}.hmh.nof img{display:none}"
+  + ".hmbell{position:absolute;right:calc(var(--u)*41);top:calc(env(safe-area-inset-top,0px) + calc(var(--u)*28));width:calc(var(--u)*88);height:calc(var(--u)*88);border-radius:50%;border:0;padding:0;background:rgba(8,15,38,.94);box-shadow:0 0 0 calc(var(--u)*2) rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}"
+  + ".hmbell svg{width:calc(var(--u)*44);height:calc(var(--u)*44);fill:#fff}"
+  + ".hmbell i{position:absolute;left:calc(var(--u)*50);top:calc(var(--u)*-8);min-width:calc(var(--u)*40);height:calc(var(--u)*40);padding:0 calc(var(--u)*8);border-radius:calc(var(--u)*20);background:#ff3b30;color:#fff;font-size:calc(var(--u)*27);font-weight:700;line-height:calc(var(--u)*40);font-style:normal;text-align:center}"
+  + ".hmcard{position:relative;margin:calc(var(--u)*5) calc(var(--u)*36) 0;height:calc(var(--u)*257);background:#edf1fd;color:#0d1633;border-radius:calc(var(--u)*52);display:flex;align-items:center;box-shadow:0 calc(var(--u)*10) calc(var(--u)*30) rgba(0,0,0,.4)}"
+  + ".hmcard .ic{flex:none;position:relative;width:calc(var(--u)*120);height:calc(var(--u)*120);margin-left:calc(var(--u)*36);border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffd83a,#ffbe00);display:flex;align-items:center;justify-content:center;box-shadow:0 calc(var(--u)*4) calc(var(--u)*12) rgba(255,180,0,.35)}"
+  + ".hmcard .ic svg{width:calc(var(--u)*74);height:calc(var(--u)*74)}"
+  + ".hmcard .ic:after{content:\"\";position:absolute;left:50%;top:100%;height:calc(var(--u)*62);border-left:calc(var(--u)*4) dotted #b8c2e2;transform:translateX(-50%)}"
+  + ".hmrows{flex:1;min-width:0;height:100%;margin:0 calc(var(--u)*30) 0 calc(var(--u)*34);display:flex;flex-direction:column}"
+  + ".hmr{flex:1;display:flex;align-items:center;gap:calc(var(--u)*22);width:100%;padding:0;border:0;background:none;text-align:left;color:#0d1633}"
+  + ".hmr+.hmr{border-top:calc(var(--u)*2) solid #d7dcee}"
+  + ".hmr .pi{position:relative;flex:none;width:calc(var(--u)*52);height:calc(var(--u)*52);display:flex;align-items:center;justify-content:center}"
+  + ".hmr .pi svg{width:calc(var(--u)*50);height:calc(var(--u)*50)}"
+  + ".hmr:first-child .pi:after{content:\"\";position:absolute;left:50%;top:calc(var(--u)*64);height:calc(var(--u)*46);border-left:calc(var(--u)*4) dotted #b8c2e2;transform:translateX(-50%)}"
+  + ".hmr .tt{flex:1;min-width:0}"
+  + ".hmr b{display:block;font-size:calc(var(--u)*42);font-weight:700;line-height:1.15;color:#0d1633}"
+  + ".hmr small{display:block;margin-top:calc(var(--u)*3);font-size:calc(var(--u)*30);font-weight:400;line-height:1.2;color:#4a5578}"
+  + ".hmr .ch{flex:none;width:calc(var(--u)*34);height:calc(var(--u)*34);color:#0d1633}.hmr .ch svg{width:100%;height:100%}"
+  + ".hmgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*17);margin:calc(var(--u)*24) calc(var(--u)*29) 0}"
+  + ".hmtile{height:calc(var(--u)*176);padding:0 calc(var(--u)*4);border:0;border-radius:calc(var(--u)*42);background:linear-gradient(180deg,#26376d,#1b2955);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*12);box-shadow:inset 0 0 0 calc(var(--u)*2) rgba(255,255,255,.07),0 calc(var(--u)*6) calc(var(--u)*14) rgba(0,0,0,.35)}"
+  + ".hmtile svg{width:calc(var(--u)*70);height:calc(var(--u)*62);flex:none;fill:#ffc400;color:#ffc400}"
+  + ".hmtile span{font-size:calc(var(--u)*29);font-weight:700;line-height:1.1;text-align:center}"
+  + ".hmpromo{position:relative;margin:calc(var(--u)*22) calc(var(--u)*29) 0;height:calc(var(--u)*157);border-radius:calc(var(--u)*46);background:linear-gradient(90deg,#fed10a,#fdbd0b 55%,#feb20c);color:#111;display:flex;align-items:center;overflow:hidden}"
+  + ".hmpromo .g{position:absolute;left:calc(var(--u)*38);top:calc(var(--u)*9);width:calc(var(--u)*265);height:calc(var(--u)*138);background:url(/taxi-gift.png?v=1) center/100% 100% no-repeat;-webkit-mask-image:radial-gradient(ellipse at center,#000 55%,transparent 100%);mask-image:radial-gradient(ellipse at center,#000 55%,transparent 100%)}"
+  + ".hmpromo .tx{flex:1;min-width:0;padding-left:calc(var(--u)*300)}"
+  + ".hmpromo b{display:block;font-size:calc(var(--u)*44);font-weight:800;line-height:1.1;color:#0f172a}"
+  + ".hmpromo em{display:block;margin-top:calc(var(--u)*2);font-size:calc(var(--u)*33);font-weight:600;font-style:italic;line-height:1.2;color:#1d1d1d}"
+  + ".hmpromo button{flex:none;display:flex;align-items:center;gap:calc(var(--u)*10);height:calc(var(--u)*80);margin-right:calc(var(--u)*23);padding:0 calc(var(--u)*24) 0 calc(var(--u)*32);border:0;border-radius:calc(var(--u)*40);background:#0b1020;color:#fff;font-size:calc(var(--u)*31);font-weight:700;white-space:nowrap}"
+  + ".hmpromo button svg{width:calc(var(--u)*26);height:calc(var(--u)*26)}"
+  + ".hmfeat{margin:calc(var(--u)*16) calc(var(--u)*29) 0;height:calc(var(--u)*145);background:#121e34;border-radius:calc(var(--u)*40);display:grid;grid-template-columns:repeat(4,1fr);align-items:center}"
+  + ".hmfeat div{height:calc(var(--u)*100);padding:0 calc(var(--u)*4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*7);border-left:calc(var(--u)*2) solid rgba(255,255,255,.14);text-align:center;font-size:calc(var(--u)*25);font-weight:600;line-height:1.15}"
+  + ".hmfeat div:first-child{border-left:0}"
+  + ".hmfeat svg{width:calc(var(--u)*46);height:calc(var(--u)*46);flex:none;fill:#ffc400}"
+  + ".hmcta{position:relative;display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*30);width:calc(100% - calc(var(--u)*58));height:calc(var(--u)*123);margin:calc(var(--u)*20) calc(var(--u)*29) 0;border:0;border-radius:calc(var(--u)*62);background:linear-gradient(90deg,#fed004,#fdc200);color:#101010;font-size:calc(var(--u)*44);font-weight:800;box-shadow:0 calc(var(--u)*8) calc(var(--u)*24) rgba(255,190,0,.25)}"
+  + ".hmcta .car svg{width:calc(var(--u)*76);height:calc(var(--u)*58);display:block}"
+  + ".hmcta .ch{position:absolute;right:calc(var(--u)*40);width:calc(var(--u)*36);height:calc(var(--u)*36)}.hmcta .ch svg{width:100%;height:100%}"
+  + ".hmn{width:100%;max-width:480px;margin:0 auto;display:flex;background:#0c172d;border-radius:calc(var(--u)*56) calc(var(--u)*56) 0 0;padding:calc(var(--u)*20) 0 calc(env(safe-area-inset-bottom,0px) + calc(var(--u)*12));box-shadow:0 calc(var(--u)*-4) calc(var(--u)*22) rgba(0,0,0,.55)}"
+  + ".hmn button{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*8);padding:0 0 calc(var(--u)*18);border:0;background:none;color:#fff;font-size:calc(var(--u)*29);font-weight:500}"
+  + ".hmn button svg{width:calc(var(--u)*58);height:calc(var(--u)*58);fill:currentColor}"
+  + ".hmn button.on{color:#ffc400;font-weight:600}"
+  + ".hmn button.on:after{content:\"\";position:absolute;bottom:0;width:calc(var(--u)*160);height:calc(var(--u)*6);border-radius:calc(var(--u)*3);background:#ffc400}"
+  + ".hmpg{padding:calc(env(safe-area-inset-top,0px) + 18px) 14px 8px}.hmpg h2{font-size:26px;font-weight:900;line-height:1.1;margin:4px 2px 14px}"
+  + ".hmo{display:flex;align-items:center;gap:10px;background:#121e34;border-radius:16px;padding:13px 14px;margin-bottom:10px;width:100%;border:0;color:#fff;text-align:left;font-size:14px}.hmo b{display:block;font-size:16px}.hmo small{display:block;color:#aab3d6;font-size:13px;margin-top:2px}.hmo .r{margin-left:auto;text-align:right}"
+  + ".hmchip{display:inline-block;border-radius:10px;padding:3px 9px;font-size:12px;font-weight:700;line-height:1.3;background:#2a3a73;color:#fff;margin-top:4px}.hmchip.ok{background:#1f7a46}.hmchip.no{background:#7a2a2a}.hmchip.go{background:#FFC529;color:#111}"
+  + ".hmbox{background:#121e34;border-radius:18px;padding:16px;margin-bottom:12px}.hmbox .l{color:#aab3d6;font-size:14px}.hmbox .v{font-size:26px;font-weight:900;line-height:1.2;margin-top:4px}.hmbox p{color:#c9d0ee;font-size:14px;margin:8px 0 0}"
+  + ".hm2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.hm2 .hmbox{margin:0}"
+  + ".hmbtn{display:block;width:100%;border:0;border-radius:14px;padding:14px 0;background:#121e34;color:#fff;font-size:15px;font-weight:700;line-height:1;margin-bottom:10px}.hmbtn.y{background:#FFC529;color:#111}"
+  + ".hmem{text-align:center;color:#aab3d6;padding:30px 10px}"
+  + ".hmov{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}"
+  + ".hmsh{width:100%;max-width:480px;background:#0c172d;color:#fff;border-radius:24px 24px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom,0px) + 18px)}"
+  + ".hmsh h3{font-size:20px;font-weight:900;margin:0 0 12px}"
+  + ".hminf{background:#121e34;border-radius:14px;padding:12px 14px;margin-bottom:8px}.hminf b{display:block;font-size:16px}.hminf span{display:block;color:#c9d0ee;font-size:14px;margin-top:3px}"
+  + ".hmsh p{color:#aab3d6;font-size:13.5px;margin:10px 2px 14px}";
   document.head.appendChild(css);
 
   function loadLeaflet(){
@@ -114,7 +147,17 @@
   var T = null; // ochiq xarita ekrani
   var H = null; // ochiq bosh sahifa
 
-  function closeMap(){
+  // Android "orqaga" tugmasi: taksi ekranlarini yopadi
+  var hist = 0, skipPop = 0;
+  function hPush(){ try { history.pushState({ tx: 1 }, ''); hist++; } catch(e){} }
+  function hPopN(n){ n = Math.min(n, hist); if(n <= 0) return; hist -= n; skipPop++; try { history.go(-n); } catch(e){ skipPop--; } }
+  window.addEventListener('popstate', function(){
+    if(skipPop > 0){ skipPop--; return; }
+    if(hist > 0) hist--;
+    if(T) closeMap(true); else if(H) closeHome(true);
+  });
+
+  function closeMap(fromPop){
     if(!T) return;
     clearInterval(T.tm); T.dead = true;
     try { if(T.map) T.map.remove(); } catch(e){}
@@ -122,6 +165,7 @@
     T = null;
     if(H && H.tab === 'orders') paintHome();
     syncFab();
+    if(fromPop !== true) hPopN(1);
   }
 
   function shell(title){
@@ -288,6 +332,7 @@
     if(T) return;
     opts = opts || {};
     var w = shell('Taksi');
+    hPush();
     T = { el: w, q: 0, tm: null, mk: {}, mode: null, opts: opts };
     sheet().innerHTML = '<div class="txst">Yuklanmoqda…</div>';
     loadLeaflet().then(function(){
@@ -299,22 +344,20 @@
 
   // ---------- Bosh sahifa (yangi dizayn) ----------
   function homeTab(){
-    return '<div class="hmh"><div class="hmsky">' + SKY_SVG + '</div>'
-      + '<div class="hmtop"><button class="hmx" data-close>✕</button><button class="hmbell" data-nav-go="orders">🔔' + (H.active ? '<i>1</i>' : '') + '</button></div>'
-      + '<div class="hmlogo"><div class="hmpin"><span>🚕</span></div><div><div class="t1">Savdo<span>Uz</span></div><div class="t2">Taksi</div></div></div>'
-      + '<div class="hmtag">Tez<i>•</i>Xavfsiz<i>•</i>Qulay</div>'
-      + '<div class="hmcar">' + CAR_SVG + '</div></div>'
-      + '<div class="hmcard"><div class="ic">🚕</div><div class="rows">'
-      + '<button class="hmr" data-order="from"><span class="pi">🧭</span><div><b>Qayerdan?</b><small>Joylashuvingiz bo\'yicha chaqirish</small></div><span class="ch">›</span></button>'
-      + '<button class="hmr" data-order="to"><span class="pi">📍</span><div><b>Qayerga?</b><small>Ixtiyoriy · yakuniy manzilni tanlang</small></div><span class="ch">›</span></button></div></div>'
-      + '<div class="hmgrid">'
-      + '<button class="hmtile" data-go="home"><span>🏠</span>Uyga<br>borish</button>'
-      + '<button class="hmtile" data-go="work"><span>💼</span>Ishga<br>borish</button>'
-      + '<button class="hmtile" data-go="air"><span>✈️</span>Aeroport</button>'
-      + '<button class="hmtile" data-order><span>🗺️</span>Manzil<br>tanlash</button></div>'
-      + '<div class="hmpromo"><div class="g">🎁</div><div class="tx"><b>SavdoUz Taksi</b><em>Har safar yanada qulay!</em></div><button data-info>Batafsil ›</button></div>'
-      + '<div class="hmfeat"><div><span>🛡️</span>100%<br>Xavfsizlik</div><div><span>⚡</span>Tez<br>Yetkazish</div><div><span>👍</span>Qulay<br>Narxlar</div><div><span>🎧</span>24/7<br>Qo\'llab-quvvatlash</div></div>'
-      + '<button class="hmcta" data-order>🚕 Buyurtma berish <span>›</span></button>';
+    return '<div class="hmh"><img src="/taxi-hero.jpg?v=1" alt="SavdoUz Taksi" draggable="false" onerror="this.parentNode.classList.add(\'nof\')">'
+      + '<div class="hmfb">Savdo<span>Uz</span><br>Taksi<small>Tez • Xavfsiz • Qulay</small></div>'
+      + '<button class="hmbell" data-nav-go="orders" aria-label="Buyurtmalar">' + IC.bell + (H.active ? '<i>1</i>' : '') + '</button></div>'
+      + '<div class="hmcard"><div class="ic">' + carIco('#16171c', '#ffc400') + '</div><div class="hmrows">'
+      + '<button class="hmr" data-order="from"><span class="pi">' + IC.from + '</span><div class="tt"><b>Qayerdan?</b><small>Boshlang\'ich manzilni tanlang</small></div><span class="ch">' + IC.chev + '</span></button>'
+      + '<button class="hmr" data-order="to"><span class="pi">' + IC.to + '</span><div class="tt"><b>Qayerga?</b><small>Yakuniy manzilni tanlang</small></div><span class="ch">' + IC.chev + '</span></button></div></div>'
+      + '<i class="hmsp"></i><div class="hmgrid">'
+      + '<button class="hmtile" data-go="home">' + IC.home + '<span>Uyga<br>borish</span></button>'
+      + '<button class="hmtile" data-go="work">' + IC.work + '<span>Ishga<br>borish</span></button>'
+      + '<button class="hmtile" data-go="air">' + IC.air + '<span>Aeroport</span></button>'
+      + '<button class="hmtile" data-order="to">' + IC.route + '<span>Manzil tanlash</span></button></div>'
+      + '<i class="hmsp"></i><div class="hmpromo"><div class="g"></div><div class="tx"><b>SavdoUz Taksi</b><em>Har safar yanada qulay!</em></div><button data-info>Batafsil ' + IC.chev + '</button></div>'
+      + '<i class="hmsp"></i><div class="hmfeat"><div>' + IC.shield + '<span>100%<br>Xavfsizlik</span></div><div>' + IC.bolt + '<span>Tez<br>Yetkazish</span></div><div>' + IC.like + '<span>Qulay<br>Narxlar</span></div><div>' + IC.head + '<span>24/7<br>Qo\'llab-quvvatlash</span></div></div>'
+      + '<i class="hmsp"></i><button class="hmcta" data-order><span class="car">' + carIco('#16171c', '#fdc200') + '</span>Buyurtma berish<span class="ch">' + IC.chev + '</span></button>';
   }
   function ordersTab(){
     return '<div class="hmpg"><h2>Buyurtmalar</h2><div data-list><div class="hmem">Yuklanmoqda…</div></div></div>';
@@ -358,6 +401,15 @@
       if(st) st.innerHTML = '<div class="hmbox"><div class="l">Tugagan safarlar</div><div class="v">' + done.length + '</div></div><div class="hmbox"><div class="l">Jami sarflangan</div><div class="v" style="font-size:19px">' + F(sum) + '</div></div>';
     }).catch(function(){});
   }
+  function showInfo(){
+    tget('/info').then(function(r){
+      var tf = r.cfg.tariffs, rows = Object.keys(tf).map(function(k){ return '<div class="hminf"><b>' + E(tf[k].name) + '</b><span>' + F(tf[k].base) + " (1-km), keyingi har km " + F(tf[k].km) + '</span></div>'; }).join('');
+      var ov = document.createElement('div'); ov.className = 'hmov';
+      ov.innerHTML = '<div class="hmsh"><h3>🚕 SavdoUz Taksi tariflari</h3>' + rows + '<p>Eng ko\'pi ' + E(r.cfg.maxKm) + ' km. To\'lov faqat naqd.</p><button class="hmbtn y" data-x>Yopish</button></div>';
+      ov.onclick = function(ev){ if(ev.target === ov || ev.target.hasAttribute('data-x')) ov.parentNode && ov.parentNode.removeChild(ov); };
+      document.body.appendChild(ov);
+    }).catch(function(e){ say(e.message); });
+  }
   function bindHome(){
     var w = H.el;
     w.querySelectorAll('[data-close]').forEach(function(b){ b.onclick = closeHome; });
@@ -371,20 +423,14 @@
       else { say(k === 'home' ? "Uy manzilini xaritada belgilang (bir marta)" : "Ish manzilini xaritada belgilang (bir marta)"); openMap({ saveAs: k }); }
     }; });
     var inf = w.querySelector('[data-info]');
-    if(inf) inf.onclick = function(){
-      tget('/info').then(function(r){
-        var t = r.cfg.tariffs, m = [];
-        Object.keys(t).forEach(function(k){ m.push(t[k].name + ': ' + F(t[k].base) + " (1-km), keyingi har km " + F(t[k].km)); });
-        alert(m.join('\n') + '\nEng ko\'pi ' + r.cfg.maxKm + ' km. To\'lov faqat naqd.');
-      }).catch(function(e){ say(e.message); });
-    };
+    if(inf) inf.onclick = showInfo;
     var cl = w.querySelector('[data-clear]');
     if(cl) cl.onclick = function(){ lsSet('taxiHome', null); lsSet('taxiWork', null); say('Saqlangan manzillar tozalandi'); };
   }
   function paintHome(){
     if(!H) return;
     var body = H.el.querySelector('[data-body]');
-    body.innerHTML = H.tab === 'orders' ? ordersTab() : H.tab === 'wallet' ? walletTab() : H.tab === 'profile' ? profileTab() : homeTab();
+    body.innerHTML = '<div class="hmw">' + (H.tab === 'orders' ? ordersTab() : H.tab === 'wallet' ? walletTab() : H.tab === 'profile' ? profileTab() : homeTab()) + '</div>';
     body.scrollTop = 0;
     H.el.querySelectorAll('.hmn button').forEach(function(b){ b.classList.toggle('on', b.dataset.nav === H.tab); });
     bindHome();
@@ -395,9 +441,10 @@
     if(H) return;
     var w = document.createElement('div'); w.className = 'hm';
     w.innerHTML = '<div class="hms" data-body></div><nav class="hmn">'
-      + '<button data-nav="home"><span>🏠</span>Bosh sahifa</button><button data-nav="orders"><span>🚖</span>Buyurtmalar</button>'
-      + '<button data-nav="wallet"><span>👛</span>Hamyon</button><button data-nav="profile"><span>👤</span>Profil</button></nav>';
+      + '<button data-nav="home">' + IC.navHome + 'Bosh sahifa</button><button data-nav="orders">' + carIco('currentColor', '#0c172d') + 'Buyurtmalar</button>'
+      + '<button data-nav="wallet">' + IC.wallet + 'Hamyon</button><button data-nav="profile">' + IC.user + 'Profil</button></nav>';
     document.body.appendChild(w);
+    hPush();
     H = { el: w, tab: 'home', active: !!lastActive };
     w.querySelectorAll('.hmn button').forEach(function(b){ b.onclick = function(){ H.tab = b.dataset.nav; paintHome(); }; });
     paintHome();
@@ -410,11 +457,13 @@
       else if(H.tab === 'home') paintHome();
     }).catch(function(){});
   }
-  function closeHome(){
+  function closeHome(fromPop){
     if(!H) return;
-    closeMap();
+    var n = 1 + (T ? 1 : 0);
+    closeMap(true);
     if(H.el.parentNode) H.el.parentNode.removeChild(H.el);
     H = null; syncFab();
+    if(fromPop !== true) hPopN(n);
   }
 
   // ---------- Pastdagi "Taksi" tugmasi ----------
