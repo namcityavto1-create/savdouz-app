@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SavdoUz Taksi</title>
+<style>
+:root{--g:#0B6B52;--ink:#14201B;--mut:#5B6B63;--bg:#F3F5F2;--ln:#E1E7E3;--red:#7A160D;--yel:#5C4000}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 14px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif}
+.app{max-width:440px;margin:0 auto;padding:16px 14px 96px}
+h1{font-size:21px;margin:4px 0 12px}
+.card{background:#fff;border-radius:18px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--mut);font-weight:700;margin-top:6px}
+input,select{width:100%;padding:12px;border:1.5px solid var(--ln);border-radius:12px;font:inherit;margin:4px 0 8px;background:#fff}
+.btn{display:block;width:100%;min-height:48px;border:0;border-radius:14px;background:var(--g);color:#fff;font:inherit;font-weight:800;font-size:15px;margin-top:8px;cursor:pointer;text-align:center;padding:12px;text-decoration:none}
+.btn:disabled{opacity:.45}
+.btn.ghost{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+.btn.bad{background:var(--red)}
+.btn.sm{display:inline-block;width:auto;min-height:40px;padding:8px 14px;font-size:13px;margin:6px 6px 0 0}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.st{font-size:12px;font-weight:800;padding:3px 9px;border-radius:99px;background:#E3F1EC;color:var(--g);white-space:nowrap}
+.note{font-size:13px;color:var(--mut);margin:6px 0}
+.big{font-size:28px;font-weight:800}
+.bal{border-radius:18px;padding:14px;margin-bottom:12px;background:#fff}
+.bal.yel{background:#FFF1C7;color:var(--yel)}.bal.red{background:#FADBD8;color:var(--red)}
+.dark{background:var(--ink);color:#fff;border-radius:14px;padding:12px;margin:8px 0}
+.dark .btn{background:#fff;color:var(--ink)}
+.cn{font-size:21px;font-weight:800;letter-spacing:1px;margin:4px 0}
+.code{background:#E3F1EC;padding:2px 10px;border-radius:8px;font-size:17px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;background:#fff;border-top:1px solid var(--ln);padding:6px 6px calc(10px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;min-height:46px;border:0;background:none;font:inherit;font-weight:700;color:var(--mut)}
+nav button.on{color:var(--g);font-weight:800}
+.warn{background:#FFF1C7;color:var(--yel);border-radius:14px;padding:12px;margin-bottom:12px;font-weight:700}
+.c{text-align:center}a{color:var(--g);font-weight:700}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:22px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center;z-index:99999}
+#toast.on{opacity:1}
+.prev{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--g);display:block;margin:6px 0}
+.prevd{width:140px;border-radius:10px;display:block;margin:6px 0}
+/* selfi kamerasi */
+#cam{position:fixed;inset:0;z-index:9000;background:#000;display:none;flex-direction:column}
+#cam.on{display:flex}
+#camBox{position:relative;flex:1;overflow:hidden}
+#camBox video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#camBox svg{position:absolute;inset:0;width:100%;height:100%}
+#camHint{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 18px);text-align:center;color:#fff;font-weight:800;font-size:16px;text-shadow:0 1px 6px #000;padding:0 20px}
+#camBar{padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:10px;background:#000}
+#camBar .btn{margin:0}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div id="toast"></div>
+<div id="cam"><div id="camBox"><video id="camV" playsinline muted autoplay></video>
+<svg id="camSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="camHint">Yuzingizni doira ichiga joylashtiring</div></div>
+<div id="camBar"><button class="btn ghost" id="camCancel">Bekor qilish</button><button class="btn" id="camShot" disabled>Suratga olish</button></div></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n || 0).toLocaleString('ru-RU') + " so'm";
+const MODE = location.pathname.indexOf('admin') > -1 ? 'admin' : 'driver';
+const TITLE = MODE === 'admin' ? 'Taksi admin' : 'SavdoUz Taksi';
+document.title = TITLE;
+const ST = { yangi: 'Yangi', qabul: "Yo'lda (yo'lovchiga)", keldi: 'Yo\'lovchi kutmoqda', yolda: 'Safarda', yetkazildi: 'Tugadi', bekor: 'Bekor qilindi' };
+let TOKEN = localStorage.getItem('svtx_' + MODE), ME = null, INFO = null, TAB = 'home', ORD = [], OPEN = [], TUP = [], AD = null;
+let AUTH = 'login', CODE = null, lastMax = null, SELFIE = null, SIG = '';
+
+function toast(m) { const t = $('toast'); t.textContent = m; t.className = 'on'; clearTimeout(window._t); window._t = setTimeout(() => t.className = '', 2800); }
+function logout() { stopGPS(); localStorage.removeItem('svtx_' + MODE); TOKEN = null; ME = null; TAB = 'home'; render(); }
+async function api(path, method, body) {
+  const r = await fetch('/api/taxi' + path, { method: method || 'GET', headers: Object.assign({ 'Content-Type': 'application/json' }, TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}), body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { if (r.status === 401 && TOKEN) logout(); throw new Error(d.error || 'Xato'); }
+  return d;
+}
+function readImage(file, max) {
+  max = max || 1000;
+  return new Promise((ok, no) => {
+    if (!file) return no(new Error('Rasm tanlanmagan'));
+    const fr = new FileReader();
+    fr.onload = () => { const im = new Image(); im.onload = () => {
+      let w = im.width, h = im.height;
+      if (w > h && w > max) { h = Math.round(h * max / w); w = max; } else if (h > max) { w = Math.round(w * max / h); h = max; }
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, 0, 0, w, h);
+      ok(cv.toDataURL('image/jpeg', .72)); }; im.onerror = () => no(new Error("Rasm formati noto'g'ri")); im.src = fr.result; };
+    fr.readAsDataURL(file);
+  });
+}
+let AC = null;
+function beep() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); [880, 660, 880].forEach((f, i) => { const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime + i * .2; o.frequency.value = f; g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.0001, t + .18); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .2); }); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {} }
+const nav = items => `<nav>${items.map(([k, l]) => `<button data-act="tab" data-t="${k}" class="${TAB === k ? 'on' : ''}">${l}</button>`).join('')}</nav>`;
+const gmap = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+
+// ---------- GPS (haydovchi joyi yo'lovchiga ko'rinadi, har soniyada yangilanadi) ----------
+let GPSID = null, GPSTM = null, LASTPOS = null, WAKE = null;
+function startGPS() {
+  if (GPSID !== null || !navigator.geolocation) return;
+  GPSID = navigator.geolocation.watchPosition(p => { LASTPOS = p.coords; }, e => { if (e.code === 1) toast("Joylashuvga ruxsat bering (Sozlamalar)"); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+  GPSTM = setInterval(() => { if (LASTPOS && TOKEN && MODE === 'driver') api('/d/loc', 'POST', { lat: LASTPOS.latitude, lng: LASTPOS.longitude }).catch(() => {}); }, 1000);
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(w => WAKE = w).catch(() => {}); } catch (e) {}
+}
+function stopGPS() {
+  if (GPSID !== null) { navigator.geolocation.clearWatch(GPSID); GPSID = null; }
+  if (GPSTM) { clearInterval(GPSTM); GPSTM = null; }
+  try { if (WAKE) { WAKE.release(); WAKE = null; } } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && GPSID !== null && navigator.wakeLock) navigator.wakeLock.request('screen').then(w => WAKE = w).catch(() => {}); });
+
+// ---------- Selfi kamerasi (doira ichida yuz) ----------
+let CAMSTREAM = null, CAMTM = null, FD = null, CAMOK = false;
+function camMask() {
+  // 100x100 koordinata: qorong'u fon + o'rtada yumaloq teshik; doira markazi ekranning 45% balandligida
+  $('camSvg').innerHTML = `<defs><mask id="mk"><rect width="100" height="100" fill="#fff"/><ellipse id="cEl" cx="50" cy="45" rx="35" ry="20" fill="#000"/></mask></defs><rect width="100" height="100" fill="rgba(0,0,0,.65)" mask="url(#mk)"/><ellipse id="cEl2" cx="50" cy="45" rx="35" ry="20" fill="none" stroke="#fff" stroke-width=".6"/>`;
+  // ekran nisbatiga qarab doira yumaloq bo'lsin
+  const box = $('camBox'), w = box.clientWidth, h = box.clientHeight, r = Math.min(w, h) * 0.36;
+  const rx = r / w * 100, ry = r / h * 100;
+  ['cEl', 'cEl2'].forEach(i => { const e = $(i); e.setAttribute('rx', rx); e.setAttribute('ry', ry); });
+  return { r, cx: w / 2, cy: h * 0.45, w, h };
+}
+async function openCam() {
+  return new Promise(async (resolve, reject) => {
+    const cam = $('cam'), v = $('camV'); cam.classList.add('on');
+    const done = (val, err) => { clearInterval(CAMTM); if (CAMSTREAM) CAMSTREAM.getTracks().forEach(t => t.stop()); CAMSTREAM = null; v.srcObject = null; cam.classList.remove('on'); $('camShot').onclick = $('camCancel').onclick = null; err ? reject(err) : resolve(val); };
+    try {
+      CAMSTREAM = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
+    } catch (e) { cam.classList.remove('on'); return reject(new Error('CAM')); }
+    v.srcObject = CAMSTREAM; try { await v.play(); } catch (e) {}
+    const g = camMask();
+    const hasFD = 'FaceDetector' in window;
+    if (hasFD) { try { FD = FD || new FaceDetector({ fastMode: true, maxDetectedFaces: 1 }); } catch (e) { FD = null; } }
+    const shot = $('camShot'), hint = $('camHint');
+    shot.disabled = true; hint.textContent = 'Yuzingizni doira ichiga joylashtiring';
+    const vw = () => v.videoWidth || 640, vh = () => v.videoHeight || 480;
+    // video "cover" bo'lib ekranga sig'adi: ekran -> video koordinata
+    const map = () => { const s = Math.max(g.w / vw(), g.h / vh()); return { s, ox: (vw() * s - g.w) / 2, oy: (vh() * s - g.h) / 2 }; };
+    CAMTM = setInterval(async () => {
+      if (!v.videoWidth) return;
+      if (!FD) { shot.disabled = false; return; }
+      try {
+        const f = await FD.detect(v);
+        if (!f.length) { shot.disabled = true; hint.textContent = 'Yuz topilmadi. Doira ichiga qarang'; return; }
+        const bb = f[0].boundingBox, mm = map();
+        // ekran koordinatasida (oyna ko'zgusi hisobga olinadi)
+        const fx = g.w - ((bb.x + bb.width / 2) * mm.s - mm.ox), fy = (bb.y + bb.height / 2) * mm.s - mm.oy, fw = bb.width * mm.s;
+        const inside = Math.hypot(fx - g.cx, fy - g.cy) < g.r * 0.45 && fw > g.r * 0.7 && fw < g.r * 2.1;
+        shot.disabled = !inside;
+        hint.textContent = inside ? "Yaxshi! Suratga oling" : (fw <= g.r * 0.7 ? 'Yaqinroq keling' : fw >= g.r * 2.1 ? 'Uzoqroq turing' : "Yuzingizni doira o'rtasiga qo'ying");
+      } catch (e) { shot.disabled = false; }
+    }, 300);
+    shot.onclick = () => {
+      const mm = map(), side = g.r * 2.3, sx = (g.cx - side / 2 + mm.ox) / mm.s, sy = (g.cy - side / 2 + mm.oy) / mm.s, ss = side / mm.s;
+      const cv = document.createElement('canvas'); cv.width = cv.height = 480;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(v, Math.max(0, sx), Math.max(0, sy), Math.min(ss, vw() - Math.max(0, sx)), Math.min(ss, vh() - Math.max(0, sy)), 0, 0, 480, 480);
+      done(cv.toDataURL('image/jpeg', .8));
+    };
+    $('camCancel').onclick = () => done(null, new Error('Bekor qilindi'));
+  });
+}
+function showSelfie(d) { SELFIE = d; const p = $('selfPrev'); if (p) p.innerHTML = d ? `<img class="prev" src="${d}">` : ''; }
+
+// ---------- Kirish ----------
+function authView() {
+  const reg = AUTH === 'reg' && MODE !== 'admin';
+  let f = '';
+  if (reg) {
+    f += `<label>Ism familiya</label><input id="f_name"><label>Mashina klassi</label><select id="f_klass"><option value="start">Start (oddiy mashina)</option><option value="komfort">Komfort (yaxshi holatdagi, konditsionerli)</option></select><label>Mashina markasi va rangi</label><input id="f_car" placeholder="Chevrolet Gentra, oq"><label>Davlat raqami</label><input id="f_plate" placeholder="90 A 123 BB">
+    <label>Texpasport rasmi</label><input id="f_tech" type="file" accept="image/*"><label>Haydovchilik guvohnomasi (prava) rasmi</label><input id="f_lic" type="file" accept="image/*">
+    <label>Selfi (doira ichida yuzingiz)</label><div id="selfPrev"></div><button class="btn ghost" data-act="selfie">📷 Selfi olish</button>`;
+  }
+  f += `<label>Telefon raqam</label><input id="f_phone" inputmode="tel" placeholder="+998901234567"><label>Parol</label><input id="f_pw" type="password">`;
+  return `<h1>${TITLE}</h1><div class="card">${f}<button class="btn" data-act="auth">${reg ? "Ro'yxatdan o'tish" : 'Kirish'}</button></div>` +
+    (MODE !== 'admin' ? `<p class="c"><a href="#" data-act="swAuth">${reg ? 'Hisobim bor, kirish' : "Hisobim yo'q, ro'yxatdan o'tish"}</a></p>` : '');
+}
+
+// ---------- Hamyon ----------
+function walletView() {
+  if (!CODE) CODE = 'T-' + Math.floor(1000 + Math.random() * 9000);
+  const rows = TUP.map(t => `<div class="note">${fmt(t.amount)} · ${esc(t.code)} · <b>${esc(t.status)}</b></div>`).join('');
+  return `<h1>Hamyon</h1><div class="card"><small class="note">Balans</small><div class="big">${fmt(ME.balance)}</div><div class="note">Har safardan komissiya (${(ME.rate * 100).toFixed(0)}%) shu balansdan olinadi. Pul yo'lovchidan naqd olinadi.</div></div>
+  <div class="card"><b>Hisobni to'ldirish</b><label>Summa (so'm)</label><input id="t_amt" inputmode="numeric" placeholder="50000">
+  <div class="dark"><small>Shu kartaga o'tkazing</small><div class="cn">${esc(INFO.card.number)}</div><small>Karta egasi: ${esc(INFO.card.holder)}</small><button class="btn sm" data-act="copyCard">Karta raqamini nusxalash</button></div>
+  <p class="note">O'tkazma izohiga yozing: <b class="code">${CODE}</b></p>
+  <label>Chek rasmi (ixtiyoriy)</label><input id="t_rcp" type="file" accept="image/*"><button class="btn" data-act="topup">To'ladim</button></div>
+  <div class="card"><b>To'ldirishlar</b>${rows || '<div class="note">Hali yo\'q</div>'}</div><p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
+}
+
+// ---------- HAYDOVCHI ----------
+function dView() {
+  if (ME.status !== 'faol') {
+    return `<h1>${TITLE}</h1><div class="card">${ME.status === 'kutilmoqda' ? "Arizangiz ko'rib chiqilmoqda. Admin hujjatlaringizni tekshirib tasdiqlagach ishlay olasiz." : 'Hisobingiz faol emas (' + esc(ME.status) + "). Admin bilan bog'laning."}</div><p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
+  }
+  return (TAB === 'wallet' ? walletView() : dHome()) + nav([['home', 'Asosiy'], ['wallet', 'Hamyon']]);
+}
+function dHome() {
+  const m = ME, cf = INFO.cfg, cls = m.balance < cf.minBalance ? 'red' : m.balance < cf.warnBalance ? 'yel' : '';
+  let h = `<h1>Salom, ${esc(m.name.split(' ')[0])}</h1><div class="note">Klassingiz: <b>${m.klass === 'komfort' ? 'Komfort (Start va Komfort buyurtmalar)' : 'Start'}</b></div><div class="bal ${cls}"><small>Balans</small><div class="big">${fmt(m.balance)}</div>` +
+    (cls === 'red' ? `<div><b>Yangi buyurtma kelmaydi.</b> Avval hisobingizni to'ldiring</div>` : cls === 'yel' ? '<div><b>Balans kam qolmoqda</b></div>' : '') +
+    (cls ? `<button class="btn sm" data-act="tab" data-t="wallet">Hisobni to'ldirish</button>` : '') + `</div>`;
+  if (m.restrictedUntil) h += `<div class="warn">Ko'p bekor qilganingiz uchun ${new Date(m.restrictedUntil).toLocaleString('uz')} gacha cheklangansiz</div>`;
+  const live = ORD.find(o => ['qabul', 'keldi', 'yolda'].includes(o.status));
+  if (m.online) h += `<div class="card"><div class="top"><div><small class="note">Ish vaqti qoldi</small><div class="big" id="tmr">--:--:--</div></div><span class="st">Ishdaman</span></div>${live ? '' : '<button class="btn sm ghost" data-act="workOff">Dam olaman</button>'}</div>`;
+  else h += `<div class="card"><div class="note">Ishga chiqsangiz, yaqin atrofdagi yo'lovchilar buyurtmasi ko'rinadi. Joylashuvingiz yo'lovchiga xaritada ko'rsatiladi.</div><button class="btn" data-act="workOn">🚕 Ishdaman</button></div>`;
+  if (live) h += `<h1>Joriy safar</h1>` + liveCard(live);
+  if (m.online && !live) h += `<h1>Yangi buyurtmalar</h1>` + (OPEN.length ? OPEN.map(openCard).join('') : '<div class="note">Hozircha buyurtma yo\'q. Yangisi kelsa ovoz chiqadi.</div>');
+  const done = ORD.filter(o => ['yetkazildi', 'bekor'].includes(o.status)).slice(0, 5);
+  if (done.length) h += `<h1>Oxirgilar</h1>` + done.map(o => `<div class="card"><div class="top"><b>№${o.id} · ${o.km} km</b><span class="st">${ST[o.status]}</span></div><div class="note">${fmt(o.fee)}</div></div>`).join('');
+  return h + `<p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
+}
+const addr = p => esc(p.address || 'Xaritadagi nuqta');
+function openCard(o) {
+  return `<div class="card"><div class="top"><b>№${o.id} · ${o.km} km</b><span class="st">${fmt(o.fee)}</span></div>
+  <div class="note"><b>Tarif: ${esc(o.tariffName)}</b><br>${o.pickupKm != null ? '📍 Sizdan ' + o.pickupKm + ' km<br>' : ''}Qayerdan: ${addr(o.from)}<br>Qayerga: ${addr(o.to)}${o.note ? '<br>Izoh: ' + esc(o.note) : ''}</div>
+  <div class="note"><b>To'lov: naqd</b></div><button class="btn" data-act="accept" data-id="${o.id}">Qabul qilish</button></div>`;
+}
+function liveCard(o) {
+  let h = `<div class="card"><div class="top"><b>№${o.id} · ${esc(o.name)}</b><span class="st">${ST[o.status]}</span></div>
+  <div class="note">Yo'lovchi: <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a><br>Qayerdan: ${addr(o.from)}<br>Qayerga: ${addr(o.to)}${o.note ? '<br>Izoh: ' + esc(o.note) : ''}</div>
+  <div class="note">Tarif: <b>${esc(o.tariffName)}</b> · Narx: <b>${fmt(o.fee)}</b> · ${o.km} km · <b>naqd</b></div>`;
+  if (o.status === 'qabul') h += `<a class="btn ghost" href="${gmap(o.from)}" target="_blank">🧭 Yo'lovchigacha yo'l</a><button class="btn" data-act="arrived" data-id="${o.id}">Yetib keldim</button><button class="btn ghost" data-act="release" data-id="${o.id}">Buyurtmani bekor qilish</button>`;
+  else if (o.status === 'keldi') h += `<button class="btn" data-act="start" data-id="${o.id}">Safarni boshlash</button><button class="btn ghost" data-act="release" data-id="${o.id}">Buyurtmani bekor qilish</button>`;
+  else if (o.status === 'yolda') h += `<a class="btn ghost" href="${gmap(o.to)}" target="_blank">🧭 Manzilgacha yo'l</a><button class="btn" data-act="done" data-id="${o.id}">Safar tugadi, ${fmt(o.fee)} oldim</button>`;
+  return h + '</div>';
+}
+
+// ---------- ADMIN ----------
+function aView() {
+  const T = [['dr', 'Haydovchilar'], ['top', "To'ldirish"], ['ord', 'Buyurtmalar']];
+  if (!T.some(x => x[0] === TAB)) TAB = 'dr';
+  let h = `<h1>Taksi admin</h1>`;
+  const A = AD, tk = encodeURIComponent(TOKEN), img = (k, id, f, l) => `<a href="/api/taxi/admin/img/${k}/${id}/${f}?t=${tk}" target="_blank">${l}</a>`;
+  if (TAB === 'dr') h += A.drivers.map(c => `<div class="card"><div class="top"><b>${esc(c.name)}</b><span class="st">${esc(c.status)}</span></div><div class="note">${esc(c.phone)} · ${esc(c.car)} · <b>${esc(c.plate)}</b> · klass: <b>${esc(c.klass)}</b><br>balans ${fmt(c.balance)} · ${c.done} ta safar<br>
+    ${img('drivers', c.id, 'techPassport', 'Texpasport')} · ${img('drivers', c.id, 'license', 'Prava')} · ${img('drivers', c.id, 'selfie', 'Selfi')}</div>
+    ${c.status === 'faol' ? `<button class="btn sm bad" data-act="dAct" data-id="${c.id}" data-a="block">Bloklash</button>` : `<button class="btn sm" data-act="dAct" data-id="${c.id}" data-a="${c.status === 'bloklangan' ? 'unblock' : 'approve'}">Tasdiqlash</button>`}
+    ${c.status === 'kutilmoqda' ? `<button class="btn sm bad" data-act="dAct" data-id="${c.id}" data-a="reject">Rad etish</button>` : ''}</div>`).join('') || '<div class="note">Haydovchi yo\'q</div>';
+  if (TAB === 'top') h += A.topups.map(t => `<div class="card"><div class="top"><b>${esc(t.userName)}</b><span class="st">${esc(t.status)}</span></div><div class="note">${fmt(t.amount)} · kod ${esc(t.code)} · ${new Date(t.createdAt).toLocaleString('uz')}${t.hasReceipt ? ' · ' + img('topups', t._id, 'receipt', 'Chek') : ''}</div>
+    ${t.status === 'kutilmoqda' ? `<button class="btn sm" data-act="tAct" data-id="${t._id}" data-a="approve">Tasdiqlash</button><button class="btn sm bad" data-act="tAct" data-id="${t._id}" data-a="reject">Rad etish</button>` : ''}</div>`).join('') || '<div class="note">Yo\'q</div>';
+  if (TAB === 'ord') h += A.orders.map(o => `<div class="card"><div class="top"><b>№${o.id} · ${esc(o.name)}</b><span class="st">${ST[o.status] || o.status}</span></div><div class="note">${esc(o.phone)} · ${o.km} km · ${fmt(o.fee)}<br>Haydovchi: ${esc(o.driverName)}</div></div>`).join('') || '<div class="note">Yo\'q</div>';
+  return h + nav(T) + `<p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
+}
+
+// ---------- Yuklash va chizish ----------
+async function load() {
+  try {
+    INFO = await api('/info');
+    if (!TOKEN) return render();
+    if (MODE === 'admin') { AD = await api('/admin/data'); ME = {}; }
+    else {
+      ME = (await api('/d/me')).me;
+      if (ME.status === 'faol') {
+        const o = await api('/d/orders'); ORD = o.mine; OPEN = o.open;
+        const mx = OPEN.reduce((a, x) => Math.max(a, x.id), 0);
+        if (lastMax !== null && mx > lastMax) beep();
+        lastMax = ME.online ? mx : null;
+        TUP = (await api('/d/topups')).topups;
+        if (ME.online || ORD.some(x => ['qabul', 'keldi', 'yolda'].includes(x.status))) startGPS(); else stopGPS();
+      }
+    }
+  } catch (e) { if (TOKEN) toast(e.message); }
+  render();
+}
+function render(force) {
+  const a = $('app');
+  if (!TOKEN) { a.innerHTML = authView(); showSelfie(SELFIE); return; }
+  if (!ME || !INFO) { a.innerHTML = '<div class="card">Yuklanmoqda...</div>'; return; }
+  const sig = JSON.stringify([TAB, ME, ORD, OPEN, TUP, AD ? AD.drivers.length + ':' + AD.topups.length + ':' + AD.orders.length : 0]);
+  if (!force && sig === SIG) return;
+  SIG = sig;
+  a.innerHTML = MODE === 'driver' ? dView() : aView();
+}
+setInterval(() => {
+  const e = $('tmr'); if (e && ME && ME.workUntil) { const s = Math.max(0, Math.floor((new Date(ME.workUntil) - Date.now()) / 1000)); e.textContent = [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map(x => String(x).padStart(2, '0')).join(':'); }
+}, 1000);
+setInterval(() => {
+  if (!TOKEN || document.hidden || TAB === 'wallet') return;
+  const a = document.activeElement; if (a && /INPUT|SELECT|TEXTAREA/.test(a.tagName)) return;
+  load();
+}, 3000);
+
+// ---------- Tugmalar ----------
+const go = async (p, b, msg) => { try { await api(p, 'POST', b || {}); if (msg) toast(msg); SIG = ''; await load(); } catch (e) { toast(e.message); } };
+const ACT = {
+  swAuth() { AUTH = AUTH === 'reg' ? 'login' : 'reg'; render(); },
+  out() { logout(); },
+  tab(d) { TAB = d.t; SIG = ''; render(true); },
+  async selfie() {
+    try { showSelfie(await openCam()); }
+    catch (e) {
+      if (e.message === 'CAM') {
+        // kamera ochilmasa: oddiy selfi tanlash
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.setAttribute('capture', 'user');
+        inp.onchange = async () => { try { showSelfie(await readImage(inp.files[0], 640)); } catch (x) { toast(x.message); } };
+        inp.click();
+      } else if (e.message !== 'Bekor qilindi') toast(e.message);
+    }
+  },
+  async auth() {
+    const phone = $('f_phone').value.trim(), password = $('f_pw').value;
+    try {
+      let d;
+      if (MODE === 'admin') {
+        const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, password }) });
+        d = await r.json(); if (!r.ok) throw new Error(d.error || 'Xato'); if (d.user.role !== 'admin') throw new Error('Faqat admin kira oladi');
+      } else if (AUTH === 'reg') {
+        if (!SELFIE) throw new Error('Selfi oling');
+        d = await api('/d/register', 'POST', { name: $('f_name').value, phone, password, klass: $('f_klass').value, car: $('f_car').value, plate: $('f_plate').value, techPassport: await readImage($('f_tech').files[0]), license: await readImage($('f_lic').files[0]), selfie: SELFIE });
+      } else d = await api('/d/login', 'POST', { phone, password });
+      TOKEN = d.token; localStorage.setItem('svtx_' + MODE, TOKEN); TAB = 'home'; SIG = ''; await load();
+    } catch (e) { toast(e.message); }
+  },
+  copyCard() { try { navigator.clipboard.writeText(INFO.card.number.replace(/\s/g, '')); toast('Karta raqami nusxalandi'); } catch (e) { toast(INFO.card.number); } },
+  async topup() {
+    try {
+      const amount = Number($('t_amt').value); if (!(amount > 0)) throw new Error('Summani kiriting');
+      const f = $('t_rcp').files[0]; const receipt = f ? await readImage(f) : null;
+      await api('/d/topup', 'POST', { amount, code: CODE, receipt }); CODE = null; toast("So'rov yuborildi. Admin tasdiqlagach balans oshadi"); SIG = ''; await load();
+    } catch (e) { toast(e.message); }
+  },
+  workOn() { startGPS(); go('/d/work', { on: true }, 'Ish boshlandi'); },
+  workOff() { go('/d/work', { on: false }, 'Dam oling'); },
+  accept(d) { go('/d/orders/' + d.id + '/accept', {}, 'Buyurtma sizniki'); },
+  arrived(d) { go('/d/orders/' + d.id + '/arrived', {}, "Yo'lovchiga xabar berildi"); },
+  start(d) { go('/d/orders/' + d.id + '/start', {}, 'Safar boshlandi'); },
+  done(d) { if (confirm("Safar tugadimi va naqd pulni oldingizmi?")) go('/d/orders/' + d.id + '/done', {}, 'Safar tugadi'); },
+  release(d) { if (confirm("Buyurtmani bekor qilasizmi? Ko'p bekor qilsangiz cheklanasiz")) go('/d/orders/' + d.id + '/release'); },
+  dAct(d) { go('/admin/driver/' + d.id, { action: d.a }, 'Bajarildi'); },
+  tAct(d) { go('/admin/topup/' + d.id, { action: d.a }, 'Bajarildi'); }
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || !ACT[b.dataset.act]) return;
+  if (b.tagName === 'A' && !b.getAttribute('href')) e.preventDefault();
+  if (b.tagName === 'A' && b.getAttribute('href') === '#') e.preventDefault();
+  if (b.disabled) return;
+  ACT[b.dataset.act](b.dataset, b);
+});
+load();
+</script>
+</body>
+</html>

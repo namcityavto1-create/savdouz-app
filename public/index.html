@@ -247,7 +247,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v6.3';
+const APP_VERSION = 'v6.4';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -865,7 +865,7 @@ function profileGroups(){
     info
   ];
   return [
-    [...(can('ads') ? [['ads','📢','Reklamalar']] : []), ...(can('courier') ? [['courieradmin','🛵','Kuryer admin']] : []), ...(can('admins') ? [['admins','👥','Adminlar']] : []), ['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
+    [...(can('ads') ? [['ads','📢','Reklamalar']] : []), ...(can('courier') ? [['courieradmin','🛵','Kuryer admin'],['taxiadmin','🚕','Taksi admin']] : []), ...(can('admins') ? [['admins','👥','Adminlar']] : []), ['notifs','🔔','Bildirishnomalar'],['settings','⚙️','Sozlamalar']],
     [lang],
     info
   ];
@@ -884,6 +884,7 @@ function renderProfile(main){
     const to = row.dataset.go;
     if(to === 'lang'){ if(window.openLangPicker) window.openLangPicker(); return; }
     if(to === 'courieradmin'){ location.href = '/kuryer-admin'; return; }
+    if(to === 'taxiadmin'){ location.href = '/taxi-admin'; return; }
     if(to === 'sell'){
       if(confirm("Sotuvchi hisobi alohida ochiladi. Hozirgi hisobdan chiqib, sotuvchi sifatida ro'yxatdan o'tasizmi?")){ authMode = 'register'; authRole = 'seller'; logout(false); }
       return;
@@ -1975,6 +1976,7 @@ async function renderReset(){
   setInterval(function(){ if(!document.hidden && typeof S !== 'undefined' && S.user) refresh(true); }, 7000);
 })();
 </script>
+<script src="/taxi-ui.js?v=1"></script>
 <script src="/plus-ui.js?v=1"></script>
 </body>
 </html>
