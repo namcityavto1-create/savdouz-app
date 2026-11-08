@@ -59,7 +59,7 @@ function dist(a, b) {
 const OCACHE = new Map();
 async function orderInfo(C, id) {
   let x = OCACHE.get(id);
-  if (x && Date.now() - x.t < 4000) return x;
+  if (x && Date.now() - x.t < 800) return x;
   const o = await C('corders').findOne({ _id: id });
   let c = null;
   if (o && o.courierId && (o.status === 'qabul' || o.status === 'oldi')) c = await C('couriers').findOne({ _id: o.courierId }, { projection: { name: 1, transport: 1, phone: 1 } });
