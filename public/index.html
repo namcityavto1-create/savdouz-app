@@ -247,7 +247,7 @@ function stepper(status){
   return `<div class="stp">${STEPS.map(([k, l], i) => `<div class="st ${i<idx?'done':i===idx?'cur':''}"><i>${i<=idx ? '✓' : ''}</i><span>${l}</span></div>`).join('')}</div>`;
 }
 const ICON = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="10.5" rx="1.2" fill="#2B3543"/><rect x="5.1" y="5.1" width="13.8" height="8.3" fill="#1868E0"/><path d="M2 17.5h20l-1.6-2.5H3.6z" fill="#8892A0"/></svg>';
-const APP_VERSION = 'v6.1';
+const APP_VERSION = 'v6.3';
 // Aloqa: faqat Telegram bot (telefon raqam ko'rsatilmaydi)
 const CONTACT_TG = 'https://t.me/Savol_24bot';
 const CONTACT_BOT = '@Savol_24bot';
@@ -1450,6 +1450,17 @@ setInterval(() => {
   if(document.querySelector('input:focus,textarea:focus,select:focus')) return;
   if(document.querySelector('[data-chatbox][style*="block"]')) return;
   if(document.querySelector('[data-kbox] iframe')) return;
+  // Kuryer xaritasi ochiq bo'lsa sahifani qayta chizmaymiz (ekran qimirlamasin): faqat holat o'zgargandagina yangilaymiz
+  if(document.querySelector('[data-kbox] .ktm')){
+    const url = role()==='seller' ? '/api/orders/incoming' : '/api/orders/mine';
+    api(url).then(r => {
+      const sig = (r.orders || []).map(o => o.id + ':' + o.status).join('|');
+      if(window.__ordSig === undefined){ window.__ordSig = sig; return; }
+      if(sig !== window.__ordSig){ window.__ordSig = sig; renderTab(true); }
+    }).catch(() => {});
+    return;
+  }
+  window.__ordSig = undefined;
   renderTab(true);
 }, 12000);
 
@@ -1863,7 +1874,7 @@ async function renderReset(){
       T.map = L.map($('.ktm'), { zoomControl: false, dragging: full || !L.Browser.mobile, scrollWheelZoom: false }).setView(NAM, 13);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(T.map);
       setTimeout(function(){ T.invalidate(); poll(); }, 250);
-      T.tm = setInterval(poll, 3000);
+      T.tm = setInterval(poll, 1000);
     }).catch(function(){ $('.ktm').innerHTML = '<div style="padding:20px;color:var(--mut);font-size:12px">Xarita yuklanmadi, internetni tekshiring</div>'; });
     T.destroy = function(){ T.dead = true; clearInterval(T.tm); try { if(T.map) T.map.remove(); } catch(e){} };
     return T;
