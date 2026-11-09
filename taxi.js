@@ -13,7 +13,14 @@ const CFG = {
   minBalance: 10000, warnBalance: 15000,                  // haydovchi hisobida kamida shuncha bo'lsin
   promoDays: 30, promoRate: 0.01, rate: 0.05,             // 1 oy 1%, keyin 5% komissiya
   nearKm: 25,                                             // haydovchiga shu masofadagi buyurtmalar ko'rinadi
-  workHours: 12, maxCancels: 3, blockHours: 24, expireMin: 30
+  workHours: 12, maxCancels: 3, blockHours: 24, expireMin: 30,
+  // ---- Kutish haqi ----
+  waitFreeSec: 60,        // mashina yetib kelgach shuncha soniya bepul kutiladi
+  waitPerMin: 1000,       // keyin har boshlangan daqiqa uchun (so'm)
+  stopFreeSec: 10,        // safar paytida har to'xtashda dastlabki shuncha soniya bepul
+  stopSpeed: 1.0,         // m/s dan sekin bo'lsa "to'xtagan" hisoblanadi (taxminan 3.6 km/soat)
+  stopRadiusM: 20,        // tezlik ma'lum bo'lmasa: shu radiusdan chiqmasa "to'xtagan"
+  locGapSec: 45           // GPS shuncha soniya kelmasa, to'xtash hisobi qaytadan boshlanadi
 };
 // Tariflar: boshlanish narxi (1-km) va keyingi har km narxi
 const TARIFFS = { start: { name: 'Start', base: 8000, km: 2000 }, komfort: { name: 'Komfort', base: 10000, km: 2500 } };
@@ -108,6 +115,39 @@ const ACTIVE = ['yangi', 'qabul', 'keldi', 'yolda'];
 const LIVE = ['qabul', 'keldi', 'yolda'];
 const eta = (a, b) => Math.max(1, Math.round(dist(a, b) * CFG.routeK / 30 * 60)); // taxminan 30 km/soat
 
+// ---------- Kutish haqi ----------
+// 1) Mashina yetib kelganidan safar boshlanguncha: dastlabki 1 daqiqa bepul, keyin har boshlangan daqiqa uchun 1000 so'm.
+// 2) Safar paytida to'xtasa: har to'xtashda dastlabki 10 soniya bepul, keyin to'xtab turgan vaqt shu narxda hisoblanadi.
+// Ikkala kutish vaqti qo'shilib, har boshlangan daqiqa uchun 1000 so'mdan yozadi.
+const arrWaitSec = o => {
+  if (!o.arrivedAt) return 0;
+  const a = new Date(o.arrivedAt).getTime();
+  const end = o.startedAt ? new Date(o.startedAt).getTime() : (o.status === 'keldi' ? Date.now() : a);
+  return Math.max(0, Math.floor((end - a) / 1000));
+};
+const waitInfo = o => {
+  if (o.waitFee !== undefined) return { arrSec: o.waitArr || 0, stopSec: o.waitStop || 0, billSec: o.waitSec || 0, fee: o.waitFee, freeLeft: 0, stopping: false };
+  const arr = arrWaitSec(o), bill = Math.max(0, arr - CFG.waitFreeSec), stop = Math.round(o.stopSec || 0), tot = bill + stop;
+  return {
+    arrSec: arr, stopSec: stop, billSec: tot, fee: Math.ceil(tot / 60) * CFG.waitPerMin,
+    freeLeft: o.status === 'keldi' ? Math.max(0, CFG.waitFreeSec - arr) : 0,
+    stopping: o.status === 'yolda' && (o.stopCounted || 0) > 0 && Date.now() - (o.stopLastAt || 0) < 6000
+  };
+};
+// Haydovchi GPS yuborganda safar paytidagi to'xtashlarni aniqlaydi
+async function trackStop(o, p, speed, now) {
+  const a = o.stopAnchor, gap = !o.stopLastAt || now - o.stopLastAt > CFG.locGapSec * 1000;
+  const moving = speed !== null ? speed >= CFG.stopSpeed : (!!a && dist(a, p) * 1000 > CFG.stopRadiusM);
+  if (!a || gap || moving) {
+    await C('taxiorders').updateOne({ _id: o._id, status: 'yolda' }, { $set: { stopAnchor: { lat: p.lat, lng: p.lng, t: now }, stopLastAt: now, stopCounted: 0 } });
+    return;
+  }
+  const billable = Math.max(0, (now - a.t) / 1000 - CFG.stopFreeSec), inc = Math.max(0, billable - (o.stopCounted || 0));
+  const upd = { $set: { stopLastAt: now, stopCounted: billable } };
+  if (inc > 0) upd.$inc = { stopSec: inc };
+  await C('taxiorders').updateOne({ _id: o._id, status: 'yolda' }, upd);
+}
+
 const pubD = d => ({
   id: d._id, name: d.name, phone: d.phone, car: d.car, plate: d.plate, klass: tariffOf(d.klass), status: d.status, balance: d.balance || 0,
   online: isOn(d), workUntil: isOn(d) ? d.workUntil : null, restrictedUntil: isRestricted(d) ? d.restrictedUntil : null,
@@ -118,7 +158,7 @@ const ordD = (o, full) => {
     id: o._id, status: o.status, km: o.km, fee: o.fee, tariff: tariffOf(o.tariff), tariffName: TARIFFS[tariffOf(o.tariff)].name, note: o.note || '',
     from: { lat: o.from.lat, lng: o.from.lng, address: o.from.address }, to: o.to ? { lat: o.to.lat, lng: o.to.lng, address: o.to.address } : null, open: !!o.open
   };
-  if (full) { x.name = o.userName; x.phone = o.userPhone; }
+  if (full) { x.name = o.userName; x.phone = o.userPhone; x.wait = waitInfo(o); }
   return x;
 };
 
@@ -161,7 +201,7 @@ async function handle(req, res) {
 
   if (R('GET', /^\/info$/)) return ok({
     card: { number: CFG.cardNumber, holder: CFG.cardHolder },
-    cfg: { tariffs: TARIFFS, maxKm: CFG.maxKm, minBalance: CFG.minBalance, warnBalance: CFG.warnBalance }
+    cfg: { tariffs: TARIFFS, maxKm: CFG.maxKm, minBalance: CFG.minBalance, warnBalance: CFG.warnBalance, waitFreeSec: CFG.waitFreeSec, waitPerMin: CFG.waitPerMin, stopFreeSec: CFG.stopFreeSec }
   });
 
   // =================== YO'LOVCHI (asosiy ilova foydalanuvchisi) ===================
@@ -176,7 +216,7 @@ async function handle(req, res) {
       if (o.status === 'qabul') etaMin = eta(dr, o.from);
       else if (o.status === 'yolda' && o.to) etaMin = eta(dr, o.to);
     }
-    return { id: o._id, status: o.status, from: o.from, to: o.to, km: o.km, fee: o.fee, tariff: tariffOf(o.tariff), tariffName: TARIFFS[tariffOf(o.tariff)].name, driver: dr, etaMin, reason: o.reason || null, open: !!o.open };
+    return { id: o._id, status: o.status, from: o.from, to: o.to, km: o.km, fee: o.fee, tariff: tariffOf(o.tariff), tariffName: TARIFFS[tariffOf(o.tariff)].name, driver: dr, etaMin, reason: o.reason || null, open: !!o.open, wait: waitInfo(o), waitPerMin: CFG.waitPerMin, waitFreeSec: CFG.waitFreeSec, stopFreeSec: CFG.stopFreeSec };
   };
   if (R('POST', /^\/quote$/)) {
     await mainUser(req, u.searchParams);
@@ -208,7 +248,7 @@ async function handle(req, res) {
   if (R('GET', /^\/history$/)) {
     const user = await mainUser(req, u.searchParams);
     const list = await C('taxiorders').find({ userId: user.id }).sort({ _id: -1 }).limit(30).toArray();
-    return ok({ orders: list.map(o => ({ id: o._id, status: o.status, km: o.km, fee: o.fee, tariffName: TARIFFS[tariffOf(o.tariff)].name, createdAt: o.createdAt, reason: o.reason || '', open: !!o.open })) });
+    return ok({ orders: list.map(o => ({ id: o._id, status: o.status, km: o.km, fee: o.fee, waitFee: o.waitFee || 0, tariffName: TARIFFS[tariffOf(o.tariff)].name, createdAt: o.createdAt, reason: o.reason || '', open: !!o.open })) });
   }
   if (R('GET', /^\/o\/(\d+)$/)) {
     const user = await mainUser(req, u.searchParams);
@@ -259,7 +299,12 @@ async function handle(req, res) {
   if (R('POST', /^\/d\/loc$/)) {
     const d = await driver(), lat = Number(b.lat), lng = Number(b.lng);
     if (!okLL(lat, lng)) throw new E("Joylashuv noto'g'ri");
-    await C('taxidrivers').updateOne({ _id: d._id }, { $set: { lat, lng, locAt: Date.now() } });
+    const now = Date.now();
+    await C('taxidrivers').updateOne({ _id: d._id }, { $set: { lat, lng, locAt: now } });
+    // Safar paytida to'xtashni kuzatish (kutish haqi uchun)
+    const sp = (b.speed === null || b.speed === undefined || b.speed === '') ? null : Number(b.speed);
+    const live = await C('taxiorders').findOne({ driverId: d._id, status: 'yolda' }, { projection: { stopAnchor: 1, stopLastAt: 1, stopCounted: 1 } });
+    if (live) await trackStop(live, { lat, lng }, Number.isFinite(sp) ? sp : null, now);
     return ok();
   }
   if (R('GET', /^\/d\/orders$/)) {
@@ -291,26 +336,28 @@ async function handle(req, res) {
     if (act === 'arrived') {
       const o = await fu('taxiorders', Object.assign({ status: 'qabul' }, mineQ), { $set: { status: 'keldi', arrivedAt: now } });
       if (!o) throw new E('Holat o`zgargan');
-      notify(o.userId, 'Taksi yetib keldi 🚕', d.car + ' · ' + d.plate + '. Chiqishingiz mumkin', 'taksi' + id);
+      notify(o.userId, 'Taksi yetib keldi 🚕', d.car + ' · ' + d.plate + '. Chiqishingiz mumkin (' + Math.round(CFG.waitFreeSec / 60) + ' daqiqa bepul kutiladi)', 'taksi' + id);
       return ok();
     }
     if (act === 'start') {
-      const o = await fu('taxiorders', Object.assign({ status: { $in: ['qabul', 'keldi'] } }, mineQ), { $set: { status: 'yolda', startedAt: now } });
+      const o = await fu('taxiorders', Object.assign({ status: { $in: ['qabul', 'keldi'] } }, mineQ), { $set: { status: 'yolda', startedAt: now, stopSec: 0, stopCounted: 0 }, $unset: { stopAnchor: '', stopLastAt: '' } });
       if (!o) throw new E('Holat o`zgargan');
       return ok();
     }
     if (act === 'done') {
       const cur = await C('taxiorders').findOne(Object.assign({ status: 'yolda' }, mineQ));
       if (!cur) throw new E("Safar hali boshlanmagan");
-      const set = { status: 'yetkazildi', doneAt: now };
+      // Kutish haqi: yetib kelgandan keyingi kutish + safar paytidagi to'xtashlar
+      const w = waitInfo(cur), base = cur.baseFee != null ? cur.baseFee : cur.fee, total = base + w.fee;
+      const set = { status: 'yetkazildi', doneAt: now, baseFee: base, waitFee: w.fee, waitSec: w.billSec, waitArr: w.arrSec, waitStop: w.stopSec };
       if (cur.open) {
         const amt = Math.round(Number(b.amount) / 1000) * 1000;
-        if (!Number.isFinite(amt) || amt < cur.fee || amt > 500000) throw new E(`Summani kiriting (${cur.fee} so'mdan kam bo'lmasin)`);
+        if (!Number.isFinite(amt) || amt < total || amt > 500000) throw new E(`Summani kiriting (${total} so'mdan kam bo'lmasin${w.fee ? ", kutish haqi " + w.fee + " so'm ham shunga kiritilgan" : ''})`);
         set.fee = amt;
-      }
+      } else set.fee = total;
       const o = await fu('taxiorders', Object.assign({ status: 'yolda' }, mineQ), { $set: set });
       if (!o) throw new E("Safar hali boshlanmagan");
-      const com = Math.round((set.fee || o.fee) * rateOf(d));
+      const com = Math.round(set.fee * rateOf(d));
       await C('taxidrivers').updateOne({ _id: d._id }, { $inc: { balance: -com, doneCount: 1 } });
       await C('taxidrivers').updateOne({ _id: d._id, firstDoneAt: { $exists: false } }, { $set: { firstDoneAt: now } });
       await C('taxiorders').updateOne({ _id: id }, { $set: { commission: com } });

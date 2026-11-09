@@ -62,6 +62,7 @@
   + '.txtar{display:flex;gap:8px;margin-bottom:8px}.txt{flex:1;border:2px solid var(--line,#e1e7e3);background:var(--card,#fff);border-radius:14px;padding:10px 6px;font:inherit;color:inherit;text-align:center}.txt.on{border-color:#FFC529;background:#FFF6D6;color:#1b1b1b}.txt b{display:block;font-size:15px}.txt small{display:block;font-size:12.5px;color:inherit;opacity:.75;margin-top:2px}'
   + '.txp{font-size:15px;margin:2px 0 8px}.txp b{font-size:22px}'
   + '.txst{font-weight:800;font-size:18px;text-align:center}.txeta{text-align:center;color:var(--mut,#667);margin:4px 0 8px}'
+  + '.txw{margin:6px 0 8px;padding:9px 12px;border-radius:12px;background:#fff3cd;color:#6b4e00;font-weight:700;font-size:14px;text-align:center}.txw small{display:block;font-weight:500;opacity:.85;margin-top:2px}'
   + '.txd{display:flex;align-items:center;gap:12px;margin-top:6px}.txav{width:50px;height:50px;border-radius:50%;background:#FFC529;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#1b1b1b}'
   + '.txd .n{font-weight:800;font-size:17px}.txd .s{color:var(--mut,#667);font-size:13px}'
   + '.txcall{margin-left:auto;background:var(--vl,#eef3ff);color:inherit;border-radius:28px;padding:13px 18px;font-weight:700;text-decoration:none;white-space:nowrap}'
@@ -307,10 +308,12 @@
     var st = STTXT[o.status] || '';
     if(o.status === 'bekor' && o.reason) st += ' (' + o.reason + ')';
     var h = '<div class="txst">' + E(st) + '</div>';
-    if(o.status === 'yetkazildi') h += '<div class="txeta">Haydovchiga naqd to\'lang: <b>' + F(o.fee) + '</b></div>';
+    if(o.status === 'yetkazildi') h += '<div class="txeta">Haydovchiga naqd to\'lang: <b>' + F(o.fee) + '</b>' + (o.wait && o.wait.fee > 0 ? '<br><small>shu jumladan kutish haqi ' + F(o.wait.fee) + '</small>' : '') + '</div>';
     else if(o.open && o.status === 'yolda') h += '<div class="txeta">Manzilni haydovchiga ayting · narx yo\'lga qarab, ' + F(o.fee) + ' dan</div>';
     else if(o.etaMin != null) h += '<div class="txeta">' + E(o.tariffName || '') + ' · taxminan ' + o.etaMin + ' daqiqada' + (o.status === 'yolda' ? ' manzilga yetamiz' : ' yetib keladi') + '</div>';
     else if(o.status === 'yangi') h += '<div class="txeta">' + E(o.tariffName || '') + ' · ' + (o.open ? F(o.fee) + ' dan · manzilsiz' : F(o.fee) + ' · ' + o.km + ' km') + ' · naqd</div>';
+    if(o.status === 'qabul') h += '<div class="txeta" style="font-size:13px">Haydovchi kelgach ' + Math.round((o.waitFreeSec || 60) / 60) + ' daqiqa bepul kutiladi, keyin har daqiqa ' + F(o.waitPerMin || 1000) + '</div>';
+    if(o.status === 'keldi' || o.status === 'yolda') h += '<div class="txw" data-w></div>';
     if(d && !final){
       h += '<div class="txd"><div class="txav">' + E((d.name || 'H').charAt(0).toUpperCase()) + '</div><div><div class="n">' + E(d.name) + '</div><div class="s">' + E(d.car) + ' · <span class="txplate">' + E(d.plate) + '</span></div></div>'
         + '<a class="txcall" href="tel:' + E(d.phone) + '">📞 Qo\'ng\'iroq</a></div>';
@@ -318,8 +321,24 @@
     if(['yangi', 'qabul', 'keldi'].indexOf(o.status) > -1) h += '<button class="txb r" data-cancel>Buyurtmani bekor qilish</button>';
     if(final){ h += '<button class="txb" data-new>Yangi taksi chaqirish</button><button class="txb g" data-close>Yopish</button>'; clearInterval(T.tm); }
     if(T.sig !== sig + h.length){ T.sig = sig + h.length; s.innerHTML = h; bindTrack(o); }
+    updWait(o, s);
     if(o.status === 'keldi' && T.lastSt !== 'keldi'){ try { if(navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch(e){} }
     T.lastSt = o.status;
+  }
+  function mmss(sec){ sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+  function updWait(o, s){
+    var el = s.querySelector('[data-w]'), w = o.wait;
+    if(!el || !w) return;
+    var per = F(o.waitPerMin || 1000), h = '';
+    if(o.status === 'keldi'){
+      if(w.freeLeft > 0) h = '⏱ Bepul kutish: ' + mmss(w.freeLeft) + ' qoldi<small>Keyin har daqiqa ' + per + '</small>';
+      else h = '⏱ Kutish: ' + mmss(w.arrSec) + ' · +' + F(w.fee) + '<small>Har boshlangan daqiqa ' + per + '</small>';
+    } else if(o.status === 'yolda'){
+      if(w.fee > 0 || w.stopping){
+        h = '⏸ Kutish haqi: ' + F(w.fee) + (w.stopping ? ' · to\'xtab turibsiz' : '') + '<small>Safar narxi: ' + F(o.fee) + (o.open ? ' dan' : '') + ' + kutish = ' + F(o.fee + w.fee) + (o.open ? ' dan' : '') + '</small>';
+      } else h = 'To\'xtab qolsangiz, ' + (o.stopFreeSec || 10) + ' soniyadan keyin kutish haqi yoziladi (' + per + '/daq)';
+    }
+    if(el.innerHTML !== h) el.innerHTML = h;
   }
   function bindTrack(o){
     var s = sheet(), c = s.querySelector('[data-cancel]'), n = s.querySelector('[data-new]'), x = s.querySelector('[data-close]');
