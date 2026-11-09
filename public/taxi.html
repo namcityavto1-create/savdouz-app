@@ -46,6 +46,76 @@ nav button.on{color:var(--g);font-weight:800}
 #camHint{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 18px);text-align:center;color:#fff;font-weight:800;font-size:16px;text-shadow:0 1px 6px #000;padding:0 20px}
 #camBar{padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:10px;background:#000}
 #camBar .btn{margin:0}
+/* ===== Haydovchi: qorong'u dizayn (SavdoUz Taksi Driver) ===== */
+body.dk{background:#080f1f;color:#fff}
+.dk label{color:#aab3d6}
+.dk .app{max-width:480px;padding:0 0 118px}
+.dk h1{color:#fff}
+.dk .note{color:#aab3d6}
+.dk .card{background:#121c36;color:#fff;border-radius:20px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.dk input,.dk select{background:#0c172d;color:#fff;border-color:#2a3a73}
+.dk .btn{background:#FFC529;color:#111}
+.dk .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
+.dk .btn.bad{background:#b3261e;color:#fff}
+.dk .st{background:#2a3a73;color:#fff}
+.dk .bal{background:#121c36;color:#fff}
+.dk .bal.yel{background:#4a3a00;color:#ffd45a}
+.dk .bal.red{background:#4a1612;color:#ffb4ab}
+.dk .warn{background:#4a3a00;color:#ffd45a}
+.dk .dark{background:#0c172d}
+.dk .dark .btn{background:#FFC529;color:#111}
+.dk .code{background:#2a3a73;color:#fff}
+.dk a{color:#FFC529}
+.dk #toast{bottom:104px}
+.dkh{position:relative;background:#02102f;overflow:hidden;padding-top:env(safe-area-inset-top,0px)}
+.dkh img{display:block;width:100%;height:auto;-webkit-user-drag:none;user-select:none}
+.dkfb{display:none;padding:34px 22px 30px;font-size:34px;font-weight:900;font-style:italic;line-height:1.05}
+.dkfb span{color:#FFC529}.dkfb small{display:block;margin-top:10px;font-size:15px;font-weight:700;font-style:normal}
+.dkh.nof .dkfb{display:block}.dkh.nof img{display:none}
+.dkbell{position:absolute;right:14px;top:calc(env(safe-area-inset-top,0px) + 12px);width:44px;height:44px;border-radius:50%;border:0;padding:0;background:rgba(8,15,38,.94);box-shadow:0 0 0 1px rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#fff}
+.dkbell svg{width:22px;height:22px;fill:#fff}
+.dkbell i{position:absolute;left:26px;top:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#ff3b30;color:#fff;font:700 12px/20px inherit;font-style:normal;text-align:center}
+.dkp{padding:0 14px}
+.dkpg{padding-top:calc(env(safe-area-inset-top,0px) + 18px)}
+.dkpg h1{margin:4px 2px 12px}
+.dkst{display:flex;align-items:center;gap:14px;margin-top:-8px;position:relative;background:#101a33;border-radius:22px;padding:14px 16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 6px 18px rgba(0,0,0,.4);border-bottom:2px solid rgba(255,196,0,.5)}
+.dkst .wh{flex:none;width:46px;height:46px;color:#22c55e}.dkst .wh svg{width:100%;height:100%;fill:currentColor}
+.dkst.off .wh{color:#7a86ad}
+.dkst .tx{flex:1;min-width:0}.dkst .tx b{display:block;font-size:22px;line-height:1.15}
+.dkst .tx b:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:8px;vertical-align:middle}
+.dkst.off .tx b:before{background:#7a86ad}
+.dkst .tx small{display:block;color:#c9d0ee;font-size:12.5px;margin-top:2px}
+.dktg{flex:none;position:relative;width:62px;height:36px;border-radius:18px;border:0;background:#3a4568;padding:0;transition:background .2s}
+.dktg:after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:#fff;transition:left .2s}
+.dktg.on{background:#FFC529}.dktg.on:after{left:30px}.dktg.dis{opacity:.5}
+.dksg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.dksc{background:#121c36;border-radius:16px;padding:10px 4px 9px;text-align:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.dksc svg{width:26px;height:26px;fill:#FFC529;color:#FFC529;display:block;margin:0 auto 4px}
+.dksc small{display:block;font-size:11px;line-height:1.15;color:#dfe4f7;min-height:26px}
+.dksc b{display:block;font-size:19px;line-height:1.2;margin-top:2px}
+.dktl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.dkt{position:relative;display:flex;align-items:center;gap:10px;min-height:62px;padding:8px 10px;border:0;border-radius:20px;background:linear-gradient(180deg,#18264b,#101b3a);color:#fff;text-align:left;font:inherit;font-weight:700;font-size:15px;line-height:1.15;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);border-bottom:2px solid rgba(255,196,0,.55)}
+.dkt>svg{flex:none;width:34px;height:34px;fill:#FFC529;color:#FFC529}
+.dkt span{flex:1;min-width:0}
+.dkt .ch{flex:none;width:16px;height:16px;color:#fff}.dkt .ch svg{width:100%;height:100%}
+.dkt em{position:absolute;right:8px;top:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#ff3b30;color:#fff;font:700 12px/22px inherit;font-style:normal;text-align:center}
+.dksup{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;border-radius:20px;background:linear-gradient(90deg,#fed10a,#fdbd0b 60%,#feb20c);color:#111}
+.dksup>svg{flex:none;width:38px;height:38px;fill:#111}
+.dksup div{flex:1;min-width:0}.dksup b{display:block;font-size:16px;line-height:1.15}.dksup small{display:block;font-size:13px;font-style:italic;margin-top:2px}
+.dksup a{flex:none;display:flex;align-items:center;gap:6px;background:#0b1020;color:#fff;border-radius:22px;padding:11px 16px;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap}
+.dksup a svg{width:18px;height:18px;fill:#FFC529}
+.dknav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;z-index:50;display:flex;background:#0c172d;border-radius:26px 26px 0 0;padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 8px);box-shadow:0 -4px 22px rgba(0,0,0,.55)}
+.dknav button{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0 10px;border:0;background:none;color:#fff;font:inherit;font-size:13px;font-weight:500}
+.dknav button svg{width:28px;height:28px;fill:currentColor}
+.dknav button.on{color:#FFC529;font-weight:700}
+.dknav button.on:after{content:"";position:absolute;bottom:0;width:64px;height:3px;border-radius:2px;background:#FFC529}
+.dkov{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.dksb{width:100%;max-width:480px;background:#0c172d;color:#fff;border-radius:24px 24px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom,0px) + 18px)}
+.dksb h3{font-size:20px;font-weight:900;margin:0 0 10px}.dksb p{color:#c9d0ee;font-size:14.5px;margin:8px 0}
+.dkrow{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid rgba(255,255,255,.08);font-size:15px}
+.dkrow:first-of-type{border-top:0}.dkrow span{color:#aab3d6}
+.dkbox{background:#121c36;border-radius:18px;padding:14px 16px;margin-bottom:10px}.dkbox .l{color:#aab3d6;font-size:13px}.dkbox .v{font-size:26px;font-weight:900;line-height:1.2;margin-top:2px}
+.dk2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.dk2 .dkbox{margin:0}
 </style>
 </head>
 <body>
@@ -190,23 +260,116 @@ function dView() {
   if (ME.status !== 'faol') {
     return `<h1>${TITLE}</h1><div class="card">${ME.status === 'kutilmoqda' ? "Arizangiz ko'rib chiqilmoqda. Admin hujjatlaringizni tekshirib tasdiqlagach ishlay olasiz." : 'Hisobingiz faol emas (' + esc(ME.status) + "). Admin bilan bog'laning."}</div><p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
   }
-  return (TAB === 'wallet' ? walletView() : dHome()) + nav([['home', 'Asosiy'], ['wallet', 'Hamyon']]);
+  return dBody() + dnav();
+}
+// ---------- HAYDOVCHI: asosiy ekran (SavdoUz Taksi Driver dizayni) ----------
+const SUPPORT_TEL = ''; // masalan '+998901234567'. Bo'sh qolsa "Bog'lanish" Telegram botni ochadi
+const SUPPORT_TG = 'https://t.me/SavdoUz_uzBot';
+const DI = {
+  wheel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="12" cy="12" r="2.4"/><path d="M3 11.2h6.4M14.6 11.2H21M12 14.4V21" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>',
+  clip: '<svg viewBox="0 0 24 24"><path d="M9 1.5h6V4h3a1.5 1.5 0 0 1 1.5 1.5v15A1.5 1.5 0 0 1 18 22H6a1.5 1.5 0 0 1-1.5-1.5v-15A1.5 1.5 0 0 1 6 4h3zM8 11h8v1.8H8zm0 4h8v1.8H8z"/></svg>',
+  coins: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 8.5c0 1.7 3.6 3 8 3s8-1.3 8-3v3c0 1.7-3.6 3-8 3s-8-1.3-8-3zm0 5.5c0 1.7 3.6 3 8 3s8-1.3 8-3v3c0 1.7-3.6 3-8 3s-8-1.3-8-3z"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><path d="M12 1.8l3 6.6 7.2.8-5.4 4.8 1.5 7.1L12 17.4l-6.3 3.7 1.5-7.1L1.8 9.2 9 8.4z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 6.5V12l4 2.4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  pin: '<svg viewBox="0 0 24 24"><path d="M12 1.5a7.5 7.5 0 0 0-7.5 7.5c0 5.6 7.5 13.5 7.5 13.5S19.5 14.600 19.500 9A7.500 7.500 0 0 0 12 1.500zm0 10.200A2.700 2.700 0 1 1 12 6.300a2.700 2.700 0 0 1 0 5.400z"/></svg>',
+  chart: '<svg viewBox="0 0 24 24"><path d="M3 20h18v2H3zM4 13h4v6H4zm6-4h4v10h-4zm6-3h4v13h-4z"/><path d="M4 8l5-4 4 3 6-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 1.5 3.5 5v6.2c0 5.2 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6.1 8.5-11.3V5z"/><path d="M8 11.8l3 3 5-5.6" fill="none" stroke="#101b3a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>',
+  ask: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5"/><path d="M9.2 9.4a2.9 2.9 0 1 1 4.3 2.5c-.9.5-1.5 1-1.5 2.2" fill="none" stroke="#101b3a" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.4" fill="#101b3a"/></svg>',
+  head: '<svg viewBox="0 0 24 24"><path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z"/></svg>',
+  phone: '<svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.58a1 1 0 0 1-.25 1.01z"/></svg>',
+  home: '<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+  car: '<svg viewBox="0 0 24 24"><path d="M18.9 6c-.2-.6-.8-1-1.4-1h-11c-.6 0-1.2.4-1.4 1L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8zM6.5 16A1.500 1.500 0 1 1 6.500 13a1.500 1.500 0 0 1 0 3zm11 0a1.500 1.500 0 1 1 0-3 1.500 1.500 0 0 1 0 3zM5 11l1.500-4.500h11L19 11z"/></svg>',
+  user: '<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>',
+  bell: '<svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M9 4.5l7.5 7.5L9 19.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+const sameDay = a => { const d = new Date(a), n = new Date(); return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate(); };
+const oTs = o => o.doneAt || o.finishedAt || o.updatedAt || o.createdAt || o.at || null;
+function todayDone() { const done = ORD.filter(o => o.status === 'yetkazildi'); return done.some(oTs) ? done.filter(o => oTs(o) && sameDay(oTs(o))) : done; }
+const sumFee = a => a.reduce((s, o) => s + Number(o.fee || 0), 0);
+const num = n => Number(n || 0).toLocaleString('ru-RU');
+function hmLeft() { if (!ME || !ME.workUntil) return '—'; const s = Math.max(0, Math.floor((new Date(ME.workUntil) - Date.now()) / 1000)); return Math.floor(s / 3600) + 'h ' + Math.floor(s % 3600 / 60) + 'm'; }
+const dnav = () => '<div class="dknav">' + [['home', 'Asosiy', DI.home], ['orders', 'Buyurtmalar', DI.car], ['wallet', 'Hamyon', DI.wallet], ['profile', 'Profil', DI.user]].map(([k, l, i]) => `<button data-act="tab" data-t="${k}" class="${TAB === k ? 'on' : ''}">${i}<span>${l}</span></button>`).join('') + '</div>';
+function dBody() {
+  if (TAB === 'wallet') return '<div class="dkp dkpg">' + walletView() + '</div>';
+  if (TAB === 'orders') return dOrders();
+  if (TAB === 'stats') return dStats();
+  if (TAB === 'profile') return dProfile();
+  return dHome();
+}
+function dAlerts() {
+  const m = ME, cf = INFO.cfg, cls = m.balance < cf.minBalance ? 'red' : m.balance < cf.warnBalance ? 'yel' : '';
+  let h = '';
+  if (cls) h += `<div class="bal ${cls}" style="margin-top:12px"><small>Balans</small><div class="big">${fmt(m.balance)}</div>` + (cls === 'red' ? `<div><b>Yangi buyurtma kelmaydi.</b> Avval hisobingizni to'ldiring</div>` : '<div><b>Balans kam qolmoqda</b></div>') + `<button class="btn sm" data-act="tab" data-t="wallet">Hisobni to'ldirish</button></div>`;
+  if (m.restrictedUntil) h += `<div class="warn" style="margin-top:12px">Ko'p bekor qilganingiz uchun ${new Date(m.restrictedUntil).toLocaleString('uz')} gacha cheklangansiz</div>`;
+  return h;
 }
 function dHome() {
-  const m = ME, cf = INFO.cfg, cls = m.balance < cf.minBalance ? 'red' : m.balance < cf.warnBalance ? 'yel' : '';
-  let h = `<h1>Salom, ${esc(m.name.split(' ')[0])}</h1><div class="note">Klassingiz: <b>${m.klass === 'komfort' ? 'Komfort (Start va Komfort buyurtmalar)' : 'Start'}</b></div><div class="bal ${cls}"><small>Balans</small><div class="big">${fmt(m.balance)}</div>` +
-    (cls === 'red' ? `<div><b>Yangi buyurtma kelmaydi.</b> Avval hisobingizni to'ldiring</div>` : cls === 'yel' ? '<div><b>Balans kam qolmoqda</b></div>' : '') +
-    (cls ? `<button class="btn sm" data-act="tab" data-t="wallet">Hisobni to'ldirish</button>` : '') + `</div>`;
-  if (m.restrictedUntil) h += `<div class="warn">Ko'p bekor qilganingiz uchun ${new Date(m.restrictedUntil).toLocaleString('uz')} gacha cheklangansiz</div>`;
+  const m = ME, openN = m.online ? OPEN.length : 0;
   const live = ORD.find(o => ['qabul', 'keldi', 'yolda'].includes(o.status));
-  if (m.online) h += `<div class="card"><div class="top"><div><small class="note">Ish vaqti qoldi</small><div class="big" id="tmr">--:--:--</div></div><span class="st">Ishdaman</span></div>${live ? '' : '<button class="btn sm ghost" data-act="workOff">Dam olaman</button>'}</div>`;
-  else h += `<div class="card"><div class="note">Ishga chiqsangiz, yaqin atrofdagi yo'lovchilar buyurtmasi ko'rinadi. Joylashuvingiz yo'lovchiga xaritada ko'rsatiladi.</div><button class="btn" data-act="workOn">🚕 Ishdaman</button></div>`;
-  if (live) h += `<h1>Joriy safar</h1>` + liveCard(live);
-  if (m.online && !live) h += `<h1>Yangi buyurtmalar</h1>` + (OPEN.length ? OPEN.map(openCard).join('') : '<div class="note">Hozircha buyurtma yo\'q. Yangisi kelsa ovoz chiqadi.</div>');
-  const done = ORD.filter(o => ['yetkazildi', 'bekor'].includes(o.status)).slice(0, 5);
-  if (done.length) h += `<h1>Oxirgilar</h1>` + done.map(o => `<div class="card"><div class="top"><b>№${o.id} · ${o.open ? 'manzilsiz' : o.km + ' km'}</b><span class="st">${ST[o.status]}</span></div><div class="note">${fmt(o.fee)}</div></div>`).join('');
-  return h + `<p class="c"><a href="#" data-act="out">Chiqish</a></p>`;
+  const td = todayDone();
+  const tg = m.online ? `<button class="dktg on ${live ? 'dis' : ''}" data-act="${live ? 'noOff' : 'workOff'}" aria-label="Oflayn"></button>` : `<button class="dktg" data-act="workOn" aria-label="Onlayn"></button>`;
+  const tile = (act, k, ic, label, badge) => `<button class="dkt" data-act="${act}" data-t="${k}" data-k="${k}">${ic}<span>${label}</span>${badge ? `<em>${badge}</em>` : ''}<i class="ch">${DI.chev}</i></button>`;
+  const callBtn = SUPPORT_TEL ? `<a href="tel:${esc(SUPPORT_TEL)}">${DI.phone}Bog'lanish</a>` : `<a href="${SUPPORT_TG}" target="_blank">${DI.phone}Bog'lanish</a>`;
+  return `<div class="dkh"><img src="/taxi-driver-hero.jpg?v=1" alt="SavdoUz Taksi Driver" draggable="false" onerror="this.parentNode.classList.add('nof')"><div class="dkfb">SavdoUz<span>Uz</span> Taksi<small>Driver · Birgalikda yanada kuchlimiz!</small></div>
+  <button class="dkbell" data-act="tab" data-t="orders" aria-label="Buyurtmalar">${DI.bell}${openN ? `<i>${openN}</i>` : ''}</button></div>
+  <div class="dkp">
+  <div class="dkst ${m.online ? '' : 'off'}"><div class="wh">${DI.wheel}</div><div class="tx"><b>${m.online ? 'Onlayn' : 'Oflayn'}</b><small>${m.online ? 'Buyurtmalarni qabul qilmoqda' : 'Ishga chiqish uchun yoqing'}</small></div>${tg}</div>
+  ${dAlerts()}
+  <div class="dksg">
+    <div class="dksc">${DI.clip}<small>Bugungi buyurtmalar</small><b>${td.length}</b></div>
+    <div class="dksc">${DI.coins}<small>Daromad (so'm)</small><b>${num(sumFee(td))}</b></div>
+    <div class="dksc">${DI.star}<small>Reyting</small><b>${m.rating ? Number(m.rating).toFixed(1) : '—'}</b></div>
+    <div class="dksc">${DI.clock}<small>Qolgan vaqt</small><b id="tmr2">${hmLeft()}</b></div>
+  </div>
+  ${live ? `<h1 style="margin:16px 2px 8px;font-size:19px">Joriy safar</h1>` + liveCard(live) : ''}
+  <div class="dktl">
+    ${tile('tab', 'orders', DI.pin, 'Buyurtmalar', openN)}
+    ${tile('tab', 'stats', DI.chart, 'Daromad statistikasi')}
+    ${tile('tab', 'wallet', DI.wallet, 'Hamyon')}
+    ${tile('sheet', 'safety', DI.shield, 'Xavfsizlik')}
+    ${tile('tab', 'profile', DI.gear, 'Sozlamalar')}
+    ${tile('sheet', 'help', DI.ask, 'Yordam')}
+  </div>
+  <div class="dksup">${DI.head}<div><b>24/7 Qo'llab-quvvatlash</b><small>Har doim siz bilan!</small></div>${callBtn}</div>
+  </div>`;
 }
+function dOrders() {
+  const live = ORD.find(o => ['qabul', 'keldi', 'yolda'].includes(o.status));
+  let h = '<div class="dkp dkpg"><h1>Buyurtmalar</h1>';
+  if (live) h += `<h1 style="font-size:19px">Joriy safar</h1>` + liveCard(live);
+  if (ME.online && !live) h += `<h1 style="font-size:19px">Yangi buyurtmalar</h1>` + (OPEN.length ? OPEN.map(openCard).join('') : `<div class="note">Hozircha buyurtma yo'q. Yangisi kelsa ovoz chiqadi.</div>`);
+  if (!ME.online && !live) h += `<div class="card"><div class="note">Buyurtma olish uchun avval onlayn bo'ling.</div><button class="btn" data-act="workOn">🚕 Ishdaman</button></div>`;
+  const done = ORD.filter(o => ['yetkazildi', 'bekor'].includes(o.status)).slice(0, 10);
+  if (done.length) h += `<h1 style="font-size:19px">Oxirgilar</h1>` + done.map(o => `<div class="card"><div class="top"><b>№${o.id} · ${o.open ? 'manzilsiz' : o.km + ' km'}</b><span class="st">${ST[o.status]}</span></div><div class="note">${fmt(o.fee)}</div></div>`).join('');
+  return h + '</div>';
+}
+function dStats() {
+  const done = ORD.filter(o => o.status === 'yetkazildi'), cancel = ORD.filter(o => o.status === 'bekor'), td = todayDone();
+  return `<div class="dkp dkpg"><h1>Daromad statistikasi</h1>
+  <div class="dk2"><div class="dkbox"><div class="l">Bugun</div><div class="v">${num(sumFee(td))}</div><div class="l">${td.length} ta safar · so'm</div></div>
+  <div class="dkbox"><div class="l">Ro'yxatdagi jami</div><div class="v">${num(sumFee(done))}</div><div class="l">${done.length} ta safar · so'm</div></div></div>
+  <div class="dkbox"><div class="l">Bekor qilinganlar</div><div class="v">${cancel.length}</div></div>
+  <p class="note">Har safardan komissiya (${((ME.rate || 0) * 100).toFixed(0)}%) hamyon balansingizdan olinadi. Summalar so'nggi buyurtmalar ro'yxati bo'yicha hisoblanadi.</p>
+  ${done.slice(0, 10).map(o => `<div class="card"><div class="top"><b>№${o.id} · ${o.open ? 'manzilsiz' : o.km + ' km'}</b><span class="st">${fmt(o.fee)}</span></div></div>`).join('')}</div>`;
+}
+function dProfile() {
+  const m = ME, row = (l, v) => v ? `<div class="dkrow"><span>${l}</span><b>${esc(v)}</b></div>` : '';
+  return `<div class="dkp dkpg"><h1>Profil</h1><div class="card">${row('Ism', m.name)}${row('Telefon', m.phone)}${row('Mashina', m.car)}${row('Davlat raqami', m.plate)}${row('Klass', m.klass === 'komfort' ? 'Komfort' : 'Start')}${row('Balans', fmt(m.balance))}</div>
+  <button class="btn ghost" data-act="beepTest">🔔 Ovozni sinash</button>
+  <button class="btn bad" data-act="out">Chiqish</button></div>`;
+}
+function sheet(title, html) {
+  closeSheet();
+  const d = document.createElement('div'); d.id = 'dksh'; d.className = 'dkov';
+  d.innerHTML = `<div class="dksb"><h3>${title}</h3>${html}<button class="btn" data-act="closeSheet">Yopish</button></div>`;
+  d.addEventListener('click', e => { if (e.target === d) closeSheet(); });
+  document.body.appendChild(d);
+}
+function closeSheet() { const d = $('dksh'); if (d) d.remove(); }
+
 const addr = p => esc(p.address || 'Xaritadagi nuqta');
 function openCard(o) {
   return `<div class="card"><div class="top"><b>№${o.id} · ${o.open ? 'manzilsiz' : o.km + ' km'}</b><span class="st">${o.open ? fmt(o.fee) + ' dan' : fmt(o.fee)}</span></div>
@@ -261,6 +424,7 @@ async function load() {
 }
 function render(force) {
   const a = $('app');
+  document.body.classList.toggle('dk', MODE === 'driver' && !!TOKEN && !!ME && ME.status === 'faol');
   if (!TOKEN) { a.innerHTML = authView(); showSelfie(SELFIE); return; }
   if (!ME || !INFO) { a.innerHTML = '<div class="card">Yuklanmoqda...</div>'; return; }
   const sig = JSON.stringify([TAB, ME, ORD, OPEN, TUP, AD ? AD.drivers.length + ':' + AD.topups.length + ':' + AD.orders.length : 0]);
@@ -268,6 +432,7 @@ function render(force) {
   SIG = sig;
   a.innerHTML = MODE === 'driver' ? dView() : aView();
 }
+setInterval(() => { const e2 = $('tmr2'); if (e2 && ME && ME.workUntil) e2.textContent = hmLeft(); }, 1000);
 setInterval(() => {
   const e = $('tmr'); if (e && ME && ME.workUntil) { const s = Math.max(0, Math.floor((new Date(ME.workUntil) - Date.now()) / 1000)); e.textContent = [Math.floor(s / 3600), Math.floor(s % 3600 / 60), s % 60].map(x => String(x).padStart(2, '0')).join(':'); }
 }, 1000);
@@ -282,7 +447,14 @@ const go = async (p, b, msg) => { try { await api(p, 'POST', b || {}); if (msg) 
 const ACT = {
   swAuth() { AUTH = AUTH === 'reg' ? 'login' : 'reg'; render(); },
   out() { logout(); },
-  tab(d) { TAB = d.t; SIG = ''; render(true); },
+  tab(d) { TAB = d.t; SIG = ''; render(true); window.scrollTo(0, 0); },
+  noOff() { toast("Safar tugamaguncha oflayn bo'lib bo'lmaydi"); },
+  beepTest() { beep(); toast('Ovoz sinovi'); },
+  closeSheet() { closeSheet(); },
+  sheet(d) {
+    if (d.k === 'safety') sheet('Xavfsizlik', `<p>• Yo'lovchini olishdan oldin buyurtma ma'lumotini tekshiring.</p><p>• Tezlik va yo'l qoidalariga rioya qiling, xavfsizlik kamarini taqing.</p><p>• Shubhali holatda safarni davom ettirmang va qo'llab-quvvatlashga yozing.</p>`);
+    else sheet('Yordam', `<p>Savol yoki muammo bo'lsa, qo'llab-quvvatlash xizmatiga murojaat qiling.</p><p>• Buyurtmalar: <b>Buyurtmalar</b> bo'limida.</p><p>• Hisobni to'ldirish: <b>Hamyon</b> bo'limida.</p><p><a href="${SUPPORT_TEL ? 'tel:' + esc(SUPPORT_TEL) : SUPPORT_TG}" target="_blank">${SUPPORT_TEL ? esc(SUPPORT_TEL) : 'Telegram orqali yozish'}</a></p>`);
+  },
   async selfie() {
     try { showSelfie(await openCam()); }
     catch (e) {
