@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SavdoUz Taksi</title>
+<style>
+:root{--y:#FFC529;--ink:#14161c;--mut:#6b7280;--bg:#f4f5f7;--ln:#e3e6ea}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:500 15px/1.45 -apple-system,'Segoe UI',Roboto,sans-serif}
+.app{max-width:440px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) 16px 24px}
+.logo{text-align:center;margin-bottom:18px}
+.logo .ic{font-size:54px}
+.logo h1{margin:4px 0 2px;font-size:26px}
+.logo small{color:var(--mut)}
+.card{background:#fff;border-radius:20px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+label{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:8px}
+input{width:100%;padding:13px;border:1.5px solid var(--ln);border-radius:12px;font:inherit;margin:4px 0 6px}
+.btn{display:block;width:100%;min-height:50px;border:0;border-radius:14px;background:var(--y);color:#1b1b1b;font:inherit;font-weight:800;font-size:16px;margin-top:12px;cursor:pointer}
+.btn:disabled{opacity:.5}
+.btn.g{background:#fff;border:2px solid var(--ink)}
+.err{display:none;background:#fadbd8;color:#7a160d;border-radius:12px;padding:10px;margin-top:10px;font-weight:700;font-size:13px}
+.c{text-align:center;margin-top:14px}
+a{color:#0b6b52;font-weight:700}
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:22px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center;z-index:99999}
+.toast.show{opacity:1}
+#taxiFab{display:none!important}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== SavdoUz Taksi: yo'lovchi ilovasi (alohida APK uchun). taxi-ui.js ishlashi uchun S, api, toast kerak =====
+const $ = id => document.getElementById(id);
+let S = { user: null, token: localStorage.getItem('savdouz_token') };
+let mode = 'login', started = false;
+
+function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(window._tt); window._tt = setTimeout(() => t.classList.remove('show'), 2400); }
+
+async function api(path, o = {}){
+  const h = { 'Content-Type': 'application/json' };
+  if (S.token) h.Authorization = 'Bearer ' + S.token;
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 40000);
+  let res;
+  try { res = await fetch(path, { ...o, headers: h, signal: c.signal, cache: 'no-store' }); }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'Server javob bermadi (vaqt tugadi)' : "Server bilan aloqa yo'q"); }
+  finally { clearTimeout(t); }
+  let d = {};
+  try { d = await res.json(); } catch (e) { if (res.ok) throw new Error("Serverdan noto'g'ri javob"); }
+  if (!res.ok) {
+    if (res.status === 401 && S.token) logout();
+    throw new Error(d.error || ('Server xatosi ' + res.status));
+  }
+  return d;
+}
+
+function logout(){
+  localStorage.removeItem('savdouz_token');
+  S.token = null; S.user = null;
+  location.reload();
+}
+
+function authView(){
+  const reg = mode === 'reg';
+  $('app').innerHTML =
+    '<div class="logo"><div class="ic">🚕</div><h1>SavdoUz Taksi</h1><small>Tez • Xavfsiz • Qulay</small></div>' +
+    '<div class="card">' +
+    (reg ? '<label>Ism familiya</label><input id="fname" autocomplete="name">' : '') +
+    '<label>Telefon raqam</label><input id="fphone" inputmode="tel" placeholder="+998901234567" autocomplete="tel">' +
+    '<label>Parol</label><input id="fpass" type="password" autocomplete="current-password">' +
+    '<div class="err" id="err"></div>' +
+    '<button class="btn" id="go">' + (reg ? "Ro'yxatdan o'tish" : 'Kirish') + '</button></div>' +
+    '<p class="c"><a href="#" id="sw">' + (reg ? 'Hisobim bor, kirish' : "Hisobim yo'q, ro'yxatdan o'tish") + '</a></p>' +
+    '<p class="c" style="color:#6b7280;font-size:12px">SavdoUz hisobingiz bilan ham kirishingiz mumkin</p>';
+  $('sw').onclick = e => { e.preventDefault(); mode = reg ? 'login' : 'reg'; authView(); };
+  $('go').onclick = submit;
+}
+
+async function submit(){
+  const err = $('err'), btn = $('go');
+  err.style.display = 'none'; btn.disabled = true;
+  try {
+    const phone = $('fphone').value.trim(), password = $('fpass').value;
+    let d;
+    if (mode === 'login') d = await api('/api/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+    else {
+      const name = $('fname').value.trim();
+      if (!name) throw new Error('Ismingizni kiriting');
+      d = await api('/api/register', { method: 'POST', body: JSON.stringify({ name, phone, password, role: 'buyer' }) });
+    }
+    S.token = d.token; S.user = d.user;
+    localStorage.setItem('savdouz_token', S.token);
+    home();
+  } catch (e) { err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; }
+}
+
+// Taksi ekrani yopilsa ham, bo'sh sahifa qolmasin
+function home(){
+  if (S.user && S.user.role === 'admin') { toast("Admin hisobi bilan taksi chaqirib bo'lmaydi"); return logout(); }
+  $('app').innerHTML =
+    '<div class="logo"><div class="ic">🚕</div><h1>SavdoUz Taksi</h1><small>' + String((S.user && S.user.name) || '').replace(/[<>&"]/g, '') + '</small></div>' +
+    '<button class="btn" id="open">🚕 Taksi chaqirish</button>' +
+    '<button class="btn g" id="out">Chiqish</button>';
+  $('open').onclick = openTaxi;
+  $('out').onclick = logout;
+  if (!started) {
+    started = true;
+    const s = document.createElement('script');
+    s.src = '/taxi-ui.js?v=3';
+    s.onload = () => setTimeout(openTaxi, 300);
+    s.onerror = () => toast('taxi-ui.js yuklanmadi');
+    document.body.appendChild(s);
+  } else openTaxi();
+}
+
+function openTaxi(){
+  const f = document.getElementById('taxiFab');
+  if (f) f.click();
+  else setTimeout(() => { const g = document.getElementById('taxiFab'); if (g) g.click(); }, 1200);
+}
+
+// Boshlanish: token bo'lsa foydalanuvchini tiklaymiz
+(async function boot(){
+  if (!S.token) return authView();
+  try { const { user } = await api('/api/me'); S.user = user; home(); }
+  catch (e) { authView(); }
+})();
+</script>
+</body>
+</html>
