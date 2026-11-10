@@ -441,20 +441,44 @@ function uzNum(n) {
   const m = Math.floor(n / 1e6), k = Math.floor(n % 1e6 / 1000), r = n % 1000;
   return [m ? part(m) + ' million' : '', k ? (k === 1 ? '' : part(k) + ' ') + 'ming' : '', r ? part(r) : ''].filter(Boolean).join(' ');
 }
-function pickVoice() {
-  const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
-  return vs.find(v => /^uz/i.test(v.lang)) || vs.find(v => /^tr/i.test(v.lang)) || null;   // o'zbekcha bo'lmasa, unga yaqin turkcha
+let VOICES = [];
+function loadVoices() { try { VOICES = (window.speechSynthesis && speechSynthesis.getVoices()) || []; } catch (e) { VOICES = []; } return VOICES; }
+// tillar tartibi: o'zbekcha -> turkcha (eng yaqin) -> ruscha
+function voiceFor(lang) { return loadVoices().find(v => new RegExp('^' + lang, 'i').test(v.lang)) || null; }
+let speakSeq = 0, speechUnlocked = false;
+// Android/WebView: birinchi bosishda ovoz tizimini "uyg'otib" qo'yamiz (aks holda keyin fetch'dan keyin jim qoladi)
+function unlockSpeech() {
+  if (speechUnlocked || !('speechSynthesis' in window)) return;
+  speechUnlocked = true;
+  try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
 }
-function say(text) {
+['touchstart', 'click'].forEach(ev => document.addEventListener(ev, unlockSpeech, { once: true, passive: true }));
+function say(text, done) {
   try {
-    if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return false;
+    if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) { done && done(false); return false; }
+    const my = ++speakSeq, langs = ['uz', 'tr', 'ru', ''];
+    const attempt = i => {
+      if (my !== speakSeq) return;
+      if (i >= langs.length) { done && done(false); return; }
+      const lg = langs[i], v = lg ? voiceFor(lg) : null;
+      if (lg && !v) return attempt(i + 1);           // bu tilda ovoz yo'q — keyingisiga
+      const u = new SpeechSynthesisUtterance(text);
+      if (v) { u.voice = v; u.lang = v.lang; }
+      u.rate = 0.95; u.volume = 1;
+      let started = false;
+      u.onstart = () => { started = true; done && done(true); };
+      u.onerror = e => { if (!started && e.error !== 'canceled' && e.error !== 'interrupted') attempt(i + 1); };
+      // ba'zi telefonlarda onstart/onerror umuman kelmaydi — 2.5 soniyada boshlanmasa keyingi ovozga o'tamiz
+      setTimeout(() => { if (!started && my === speakSeq && !speechSynthesis.speaking) attempt(i + 1); }, 2500);
+      speechSynthesis.speak(u);
+      try { speechSynthesis.resume(); } catch (e) {}
+    };
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text), v = pickVoice();
-    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'uz-UZ';
-    u.rate = 0.95; u.volume = 1; speechSynthesis.speak(u); return true;
-  } catch (e) { return false; }
+    setTimeout(() => attempt(0), 120);                // cancel() dan keyin darrov speak() Chrome'da yutilib ketadi
+    return true;
+  } catch (e) { done && done(false); return false; }
 }
-try { if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } } catch (e) {}
+try { if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } } catch (e) {}
 const GREET = "Assalomu alaykum! Yo'lingiz bexatar bo'lsin.";
 const fareText = (total, wf) => "Bexatar yetib kelganingizdan xursandman. Yo'l haqi " + uzNum(total) + " so'm" + (wf ? ", shundan kutish haqi " + uzNum(wf) + " so'm" : '') + '.';
 function finished(total, wf) {
@@ -558,7 +582,7 @@ const ACT = {
   out() { logout(); },
   tab(d) { TAB = d.t; SIG = ''; render(true); window.scrollTo(0, 0); },
   noOff() { toast("Safar tugamaguncha oflayn bo'lib bo'lmaydi"); },
-  beepTest() { beep(); toast(say(GREET) ? 'Ovoz sinovi' : 'Bu telefonda ovozli o\'qish yo\'q'); },
+  beepTest() { beep(); const n = loadVoices().length; toast(n ? 'Ovoz sinovi (' + n + ' ta ovoz)' : 'Telefonda ovozli o\'qish dasturi topilmadi'); say(GREET, ok => { if (!ok) toast('Ovoz chiqmadi: telefon sozlamalarida "Matnni ovozga aylantirish" (Google TTS) ni yoqing'); }); },
   ordAll() { ORDALL = !ORDALL; SIG = ''; render(true); },
   ordInfo(d) {
     const o = ORD.find(x => String(x.id) === String(d.id)); if (!o) return;
