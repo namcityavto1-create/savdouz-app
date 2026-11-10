@@ -134,6 +134,41 @@
   + ".hmsh p{color:#aab3d6;font-size:13.5px;margin:10px 2px 14px}";
   document.head.appendChild(css);
 
+  var css2 = document.createElement('style');
+  css2.textContent =
+    '.txo .txh{margin:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 12px;background:linear-gradient(180deg,#1f63e6,#3b82f6 55%,#dbe8ff);border-radius:0 0 26px 26px;color:#0b1b3a;font-size:19px}'
+  + '.txo .txh button{background:rgba(255,255,255,.85);color:#1a5bff;box-shadow:0 2px 8px rgba(20,60,160,.2)}'
+  + '.txo .txh span{flex:1;font-weight:900;color:#0b1b3a}'
+  + '.txs{background:#eef3fd;border-radius:28px 28px 0 0;margin-top:-22px;padding:16px 14px calc(env(safe-area-inset-bottom,0px) + 0px);max-height:72vh;overflow:auto}'
+  + '.txchips{gap:12px;margin-bottom:12px}'
+  + '.txchip{gap:12px;padding:13px 14px;border-radius:20px;border:2px solid #fff;background:#fff;box-shadow:0 3px 12px rgba(30,70,170,.12);color:#0b1b3a}'
+  + '.txchip b{display:block;font-size:17px;font-weight:800}.txchip b em{font-weight:500;font-style:italic}'
+  + '.txchip small{font-size:14px;color:#4a5578;margin-top:2px}'
+  + '.txchip>div{flex:1;min-width:0}'
+  + '.txchip.on{border-color:#f5b400;background:#fff3c4;box-shadow:0 3px 12px rgba(245,180,0,.3)}'
+  + '.txchip .txch{flex:none;width:22px;height:22px;color:#0b1b3a}.txchip .txch svg{width:100%;height:100%}'
+  + '.txpin{flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px}'
+  + '.txpin svg{width:30px;height:30px}.txpin.g svg{fill:#2fb24c}.txpin.b svg{fill:#1a5bff;width:26px;height:26px}.txpin.f{background:#ffe08a}.txpin.f svg{width:28px;height:28px}'
+  + '.txtar{gap:12px;margin-bottom:12px}'
+  + '.txt{position:relative;display:flex;align-items:center;gap:6px;padding:12px 10px;border:2px solid #fff;border-radius:20px;background:#fff;color:#0b1b3a;text-align:left;box-shadow:0 3px 12px rgba(30,70,170,.12);min-height:74px}'
+  + '.txt img{flex:none;width:62px;height:auto;max-height:46px;object-fit:contain}'
+  + '.txt b{font-size:17px;font-weight:800}.txt small{font-size:15px;opacity:1;color:#4a5578;margin-top:3px}'
+  + '.txt.on{background:linear-gradient(135deg,#1558f0,#2f8bff);border-color:#cfe0ff;color:#fff;box-shadow:0 6px 16px rgba(26,91,255,.4)}.txt.on small{color:#fff}'
+  + '.txck{position:absolute;right:8px;top:6px;width:24px;height:24px;border-radius:50%;border:2px solid #cfd6ea;background:#fff;display:flex;align-items:center;justify-content:center;font-style:normal}'
+  + '.txck svg{width:16px;height:16px;display:none}.txt.on .txck{border-color:#fff}.txt.on .txck svg{display:block}'
+  + '.txnote{display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:18px;background:#e2ebfb;margin-bottom:12px}'
+  + '.txnote .txpin{width:30px;height:30px;background:none}'
+  + '.txnote .txin{flex:1;margin:0;border:0;background:none;padding:15px 0;font-size:15px;color:#0b1b3a}'
+  + '.txpr{display:flex;align-items:center;gap:12px;padding:14px;border-radius:20px;background:#fff;box-shadow:0 3px 12px rgba(30,70,170,.1);margin-bottom:12px}'
+  + '.txpr .coin{flex:none;width:44px;height:44px}'
+  + '.txpr .txp{margin:0;font-size:14px;color:#4a5578;line-height:1.35}.txpr .txp b{font-size:24px;color:#0b1b3a}'
+  + '.txb{display:flex;align-items:center;justify-content:center;gap:10px;border-radius:30px;padding:0;height:60px;font-size:18px;font-weight:800;margin-top:0}'
+  + '.txb:not(.g){background:linear-gradient(90deg,#ffd60a,#ffb800);color:#111;box-shadow:0 6px 16px rgba(245,170,0,.45)}'
+  + '.txb .tc{width:30px;height:30px;fill:#111}.txb .tg{position:absolute;right:20px;width:22px;height:22px}.txb[data-go]{position:relative}'
+  + '.txb.g{background:transparent;color:#1a5bff;height:50px;font-size:17px;font-weight:700;margin-top:6px}.txb .tm{width:24px;height:24px;fill:#ff3b30}'
+  + '.txfoot{display:block;width:calc(100% + 28px);margin:6px -14px 0;height:auto}';
+  document.head.appendChild(css2);
+
   function loadLeaflet(){
     return new Promise(function(ok, no){
       if(window.L) return ok();
@@ -188,13 +223,16 @@
     T.mode = 'order'; T.tariff = 'start'; T.from = null; T.to = null; T.active = 'to'; T.mk = {}; T.quote = null;
     T.el.querySelector('.txh span').textContent = 'Taksi chaqirish';
     sheet().innerHTML =
-      '<div class="txchips"><button class="txchip" data-chip="from">🟢<div>Qayerdan<small data-t="from">Aniqlanmoqda…</small></div></button>'
-    + '<button class="txchip on" data-chip="to">🏁<div>Qayerga <em style="font-weight:500">(ixtiyoriy)</em><small data-t="to">Belgilamasangiz ham bo\'ladi, haydovchiga o\'zingiz aytasiz</small></div><span data-clearto style="display:none;margin-left:auto;padding:4px 10px;font-size:18px">✕</span></button></div>'
-    + '<div class="txtar"><button class="txt on" data-tar="start"><b>Start</b><small data-f="start">—</small></button><button class="txt" data-tar="komfort"><b>Komfort</b><small data-f="komfort">—</small></button></div>'
-    + '<input class="txin" data-note placeholder="Izoh (mo\'ljal, kirish eshigi...) — ixtiyoriy" maxlength="150">'
-    + '<div class="txp" data-price>Joylashuvingiz aniqlanmoqda…</div>'
-    + '<button class="txb" data-go disabled>🚕 Taksi chaqirish · naqd</button>'
-    + '<button class="txb g" data-me>📍 Mening joylashuvim</button>';
+      '<div class="txchips">'
+    + '<button class="txchip" data-chip="from"><span class="txpin g"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.500a2.5 2.5 0 0 1 0 5z"/></svg></span><div><b>Qayerdan</b><small data-t="from">Aniqlanmoqda…</small></div><span class="txch"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>'
+    + '<button class="txchip on" data-chip="to"><span class="txpin f"><svg viewBox="0 0 24 24"><path d="M5 3v18M5 4h13l-2.500 4L18 12H5" fill="none" stroke="#111" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><b>Qayerga <em>(ixtiyoriy)</em></b><small data-t="to">Belgilamasangiz ham bo\'ladi, haydovchiga o\'zingiz aytasiz</small></div><span data-clearto style="display:none;margin-left:auto;padding:4px 10px;font-size:18px">✕</span><span class="txch"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button></div>'
+    + '<div class="txtar"><button class="txt on" data-tar="start"><img src="/taxi-car-start.png?v=1" alt="" onerror="this.style.display=\'none\'"><div><b>Start</b><small data-f="start">—</small></div><i class="txck"><svg viewBox="0 0 24 24"><path d="M5 12.500l4.500 4.500L19 7" fill="none" stroke="#1a5bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></i></button>'
+    + '<button class="txt" data-tar="komfort"><img src="/taxi-car-komfort.png?v=1" alt="" onerror="this.style.display=\'none\'"><div><b>Komfort</b><small data-f="komfort">—</small></div><i class="txck"></i></button></div>'
+    + '<label class="txnote"><span class="txpin b"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.200 7 13 7 13s7-7.800 7-13a7 7 0 0 0-7-7zm0 9.500A2.500 2.500 0 1 1 12 6.500a2.500 2.500 0 0 1 0 5z"/></svg></span><input class="txin" data-note placeholder="Izoh (mo\'ljal, kirish eshigi...) — ixtiyoriy" maxlength="150"></label>'
+    + '<div class="txpr"><svg class="coin" viewBox="0 0 40 40"><ellipse cx="14" cy="28" rx="11" ry="5" fill="#f5a000"/><ellipse cx="14" cy="24" rx="11" ry="5" fill="#ffc933"/><ellipse cx="26" cy="19" rx="11" ry="5" fill="#f5a000"/><ellipse cx="26" cy="15" rx="11" ry="5" fill="#ffd84a"/></svg><div class="txp" data-price>Joylashuvingiz aniqlanmoqda…</div></div>'
+    + '<button class="txb" data-go disabled><svg viewBox="0 0 24 24" class="tc"><path d="M7 4h10l1.500 4H21v8h-1.500v2h-3v-2h-9v2h-3v-2H3V8h2.500L7 4zm1.200 1.800L7.300 8h9.400l-.9-2.200H8.200zM6 11.500a1.300 1.300 0 1 0 0 2.600 1.300 1.300 0 0 0 0-2.600zm12 0a1.300 1.300 0 1 0 0 2.600 1.300 1.300 0 0 0 0-2.600z"/></svg><span>Taksi chaqirish · naqd</span><svg viewBox="0 0 24 24" class="tg"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.800" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+    + '<button class="txb g" data-me><svg viewBox="0 0 24 24" class="tm"><path d="M12 2a7 7 0 0 0-7 7c0 5.200 7 13 7 13s7-7.800 7-13a7 7 0 0 0-7-7zm0 9.500A2.500 2.500 0 1 1 12 6.500a2.500 2.500 0 0 1 0 5z"/></svg>Mening joylashuvim</button>'
+    + '<img class="txfoot" src="/taxi-order-footer.jpg?v=1" alt="" draggable="false" onerror="this.style.display=\'none\'">';
     var s = sheet();
     s.querySelectorAll('[data-chip]').forEach(function(b){ b.onclick = function(){ setActive(b.dataset.chip); }; });
     s.querySelectorAll('[data-tar]').forEach(function(b){ b.onclick = function(){ T.tariff = b.dataset.tar; paintTar(); }; });
@@ -238,7 +276,7 @@
     var p = { lat: lat, lng: lng, address: '' };
     T[k] = p;
     if(T.mk[k]) T.mk[k].setLatLng([lat, lng]); else T.mk[k] = L.marker([lat, lng], { icon: icon(k === 'from' ? '🟢' : '🏁') }).addTo(T.map);
-    var el = sheet().querySelector('[data-t="' + k + '"]'); if(el) el.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5) + ' ✓';
+    var el = sheet().querySelector('[data-t="' + k + '"]'); if(el) el.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
     if(k === 'to' && T.saveAs){
       lsSet(T.saveAs === 'home' ? 'taxiHome' : 'taxiWork', { lat: lat, lng: lng });
       say(T.saveAs === 'home' ? 'Uy manzili saqlandi 🏠' : 'Ish manzili saqlandi 💼');
