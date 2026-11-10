@@ -74,7 +74,7 @@ body.dk{background:#080f1f;color:#fff}
 .dkh.nof .dkfb{display:block}.dkh.nof img{display:none}
 .dkbell{position:absolute;right:14px;top:calc(env(safe-area-inset-top,0px) + 12px);width:44px;height:44px;border-radius:50%;border:0;padding:0;background:rgba(8,15,38,.94);box-shadow:0 0 0 1px rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#fff}
 .dkbell svg{width:22px;height:22px;fill:#fff}
-.dkbell i{position:absolute;left:26px;top:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#ff3b30;color:#fff;font:700 12px/20px inherit;font-style:normal;text-align:center}
+.dkbell i{position:absolute;left:26px;top:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#ff3b30;color:#fff;font:700 12px/20px -apple-system,'Segoe UI',Roboto,sans-serif;font-style:normal;text-align:center}
 .dkp{padding:0 14px}
 .dkpg{padding-top:calc(env(safe-area-inset-top,0px) + 18px)}
 .dkpg h1{margin:4px 2px 12px}
@@ -98,7 +98,7 @@ body.dk{background:#080f1f;color:#fff}
 .dkt>svg{flex:none;width:34px;height:34px;fill:#FFC529;color:#FFC529}
 .dkt span{flex:1;min-width:0}
 .dkt .ch{flex:none;width:16px;height:16px;color:#fff}.dkt .ch svg{width:100%;height:100%}
-.dkt em{position:absolute;right:8px;top:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#ff3b30;color:#fff;font:700 12px/22px inherit;font-style:normal;text-align:center}
+.dkt em{position:absolute;right:8px;top:-7px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#ff3b30;color:#fff;font:700 12px/22px -apple-system,'Segoe UI',Roboto,sans-serif;font-style:normal;text-align:center}
 .dksup{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;border-radius:20px;background:linear-gradient(90deg,#fed10a,#fdbd0b 60%,#feb20c);color:#111}
 .dksup>svg{flex:none;width:38px;height:38px;fill:#111}
 .dksup div{flex:1;min-width:0}.dksup b{display:block;font-size:16px;line-height:1.15}.dksup small{display:block;font-size:13px;font-style:italic;margin-top:2px}
@@ -443,38 +443,50 @@ function uzNum(n) {
 }
 let VOICES = [];
 function loadVoices() { try { VOICES = (window.speechSynthesis && speechSynthesis.getVoices()) || []; } catch (e) { VOICES = []; } return VOICES; }
-// tillar tartibi: o'zbekcha -> turkcha (eng yaqin) -> ruscha
 function voiceFor(lang) { return loadVoices().find(v => new RegExp('^' + lang, 'i').test(v.lang)) || null; }
+// Ruscha ovoz lotin harfli o'zbekcha matnni o'qiy olmaydi -> kirill harfiga o'giramiz
+const CYR1 = { a: 'а', b: 'б', d: 'д', e: 'э', f: 'ф', g: 'г', h: 'х', i: 'и', j: 'ж', k: 'к', l: 'л', m: 'м', n: 'н', o: 'о', p: 'п', q: 'к', r: 'р', s: 'с', t: 'т', u: 'у', v: 'в', x: 'х', y: 'й', z: 'з' };
+const CYR2 = { sh: 'ш', ch: 'ч', yo: 'ё', yu: 'ю', ya: 'я', ye: 'е' };
+function toCyr(t) {
+  return String(t).toLowerCase().replace(/[ʻʼ’‘`´]/g, "'").replace(/o'/g, '\u0001').replace(/g'/g, '\u0002')
+    .replace(/sh|ch|yo|yu|ya|ye|[a-z\u0001\u0002']/g, m => m === '\u0001' ? 'о' : m === '\u0002' ? 'г' : m === "'" ? '' : (CYR2[m] || CYR1[m] || m));
+}
+// tillar tartibi: o'zbekcha -> turkcha (eng yaqin) -> ruscha (kirillda) -> inglizcha
+const SAY_LANGS = [{ re: 'uz', lang: 'uz-UZ' }, { re: 'tr', lang: 'tr-TR' }, { re: 'ru', lang: 'ru-RU', cyr: true }, { re: 'en', lang: 'en-US' }];
 let speakSeq = 0, speechUnlocked = false;
-// Android/WebView: birinchi bosishda ovoz tizimini "uyg'otib" qo'yamiz (aks holda keyin fetch'dan keyin jim qoladi)
+// Android/WebView: birinchi bosishda ovoz tizimini "uyg'otib" qo'yamiz
 function unlockSpeech() {
   if (speechUnlocked || !('speechSynthesis' in window)) return;
   speechUnlocked = true;
-  try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
+  try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'en-US'; speechSynthesis.speak(u); } catch (e) {}
 }
 ['touchstart', 'click'].forEach(ev => document.addEventListener(ev, unlockSpeech, { once: true, passive: true }));
 function say(text, done) {
   try {
     if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) { done && done(false); return false; }
-    const my = ++speakSeq, langs = ['uz', 'tr', 'ru', ''];
+    const synth = window.speechSynthesis, my = ++speakSeq, haveList = loadVoices().length > 0;
+    // ESLATMA: <html lang="uz"> bo'lgani uchun lang berilmasa ovoz jim qoladi. Shuning uchun lang HAR DOIM aniq beriladi.
+    let cands = haveList ? SAY_LANGS.filter(l => voiceFor(l.re)) : SAY_LANGS;
+    if (!cands.length) cands = SAY_LANGS;
     const attempt = i => {
       if (my !== speakSeq) return;
-      if (i >= langs.length) { done && done(false); return; }
-      const lg = langs[i], v = lg ? voiceFor(lg) : null;
-      if (lg && !v) return attempt(i + 1);           // bu tilda ovoz yo'q — keyingisiga
-      const u = new SpeechSynthesisUtterance(text);
-      if (v) { u.voice = v; u.lang = v.lang; }
-      u.rate = 0.95; u.volume = 1;
-      let started = false;
-      u.onstart = () => { started = true; done && done(true); };
-      u.onerror = e => { if (!started && e.error !== 'canceled' && e.error !== 'interrupted') attempt(i + 1); };
-      // ba'zi telefonlarda onstart/onerror umuman kelmaydi — 2.5 soniyada boshlanmasa keyingi ovozga o'tamiz
-      setTimeout(() => { if (!started && my === speakSeq && !speechSynthesis.speaking) attempt(i + 1); }, 2500);
-      speechSynthesis.speak(u);
-      try { speechSynthesis.resume(); } catch (e) {}
+      if (i >= cands.length) { done && done(false); return; }
+      const c = cands[i], v = haveList ? voiceFor(c.re) : null, t0 = Date.now();
+      const u = new SpeechSynthesisUtterance(c.cyr ? toCyr(text) : text);
+      u.lang = v ? v.lang : c.lang; if (v) u.voice = v;
+      u.rate = 0.95; u.volume = 1; u.pitch = 1;
+      let state = 0; // 0 kutilmoqda, 1 boshlandi, 2 o'chirildi (keyingisiga o'tildi)
+      const ok = () => { if (state) return; state = 1; done && done(true); };
+      const next = () => { if (state) return; state = 2; try { synth.cancel(); } catch (e) {} setTimeout(() => attempt(i + 1), 150); };
+      u.onstart = ok;
+      u.onend = () => { if (Date.now() - t0 > 800) ok(); else next(); };   // juda tez tugasa — aslida gapirmagan
+      u.onerror = e => { if (e.error !== 'canceled' && e.error !== 'interrupted') next(); };
+      setTimeout(() => { if (state === 0 && my === speakSeq) { if (synth.speaking) ok(); else next(); } }, 3500);
+      synth.speak(u);
+      try { synth.resume(); } catch (e) {}
     };
-    speechSynthesis.cancel();
-    setTimeout(() => attempt(0), 120);                // cancel() dan keyin darrov speak() Chrome'da yutilib ketadi
+    try { synth.cancel(); } catch (e) {}
+    setTimeout(() => attempt(0), 150);   // cancel() dan keyin darrov speak() Chrome'da yutilib ketadi
     return true;
   } catch (e) { done && done(false); return false; }
 }
