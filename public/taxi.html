@@ -461,7 +461,7 @@ function unlockSpeech() {
   try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'en-US'; speechSynthesis.speak(u); } catch (e) {}
 }
 ['touchstart', 'click'].forEach(ev => document.addEventListener(ev, unlockSpeech, { once: true, passive: true }));
-function say(text, done) {
+function saySys(text, done) {
   try {
     if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) { done && done(false); return false; }
     const synth = window.speechSynthesis, my = ++speakSeq, haveList = loadVoices().length > 0;
@@ -489,6 +489,60 @@ function say(text, done) {
     setTimeout(() => attempt(0), 150);   // cancel() dan keyin darrov speak() Chrome'da yutilib ketadi
     return true;
   } catch (e) { done && done(false); return false; }
+}
+
+// ---- Internet ovozi (zaxira): tizim ovozi jim bo'lsa yoki umuman bo'lmasa (WebView) ----
+let NETA = null;
+function sayNet(text, done) {
+  const my = ++speakSeq, parts = []; let cur = '';
+  String(text).split(/\s+/).forEach(w => { if ((cur + ' ' + w).length > 170) { parts.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; });
+  if (cur) parts.push(cur);
+  const LG = ['uz', 'tr']; let started = false, failed = false;
+  const fail = () => { if (!started && !failed) { failed = true; done && done(false); } };
+  const play = (i, li) => {
+    if (my !== speakSeq || i >= parts.length) return;
+    try {
+      const a = new Audio('https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + LG[li] + '&q=' + encodeURIComponent(parts[i]));
+      NETA = a; a.volume = 1;
+      let got = false;
+      a.onplaying = () => { got = true; if (!started) { started = true; done && done(true); } };
+      a.onended = () => play(i + 1, li);
+      const bad = () => { if (got) return play(i + 1, li); if (li + 1 < LG.length) play(i, li + 1); else fail(); };
+      a.onerror = bad;
+      const p = a.play(); if (p && p.catch) p.catch(bad);
+    } catch (e) { fail(); }
+  };
+  play(0, 0);
+}
+function sayLegacy(text, done) {
+  let mode = null; try { mode = localStorage.getItem('svtx_voice'); } catch (e) {}
+  const first = mode === 'net' ? sayNet : saySys, second = mode === 'net' ? saySys : sayNet;
+  try { if (NETA) NETA.pause(); } catch (e) {}
+  let fin = false;
+  first(text, ok => { if (ok) { if (!fin) { fin = true; done && done(true); } } else second(text, ok2 => { if (fin) return; fin = true; done && done(!!ok2); }); });
+  return true;
+}
+
+// ---- Server ovozi: haqiqiy odam ovoziga o'xshash neyron o'zbek ovozi (POST /api/taxi/tts -> mp3) ----
+let SRVA = null; const TTSC = {};
+function saySrv(text, done) {
+  const my = ++speakSeq; let fin = false;
+  const end = ok => { if (!fin) { fin = true; done && done(ok); } };
+  const play = url => {
+    if (my !== speakSeq) return;
+    try { const a = new Audio(url); SRVA = a; a.onplaying = () => end(true); a.onerror = () => end(false); const p = a.play(); if (p && p.catch) p.catch(() => end(false)); } catch (e) { end(false); }
+  };
+  if (TTSC[text]) return play(TTSC[text]);
+  const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 6000);
+  fetch('/api/taxi/tts', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN }, body: JSON.stringify({ text }) })
+    .then(r => { if (!r.ok) throw new Error('tts'); return r.blob(); })
+    .then(b => { clearTimeout(tm); if (!b.size) throw new Error('empty'); TTSC[text] = URL.createObjectURL(b); play(TTSC[text]); })
+    .catch(() => { clearTimeout(tm); end(false); });
+}
+function say(text, done) {
+  try { if (SRVA) SRVA.pause(); } catch (e) {}
+  saySrv(text, ok => { if (ok) done && done(true); else sayLegacy(text, done); });
+  return true;
 }
 try { if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } } catch (e) {}
 const GREET = "Assalomu alaykum! Yo'lingiz bexatar bo'lsin.";
@@ -594,7 +648,13 @@ const ACT = {
   out() { logout(); },
   tab(d) { TAB = d.t; SIG = ''; render(true); window.scrollTo(0, 0); },
   noOff() { toast("Safar tugamaguncha oflayn bo'lib bo'lmaydi"); },
-  beepTest() { beep(); const n = loadVoices().length; toast(n ? 'Ovoz sinovi (' + n + ' ta ovoz)' : 'Telefonda ovozli o\'qish dasturi topilmadi'); say(GREET, ok => { if (!ok) toast('Ovoz chiqmadi: telefon sozlamalarida "Matnni ovozga aylantirish" (Google TTS) ni yoqing'); }); },
+  beepTest() {
+    beep(); const has = 'speechSynthesis' in window, vs = loadVoices();
+    sheet('Ovoz sinovi', `<p>Tizim ovozi: <b>${has ? 'bor' : "yo'q"}</b> · ovozlar soni: <b>${vs.length}</b>${vs.length ? '<br><small>' + esc(vs.slice(0, 8).map(v => v.lang).join(', ')) + '</small>' : ''}</p><button class="btn" data-act="vSrv">🎙 Server ovozi (tabiiy)</button><button class="btn ghost" data-act="vSys">🔊 Tizim ovozi bilan</button><button class="btn" data-act="vNet">🌐 Internet ovozi bilan</button><p class="note" id="vres">Tugmani bosing va eshiting. Eshitilgan usul saqlanadi.</p>`);
+  },
+  vSrv() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; saySrv(GREET, ok => { r.textContent = ok ? '✅ Server ovozi ishlayapti.' : "❌ Server ovozi yo'q (serverga /api/taxi/tts qo'shilmagan yoki kalit xato)."; }); },
+  vSys() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; saySys(GREET, ok => { r.textContent = ok ? '✅ Tizim ovozi boshlandi. Eshitdingizmi? Ha bo\'lsa shu usul saqlandi.' : '❌ Tizim ovozi ishlamadi. "Internet ovozi" ni bosing.'; if (ok) try { localStorage.setItem('svtx_voice', 'sys'); } catch (e) {} }); },
+  vNet() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; sayNet(GREET, ok => { r.textContent = ok ? '✅ Internet ovozi boshlandi. Eshitdingizmi? Ha bo\'lsa shu usul saqlandi.' : "❌ Internet ovozi ham ishlamadi (internet yo'q yoki bloklangan)."; if (ok) try { localStorage.setItem('svtx_voice', 'net'); } catch (e) {} }); },
   ordAll() { ORDALL = !ORDALL; SIG = ''; render(true); },
   ordInfo(d) {
     const o = ORD.find(x => String(x.id) === String(d.id)); if (!o) return;
