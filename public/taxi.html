@@ -456,12 +456,22 @@ const SAY_LANGS = [{ re: 'uz', lang: 'uz-UZ' }, { re: 'tr', lang: 'tr-TR' }, { r
 
 // WebView: bitta umumiy <audio> elementi birinchi bosishda "ochib" qo'yiladi, keyin avtomatik ovoz ham o'ynaydi
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAABErAAABAAgAZGF0YQAAAAA=';
-let AUD = null;
+let AUD = null, LASTERR = '';
+function aerr(a) { return 'audio xato ' + (a && a.error ? a.error.code : '?'); }
 function aud(url) {
   if (!AUD) AUD = new Audio();
   const a = AUD; a.onplaying = a.onended = a.onerror = null;
   try { a.pause(); } catch (e) {}
   a.src = url; a.volume = 1; return a;
+}
+
+function toneWav() {
+  const sr = 8000, n = sr * 0.6, b = new Uint8Array(44 + n), d = new DataView(b.buffer);
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+  w(0, 'RIFF'); d.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true);
+  d.setUint32(24, sr, true); d.setUint32(28, sr, true); d.setUint16(32, 1, true); d.setUint16(34, 8, true); w(36, 'data'); d.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b[44 + i] = 128 + Math.round(100 * Math.sin(2 * Math.PI * 660 * i / sr) * Math.min(1, (n - i) / 800));
+  let s = ''; b.forEach(v => s += String.fromCharCode(v)); return 'data:audio/wav;base64,' + btoa(s);
 }
 let speakSeq = 0, speechUnlocked = false;
 // Android/WebView: birinchi bosishda ovoz tizimini "uyg'otib" qo'yamiz
@@ -519,9 +529,9 @@ function sayNet(text, done) {
       let got = false;
       a.onplaying = () => { got = true; if (!started) { started = true; done && done(true); } };
       a.onended = () => play(i + 1, li);
-      const bad = () => { if (got) return play(i + 1, li); if (li + 1 < LG.length) play(i, li + 1); else fail(); };
+      const bad = () => { if (!got) LASTERR = LASTERR || 'internet audio: ' + aerr(a); if (got) return play(i + 1, li); if (li + 1 < LG.length) play(i, li + 1); else fail(); };
       a.onerror = bad;
-      const p = a.play(); if (p && p.catch) p.catch(bad);
+      const p = a.play(); if (p && p.catch) p.catch(e => { LASTERR = 'play(): ' + (e && e.name); bad(); });
     } catch (e) { fail(); }
   };
   play(0, 0);
@@ -542,14 +552,14 @@ function saySrv(text, done) {
   const end = ok => { if (!fin) { fin = true; done && done(ok); } };
   const play = url => {
     if (my !== speakSeq) return;
-    try { const a = aud(url); SRVA = a; a.onplaying = () => end(true); a.onerror = () => end(false); const p = a.play(); if (p && p.catch) p.catch(() => end(false)); } catch (e) { end(false); }
+    try { const a = aud(url); SRVA = a; a.onplaying = () => end(true); a.onerror = () => { LASTERR = 'server audio: ' + aerr(a); end(false); }; const p = a.play(); if (p && p.catch) p.catch(e => { LASTERR = 'play(): ' + (e && e.name); end(false); }); } catch (e) { end(false); }
   };
   if (TTSC[text]) return play(TTSC[text]);
   const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 6000);
   fetch('/api/taxi/tts', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN }, body: JSON.stringify({ text }) })
-    .then(r => { if (!r.ok) throw new Error('tts'); return r.blob(); })
+    .then(r => { if (!r.ok) { LASTERR = 'server javobi: ' + r.status; throw new Error('tts'); } return r.blob(); })
     .then(b => { clearTimeout(tm); if (!b.size) throw new Error('empty'); TTSC[text] = URL.createObjectURL(b); play(TTSC[text]); })
-    .catch(() => { clearTimeout(tm); end(false); });
+    .catch(e => { clearTimeout(tm); if (!LASTERR) LASTERR = 'tarmoq: ' + (e && e.name); end(false); });
 }
 function say(text, done) {
   try { if (SRVA) SRVA.pause(); } catch (e) {}
@@ -662,11 +672,12 @@ const ACT = {
   noOff() { toast("Safar tugamaguncha oflayn bo'lib bo'lmaydi"); },
   beepTest() {
     beep(); const has = 'speechSynthesis' in window, vs = loadVoices();
-    sheet('Ovoz sinovi', `<p>Tizim ovozi: <b>${has ? 'bor' : "yo'q"}</b> · ovozlar soni: <b>${vs.length}</b>${vs.length ? '<br><small>' + esc(vs.slice(0, 8).map(v => v.lang).join(', ')) + '</small>' : ''}</p><button class="btn" data-act="vSrv">🎙 Server ovozi (tabiiy)</button><button class="btn ghost" data-act="vSys">🔊 Tizim ovozi bilan</button><button class="btn" data-act="vNet">🌐 Internet ovozi bilan</button><p class="note" id="vres">Tugmani bosing va eshiting. Eshitilgan usul saqlanadi.</p>`);
+    sheet('Ovoz sinovi', `<p>Tizim ovozi: <b>${has ? 'bor' : "yo'q"}</b> · ovozlar soni: <b>${vs.length}</b>${vs.length ? '<br><small>' + esc(vs.slice(0, 8).map(v => v.lang).join(', ')) + '</small>' : ''}</p><button class="btn" data-act="vSrv">🎙 Server ovozi (tabiiy)</button><button class="btn ghost" data-act="vSys">🔊 Tizim ovozi bilan</button><button class="btn ghost" data-act="vTone">🔈 Audio signal sinovi</button><button class="btn" data-act="vNet">🌐 Internet ovozi bilan</button><p class="note" id="vres">Tugmani bosing va eshiting. Eshitilgan usul saqlanadi.</p>`);
   },
-  vSrv() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; saySrv(GREET, ok => { r.textContent = ok ? '✅ Server ovozi ishlayapti.' : "❌ Server ovozi yo'q (serverga /api/taxi/tts qo'shilmagan yoki kalit xato)."; }); },
+  vSrv() { const r = $('vres'); LASTERR = ''; r.textContent = 'Sinalmoqda...'; saySrv(GREET, ok => { r.textContent = ok ? '✅ Server ovozi ishlayapti.' : "❌ Server ovozi ishlamadi — " + LASTERR; }); },
+  vTone() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; try { const a = aud(toneWav()); a.onplaying = () => { r.textContent = '✅ Audio ishlayapti: "pip" signali eshitilishi kerak. Eshitmasangiz telefon MEDIA ovozini oshiring.'; }; a.onerror = () => { r.textContent = '❌ WebView audio o\'ynatmayapti: ' + aerr(a); }; const p = a.play(); if (p && p.catch) p.catch(e => { r.textContent = '❌ play() rad etildi: ' + (e && e.name) + " (APK'da media avtomatik o'ynatishni yoqish kerak)"; }); } catch (e) { r.textContent = '❌ ' + e; } },
   vSys() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; saySys(GREET, ok => { r.textContent = ok ? '✅ Tizim ovozi boshlandi. Eshitdingizmi? Ha bo\'lsa shu usul saqlandi.' : '❌ Tizim ovozi ishlamadi. "Internet ovozi" ni bosing.'; if (ok) try { localStorage.setItem('svtx_voice', 'sys'); } catch (e) {} }); },
-  vNet() { const r = $('vres'); r.textContent = 'Sinalmoqda...'; sayNet(GREET, ok => { r.textContent = ok ? '✅ Internet ovozi boshlandi. Eshitdingizmi? Ha bo\'lsa shu usul saqlandi.' : "❌ Internet ovozi ham ishlamadi (internet yo'q yoki bloklangan)."; if (ok) try { localStorage.setItem('svtx_voice', 'net'); } catch (e) {} }); },
+  vNet() { const r = $('vres'); LASTERR = ''; r.textContent = 'Sinalmoqda...'; sayNet(GREET, ok => { r.textContent = ok ? '✅ Internet ovozi boshlandi. Eshitdingizmi? Ha bo\'lsa shu usul saqlandi.' : "❌ Internet ovozi ishlamadi — " + LASTERR; if (ok) try { localStorage.setItem('svtx_voice', 'net'); } catch (e) {} }); },
   ordAll() { ORDALL = !ORDALL; SIG = ''; render(true); },
   ordInfo(d) {
     const o = ORD.find(x => String(x.id) === String(d.id)); if (!o) return;
