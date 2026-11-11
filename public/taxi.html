@@ -456,7 +456,7 @@ const SAY_LANGS = [{ re: 'uz', lang: 'uz-UZ' }, { re: 'tr', lang: 'tr-TR' }, { r
 
 // WebView: bitta umumiy <audio> elementi birinchi bosishda "ochib" qo'yiladi, keyin avtomatik ovoz ham o'ynaydi
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAABErAAABAAgAZGF0YQAAAAA=';
-let AUD = null, LASTERR = '';
+let AUD = null, LASTERR = '', PID = 0;
 function aerr(a) { return 'audio xato ' + (a && a.error ? a.error.code : '?'); }
 function aud(url) {
   if (!AUD) AUD = new Audio();
@@ -523,15 +523,21 @@ function sayNet(text, done) {
   const fail = () => { if (!started && !failed) { failed = true; done && done(false); } };
   const play = (i, li) => {
     if (my !== speakSeq || i >= parts.length) return;
+    const id = ++PID; let got = false, dead = false;
+    const live = () => id === PID && my === speakSeq && !dead;
     try {
       const a = aud('https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + LG[li] + '&q=' + encodeURIComponent(parts[i]));
       NETA = a; a.volume = 1;
-      let got = false;
-      a.onplaying = () => { got = true; if (!started) { started = true; done && done(true); } };
-      a.onended = () => play(i + 1, li);
-      const bad = () => { if (!got) LASTERR = LASTERR || 'internet audio: ' + aerr(a); if (got) return play(i + 1, li); if (li + 1 < LG.length) play(i, li + 1); else fail(); };
-      a.onerror = bad;
-      const p = a.play(); if (p && p.catch) p.catch(e => { LASTERR = 'play(): ' + (e && e.name); bad(); });
+      a.onplaying = () => { if (!live()) return; got = true; if (!started) { started = true; done && done(true); } };
+      a.onended = () => { if (live()) { dead = true; play(i + 1, li); } };
+      const bad = why => {
+        if (!live()) return; dead = true;   // eski/ikkilangan xatolar (masalan AbortError) e'tiborsiz qoldiriladi
+        if (!got) LASTERR = 'internet (' + LG[li] + '): ' + why;
+        if (got) return play(i + 1, li);
+        if (li + 1 < LG.length) play(i, li + 1); else fail();
+      };
+      a.onerror = () => bad(aerr(a));
+      const p = a.play(); if (p && p.catch) p.catch(e => bad('play(): ' + (e && e.name)));
     } catch (e) { fail(); }
   };
   play(0, 0);
